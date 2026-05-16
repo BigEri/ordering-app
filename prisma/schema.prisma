@@ -1,0 +1,275 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Restaurant {
+  id          String             @id
+  name        String
+  createdAtIso String
+
+  memberships         Membership[]
+  locales             RestaurantLocale[]
+  menuImages          MenuImage[]
+  menuItemPositions   MenuItemPosition[]
+  menuHiddenItems     MenuHiddenItem[]
+  menuHiddenCategories MenuHiddenCategory[]
+  menuTextOverrides   MenuTextOverride[]
+  menuIngredientOverrides MenuIngredientOverride[]
+  menuDotykackaLabels MenuDotykackaLabel[]
+  dotykacka           RestaurantDotykacka?
+  welcome             RestaurantWelcome?
+  kioskDeviceBindings KioskDeviceBinding[]
+  integrationAuditEvents IntegrationAuditEvent[]
+  dotykackaOauthStates DotykackaOauthState[]
+}
+
+model AppLocale {
+  code        String  @id
+  label       String
+  createdAtIso String
+  enabled     Int     @default(1)
+}
+
+model UiMessage {
+  locale       String
+  msgKey       String
+  msgValue     String
+  updatedAtIso String
+  updatedByUserId String?
+
+  updatedByUser User? @relation("UiMessageUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([locale, msgKey])
+}
+
+model RestaurantLocale {
+  restaurantId  String
+  locale        String
+  enabled       Int      @default(1)
+  createdAtIso  String
+  updatedAtIso  String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("RestaurantLocaleUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, locale])
+  @@index([locale], map: "idx_restaurant_locales_locale")
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String
+  globalRole   String
+  createdAtIso String
+
+  memberships Membership[]
+  uiMessagesUpdated UiMessage[] @relation("UiMessageUpdatedBy")
+  integrationAuditEvents IntegrationAuditEvent[]
+  dotykackaOauthStates DotykackaOauthState[]
+
+  restaurantLocalesUpdated RestaurantLocale[] @relation("RestaurantLocaleUpdatedBy")
+  menuImagesUpdated MenuImage[] @relation("MenuImageUpdatedBy")
+  menuHiddenItemsUpdated MenuHiddenItem[] @relation("MenuHiddenItemUpdatedBy")
+  menuHiddenCategoriesUpdated MenuHiddenCategory[] @relation("MenuHiddenCategoryUpdatedBy")
+  menuTextOverridesUpdated MenuTextOverride[] @relation("MenuTextOverrideUpdatedBy")
+  menuIngredientOverridesUpdated MenuIngredientOverride[] @relation("MenuIngredientOverrideUpdatedBy")
+  menuDotykackaLabelsUpdated MenuDotykackaLabel[] @relation("MenuDotykackaLabelUpdatedBy")
+  restaurantWelcomesUpdated RestaurantWelcome[] @relation("RestaurantWelcomeUpdatedBy")
+}
+
+model Membership {
+  userId       String
+  restaurantId String
+  role         String
+  createdAtIso String
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([userId, restaurantId])
+}
+
+model MenuImage {
+  restaurantId String
+  menuItemId   String
+  imageUrl     String
+  imagePublicId String?
+  updatedAtIso String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("MenuImageUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, menuItemId])
+}
+
+model MenuItemPosition {
+  restaurantId String
+  categoryKey  String
+  menuItemId   String
+  position     Int
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@id([restaurantId, categoryKey, menuItemId])
+}
+
+model MenuHiddenItem {
+  restaurantId String
+  menuItemId   String
+  hidden       Int      @default(1)
+  updatedAtIso String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("MenuHiddenItemUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, menuItemId])
+}
+
+model MenuHiddenCategory {
+  restaurantId String
+  categoryKey  String
+  hidden       Int      @default(1)
+  updatedAtIso String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("MenuHiddenCategoryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, categoryKey])
+}
+
+model MenuTextOverride {
+  restaurantId String
+  locale       String
+  entityType   String
+  entityId     String
+  name         String?
+  description  String?
+  updatedAtIso String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("MenuTextOverrideUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, locale, entityType, entityId])
+}
+
+model MenuIngredientOverride {
+  restaurantId String
+  locale       String
+  menuItemId   String
+  ingredientsJson String
+  updatedAtIso String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("MenuIngredientOverrideUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, locale, menuItemId])
+}
+
+model MenuDotykackaLabel {
+  restaurantId String
+  locale       String
+  entityType   String
+  entityId     String
+  label        String
+  updatedAtIso String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("MenuDotykackaLabelUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, locale, entityType, entityId])
+}
+
+model RestaurantDotykacka {
+  restaurantId String @id
+  refreshToken String
+  cloudId      Int
+  branchId     Int      @default(0)
+  productMapJson String @default("{}")
+  apiBase      String?
+  updatedAtIso String
+
+  createdAtIso String?
+  disabled     Int      @default(0)
+  revokedAtIso String?
+  lastTokenRefreshAtIso String?
+  lastOkAtIso  String?
+  lastError    String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model IntegrationAuditEvent {
+  id           String  @id
+  restaurantId String?
+  type         String
+  actorUserId  String?
+  deviceId     String?
+  detailsJson  String  @default("{}")
+  createdAtIso String
+
+  restaurant Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
+  actorUser  User?       @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([restaurantId, createdAtIso], map: "idx_integration_audit_restaurant")
+  @@index([type, createdAtIso], map: "idx_integration_audit_type")
+}
+
+model DotykackaOauthState {
+  state        String @id
+  restaurantId String
+  createdByUserId String
+  createdAtIso String
+  expiresAtIso String
+  usedAtIso    String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  createdByUser User @relation(fields: [createdByUserId], references: [id], onDelete: Cascade)
+
+  @@index([expiresAtIso], map: "idx_dotykacka_oauth_states_exp")
+}
+
+model RestaurantWelcome {
+  restaurantId String @id
+  layoutPreset String @default("mosaic")
+  imageUrlsJson String @default("[]")
+  updatedAtIso  String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("RestaurantWelcomeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+}
+
+model KioskDeviceBinding {
+  deviceId     String @id
+  restaurantId String
+  tableId      String
+  tableLabel   String
+  pairingLocked Int    @default(0)
+  updatedAtIso String
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model DevicePairingCode {
+  code        String @id
+  deviceId    String
+  createdAtIso String
+  expiresAtIso String
+  usedAtIso   String?
+
+  @@index([deviceId], map: "idx_device_pairing_device")
+}
+

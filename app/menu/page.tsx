@@ -1,0 +1,74 @@
+import { headers } from "next/headers";
+
+import { fetchDotykackaProductsForMenu } from "../../lib/dotykacka/fetchProducts";
+import { applyMenuItemOverrides } from "../../lib/dotykacka/menuItemOverrides";
+import { getKioskDeviceBinding } from "../../lib/server/kioskDeviceBindings";
+import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
+import { getPublicRestaurantDisplayNameForRestaurantId } from "../../lib/server/publicRestaurantName";
+import { MenuBrowseClient } from "./MenuBrowseClient";
+
+type MenuPageProps = {
+  searchParams?: Promise<{ rid?: string; deviceId?: string }>;
+};
+
+export default async function MenuPage(props: MenuPageProps) {
+  const searchParams = props.searchParams ? await props.searchParams : {};
+  const rid = typeof searchParams.rid === "string" ? searchParams.rid : undefined;
+  const deviceId = typeof searchParams.deviceId === "string" ? searchParams.deviceId.trim() : "";
+  const h = await headers();
+  const cookieHeader = h.get("cookie") ?? "";
+  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
+  const proto = h.get("x-forwarded-proto") ?? "http";
+  const url = new URL(`${proto}://${host}/menu`);
+  if (rid) url.searchParams.set("rid", rid);
+  let restaurantId: string | null = null;
+  if (deviceId && deviceId.length <= 200) {
+    const binding = await getKioskDeviceBinding(deviceId);
+    restaurantId = binding?.restaurantId ?? null;
+  } else {
+    restaurantId = await resolvePublicMenuRestaurantIdFromRequestUrl(
+      new Request(url.toString(), { headers: { cookie: cookieHeader } }),
+    );
+  }
+  if (!restaurantId) {
+    return (
+      <MenuBrowseClient
+        sections={[]}
+        loadError={
+          deviceId
+            ? "Tablet není spárovaný. Přepněte ho do servisního režimu a proveďte pairing."
+            : "Chybí kontext restaurace."
+        }
+        restaurantName={"Restaurace"}
+        restaurantId={""}
+        menuVariant="guest"
+      />
+    );
+  }
+  const restaurantName = await getPublicRestaurantDisplayNameForRestaurantId(restaurantId);
+
+  const result = await fetchDotykackaProductsForMenu(restaurantId);
+  if (!result.ok) {
+    return (
+      <MenuBrowseClient
+        sections={[]}
+        loadError={result.error}
+        restaurantName={restaurantName}
+        restaurantId={restaurantId}
+        menuVariant="guest"
+      />
+    );
+  }
+  return (
+    <MenuBrowseClient
+      sections={result.sections.map((s) => ({
+        ...s,
+        items: s.items.map(applyMenuItemOverrides),
+      }))}
+      loadError={null}
+      restaurantName={restaurantName}
+      restaurantId={restaurantId}
+      menuVariant="guest"
+    />
+  );
+}

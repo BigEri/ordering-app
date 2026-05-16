@@ -1,0 +1,470 @@
+"use client";
+
+import Image from "next/image";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import * as React from "react";
+
+import type { WelcomeLayoutPreset } from "../lib/menu/welcomeLayoutPreset";
+import { usePosTableFields } from "./DeviceTableProvider";
+import { LocaleFlag, type FlagCode } from "./LocaleFlag";
+import { useLanguage } from "./LanguageProvider";
+
+const SHOWCASE_IMAGE_MS = 15_000;
+
+function GlobeIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false" className={className} preserveAspectRatio="xMidYMid meet">
+      <path
+        fill="currentColor"
+        d="M12 2a10 10 0 1 0 0 20a10 10 0 0 0 0-20Zm7.94 9h-3.14a16.7 16.7 0 0 0-1.44-6.02A8.03 8.03 0 0 1 19.94 11ZM12 4c.9 0 2.35 2.18 3.08 7H8.92C9.65 6.18 11.1 4 12 4Zm-3.36.98A16.7 16.7 0 0 0 7.2 11H4.06a8.03 8.03 0 0 1 4.58-6.02ZM4.06 13H7.2c.3 2.11.85 4.2 1.44 6.02A8.03 8.03 0 0 1 4.06 13ZM12 20c-.9 0-2.35-2.18-3.08-7h6.16c-.73 4.82-2.18 7-3.08 7Zm3.36-.98c.59-1.82 1.14-3.91 1.44-6.02h3.14a8.03 8.03 0 0 1-4.58 6.02Z"
+      />
+    </svg>
+  );
+}
+
+function flagForLocale(code: string): FlagCode | null {
+  const lc = code.trim().toLowerCase();
+  if (lc === "cs") return "cz";
+  if (lc === "en") return "gb";
+  if (lc === "ko") return "kr";
+  return null;
+}
+
+function shuffleUrls(urls: readonly string[]): string[] {
+  const a = [...urls];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = a[i]!;
+    a[i] = a[j]!;
+    a[j] = t;
+  }
+  return a;
+}
+
+function baseGalleryFromProps(showcaseImageUrls: readonly string[]): string[] {
+  const u = showcaseImageUrls.filter(Boolean);
+  if (u.length > 0) return [...u];
+  return [];
+}
+
+/** Lokální cesty přes `next/image`, externí URL jako `<img>` (bez konfigurace domén). */
+function ShowcaseFillImage({
+  src,
+  className,
+  priority,
+  sizes,
+  reduceMotion,
+  animKey,
+  onExternalError,
+}: {
+  src: string;
+  className: string;
+  priority?: boolean;
+  sizes: string;
+  reduceMotion: boolean;
+  animKey: string;
+  onExternalError?: (src: string) => void;
+}) {
+  const isLocal = src.startsWith("/");
+  const cls = className;
+  if (isLocal) {
+    return (
+      <Image
+        key={reduceMotion ? src : animKey}
+        src={src}
+        alt=""
+        fill
+        sizes={sizes}
+        className={cls}
+        priority={priority}
+      />
+    );
+  }
+  return (
+    <img
+      key={reduceMotion ? src : animKey}
+      src={src}
+      alt=""
+      className={cls}
+      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+      onError={() => onExternalError?.(src)}
+    />
+  );
+}
+
+/**
+ * Texty úvodní stránky jsou záměrně česky; výběr jazyka ukládá preferenci pro veřejné menu (`/menu`).
+ */
+const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
+  onSelectLanguage,
+  brandName,
+  t,
+  availableLocales,
+  actions,
+  showcaseImageUrls,
+  layoutPreset,
+}: {
+  onSelectLanguage: (code: string) => void;
+  brandName: string;
+  t: (key: string) => string;
+  availableLocales: Array<{ code: string; label: string }>;
+  actions?: React.ReactNode;
+  showcaseImageUrls: readonly string[];
+  layoutPreset: WelcomeLayoutPreset;
+}) {
+  const langCount = availableLocales.length;
+  const langCols = Math.max(1, Math.min(3, langCount));
+  const langMaxRem = langCols === 1 ? 20 : langCols === 2 ? 32 : 44;
+
+  const gallerySeed = showcaseImageUrls.join("|");
+  // DŮLEŽITÉ: tento Client Component se SSR renderuje.
+  // Random shuffle v initial state by způsobil hydration mismatch (server a klient vygenerují jiné pořadí).
+  // Proto je initial pořadí deterministické a shuffle děláme až po mountu v effectu.
+  const [galleryUrls, setGalleryUrls] = React.useState<string[]>(() => baseGalleryFromProps(showcaseImageUrls));
+  const [failedExternalUrls, setFailedExternalUrls] = React.useState<Set<string>>(() => new Set());
+  const [reduceMotion, setReduceMotion] = React.useState(false);
+  const [imageIdx, setImageIdx] = React.useState(0);
+
+  React.useEffect(() => {
+    setGalleryUrls(shuffleUrls(baseGalleryFromProps(showcaseImageUrls)));
+    setFailedExternalUrls(new Set());
+    setImageIdx(0);
+  }, [gallerySeed, layoutPreset, showcaseImageUrls]);
+
+  const onExternalError = React.useCallback((src: string) => {
+    if (!src || src.startsWith("/")) return;
+    setFailedExternalUrls((prev) => {
+      if (prev.has(src)) return prev;
+      const next = new Set(prev);
+      next.add(src);
+      return next;
+    });
+  }, []);
+
+  const effectiveGalleryUrls = React.useMemo(() => {
+    const filtered = galleryUrls.filter((u) => (u.startsWith("/") ? true : !failedExternalUrls.has(u)));
+    if (filtered.length > 0) return filtered;
+    return baseGalleryFromProps(showcaseImageUrls);
+  }, [failedExternalUrls, galleryUrls, showcaseImageUrls]);
+
+  React.useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduceMotion(mq.matches);
+    sync();
+    if (typeof mq.addEventListener === "function") {
+      mq.addEventListener("change", sync);
+      return () => mq.removeEventListener("change", sync);
+    }
+    mq.addListener(sync);
+    return () => mq.removeListener(sync);
+  }, []);
+
+  React.useEffect(() => {
+    const nImg = effectiveGalleryUrls.length;
+    const imgId =
+      nImg <= 1
+        ? null
+        : window.setInterval(() => {
+            setImageIdx((j) => (j + 1) % nImg);
+          }, SHOWCASE_IMAGE_MS);
+
+    return () => {
+      if (imgId !== null) window.clearInterval(imgId);
+    };
+  }, [effectiveGalleryUrls.length]);
+
+  const n = Math.max(effectiveGalleryUrls.length, 1);
+  const src0 = effectiveGalleryUrls[imageIdx % n] ?? effectiveGalleryUrls[0]!;
+  const src1 = effectiveGalleryUrls[(imageIdx + 1) % n] ?? effectiveGalleryUrls[0]!;
+  const src2 = effectiveGalleryUrls[(imageIdx + 2) % n] ?? effectiveGalleryUrls[0]!;
+  const src3 = effectiveGalleryUrls[(imageIdx + 3) % n] ?? effectiveGalleryUrls[0]!;
+  const galleryLabel = t("welcome.slideshow.alt");
+  const anim = reduceMotion ? "" : " welcomePhotoImg--enter";
+  const motionStatic = reduceMotion ? " welcomePhotoMosaic--static" : "";
+
+  let media: React.ReactNode;
+  if (layoutPreset === "fade") {
+    media = (
+      <div className={`welcomePhotoFade${motionStatic}`} role="presentation">
+        <div className="welcomePhotoFadeCell welcomePhotoCell">
+          <ShowcaseFillImage
+            src={src0}
+            sizes="100vw"
+            priority={imageIdx === 0}
+            reduceMotion={reduceMotion}
+            animKey={`${src0}-${imageIdx}-fade`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoVignette welcomePhotoVignette--main" aria-hidden="true" />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+      </div>
+    );
+  } else if (layoutPreset === "split_half") {
+    media = (
+      <div className={`welcomePhotoSplit${motionStatic}`} role="presentation">
+        <div className="welcomePhotoCell">
+          <ShowcaseFillImage
+            src={src0}
+            sizes="50vw"
+            priority={imageIdx === 0}
+            reduceMotion={reduceMotion}
+            animKey={`${src0}-${imageIdx}-sh0`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+        <div className="welcomePhotoCell">
+          <ShowcaseFillImage
+            src={src1}
+            sizes="50vw"
+            reduceMotion={reduceMotion}
+            animKey={`${src1}-${imageIdx}-sh1`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+      </div>
+    );
+  } else if (layoutPreset === "grid_four") {
+    media = (
+      <div className={`welcomePhotoGridFour${motionStatic}`} role="presentation">
+        <div className="welcomePhotoCell">
+          <ShowcaseFillImage
+            src={src0}
+            sizes="50vw"
+            priority={imageIdx === 0}
+            reduceMotion={reduceMotion}
+            animKey={`${src0}-${imageIdx}-g0`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+        <div className="welcomePhotoCell">
+          <ShowcaseFillImage
+            src={src1}
+            sizes="50vw"
+            reduceMotion={reduceMotion}
+            animKey={`${src1}-${imageIdx}-g1`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+        <div className="welcomePhotoCell">
+          <ShowcaseFillImage
+            src={src2}
+            sizes="50vw"
+            reduceMotion={reduceMotion}
+            animKey={`${src2}-${imageIdx}-g2`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+        <div className="welcomePhotoCell">
+          <ShowcaseFillImage
+            src={src3}
+            sizes="50vw"
+            reduceMotion={reduceMotion}
+            animKey={`${src3}-${imageIdx}-g3`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+      </div>
+    );
+  } else {
+    media = (
+      <div className={`welcomePhotoMosaic${motionStatic}`} role="presentation">
+        <div className="welcomePhotoCell welcomePhotoCell--main">
+          <ShowcaseFillImage
+            src={src0}
+            sizes="100vw"
+            priority={imageIdx === 0}
+            reduceMotion={reduceMotion}
+            animKey={`${src0}-${imageIdx}-0`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoVignette welcomePhotoVignette--main" aria-hidden="true" />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+        <div className="welcomePhotoCell welcomePhotoCell--side welcomePhotoCell--a">
+          <ShowcaseFillImage
+            src={src1}
+            sizes="50vw"
+            reduceMotion={reduceMotion}
+            animKey={`${src1}-${imageIdx}-1`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+        <div className="welcomePhotoCell welcomePhotoCell--side welcomePhotoCell--b">
+          <ShowcaseFillImage
+            src={src2}
+            sizes="50vw"
+            reduceMotion={reduceMotion}
+            animKey={`${src2}-${imageIdx}-2`}
+            className={`welcomePhotoImg${anim}`}
+            onExternalError={onExternalError}
+          />
+          <div className="welcomePhotoFrameLine" aria-hidden="true" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <main className="welcomePage">
+      <div className="welcomeFullscreenMedia" aria-hidden="true">
+        {media}
+        <div className="welcomeMediaScrim" aria-hidden="true" />
+      </div>
+
+      <div className="welcomeOverlayStack">
+        <div className="welcomeCopyCard">
+          <div className="welcomeRotatingCopy" role="group" aria-label={galleryLabel} aria-live="polite" aria-atomic="true">
+            <p className="welcomeBrand">{brandName}</p>
+            <p className="welcomeKicker">{t("welcome.kicker")}</p>
+            <h1 className="welcomeTitle">{t("welcome.title")}</h1>
+            <p className="welcomeSubtitle">{t("welcome.subtitle")}</p>
+          </div>
+        </div>
+
+        {actions ?? null}
+
+        <div
+          className="welcomeLangDock"
+          role="group"
+          aria-label={t("welcome.langHint")}
+          style={
+            {
+              // 2 jazyky => 2 sloupce, 3+ => 3 sloupce; panel se zvětší podle sloupců.
+              // 5 jazyků => 3 + 2 (bez scrollu), 6 => 3 + 3.
+              "--welcome-lang-cols": langCols,
+              "--welcome-lang-max": `${langMaxRem}rem`,
+            } as React.CSSProperties
+          }
+        >
+          <div className="welcomeLangPanel">
+            <span className="welcomeLangHint">{t("welcome.langHint")}</span>
+            <div className="welcomeLangGrid">
+              {availableLocales.map((item) => (
+                <button key={item.code} type="button" className="welcomeLangBtn" onClick={() => onSelectLanguage(item.code)}>
+                  <span className="welcomeLangBtnInner">
+                    {(() => {
+                      const f = flagForLocale(item.code);
+                      return f ? (
+                        <LocaleFlag code={f} className={`welcomeLangFlag welcomeLangFlag--${f}`} />
+                      ) : (
+                        <GlobeIcon className="welcomeLangFlag" />
+                      );
+                    })()}
+                    <span className="welcomeLangLabel">{item.label}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+});
+
+export function WelcomePage({
+  brandName,
+  showcaseImageUrls = [],
+  layoutPreset = "mosaic",
+}: {
+  brandName: string;
+  /** SSR: URL fotek pro aktivní / výchozí provozovnu. */
+  showcaseImageUrls?: readonly string[];
+  layoutPreset?: WelcomeLayoutPreset;
+}) {
+  const router = useRouter();
+  const { setLocale, t, availableLocales } = useLanguage();
+  const { ready, needsPairing, pairingCode, pairingExpiresAtIso } = usePosTableFields();
+
+  const onSelectLanguage = React.useCallback(
+    (code: string) => {
+      setLocale(code);
+      if (!ready || needsPairing) return;
+      router.push("/menu");
+    },
+    [needsPairing, ready, router, setLocale],
+  );
+
+  const actions = ready && !needsPairing ? null : (
+    <div className="welcomeKioskPairingDock" role="region" aria-label="Akce">
+      <div className="welcomeKioskPairingCard">
+        <p className="welcomeKioskPairingTitle">Personál</p>
+        <p className="welcomeKioskPairingText">
+          Přihlaste se do administrace (vedoucí / správce) pro nastavení zařízení a propojení s Dotykačkou.
+        </p>
+        <Link href="/admin/login" className="chip" style={{ display: "inline-block", textDecoration: "none" }}>
+          Přihlásit se →
+        </Link>
+      </div>
+
+      <div className="welcomeKioskPairingCard" style={{ marginTop: 12 }}>
+        <p className="welcomeKioskPairingTitle">Tablet u stolu</p>
+        {!ready ? (
+          <p className="welcomeKioskPairingMuted">Načítám…</p>
+        ) : needsPairing ? (
+          <>
+            <p className="welcomeKioskPairingText">
+              V administraci otevřete <strong>Zařízení → Párování u stolů</strong> a zadejte tento kód.
+            </p>
+            <p style={{ margin: "10px 0 6px" }}>
+              <code
+                style={{
+                  display: "inline-block",
+                  fontSize: 20,
+                  fontWeight: 800,
+                  letterSpacing: "0.18em",
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  background: "rgba(0,0,0,0.35)",
+                }}
+              >
+                {pairingCode ?? "—"}
+              </code>
+            </p>
+            {pairingExpiresAtIso ? (
+              <p className="welcomeKioskPairingMuted" style={{ marginTop: 6 }}>
+                Platnost do {new Date(pairingExpiresAtIso).toLocaleString("cs-CZ")}
+              </p>
+            ) : null}
+            <p className="welcomeKioskPairingMuted" style={{ marginTop: 10 }}>
+              Až bude zařízení spárováno, menu se automaticky zpřístupní.
+            </p>
+          </>
+        ) : null}
+      </div>
+    </div>
+  );
+
+  const innerKey = `${layoutPreset}::${showcaseImageUrls.join("::")}`;
+
+  return (
+    <WelcomeShowcaseInner
+      key={innerKey}
+      onSelectLanguage={onSelectLanguage}
+      brandName={brandName}
+      t={t}
+      availableLocales={availableLocales}
+      actions={actions}
+      showcaseImageUrls={showcaseImageUrls}
+      layoutPreset={layoutPreset}
+    />
+  );
+}

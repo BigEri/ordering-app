@@ -1,0 +1,305 @@
+"use client";
+
+import Link from "next/link";
+import * as React from "react";
+
+type MeResponse =
+  | {
+      ok: true;
+      session: { userId: string; email: string; globalRole: "SUPER_ADMIN" | "USER" };
+      activeRestaurantId: string | null;
+      activeRestaurantName: string | null;
+      memberships: { restaurantId: string; role: string }[];
+    }
+  | { ok: false; error: string };
+
+type RestaurantsResponse =
+  | { ok: true; restaurants: { id: string; name: string }[] }
+  | { ok: false; error: string };
+
+export default function AdminHomePage() {
+  const [me, setMe] = React.useState<MeResponse | null>(null);
+  const [restaurants, setRestaurants] = React.useState<RestaurantsResponse | null>(null);
+  const [selecting, setSelecting] = React.useState<string | null>(null);
+  const [err, setErr] = React.useState<string | null>(null);
+  const [editName, setEditName] = React.useState("");
+  const [savingName, setSavingName] = React.useState(false);
+
+  const load = React.useCallback(async () => {
+    setErr(null);
+    try {
+      const [meR, rR] = await Promise.all([fetch("/api/admin/me", { cache: "no-store" }), fetch("/api/admin/restaurants", { cache: "no-store" })]);
+      const meJ = (await meR.json()) as MeResponse;
+      const rJ = (await rR.json()) as RestaurantsResponse;
+      setMe(meJ);
+      setRestaurants(rJ);
+      if (!meR.ok || (meJ as { ok?: boolean }).ok !== true) {
+        setErr("Nelze načíst profil (nejspíš vypršelo přihlášení).");
+      }
+      if (!rR.ok || (rJ as { ok?: boolean }).ok !== true) {
+        setErr("Nelze načíst restaurace.");
+      }
+    } catch {
+      setErr("Načtení se nezdařilo (síť).");
+    }
+  }, []);
+
+  React.useEffect(() => {
+    void load();
+  }, [load]);
+
+  const activeId = me && me.ok ? me.activeRestaurantId : null;
+  const activeName =
+    restaurants && restaurants.ok && activeId ? restaurants.restaurants.find((r) => r.id === activeId)?.name ?? null : null;
+
+  const canManageDotykacka =
+    me &&
+    me.ok &&
+    activeId &&
+    (me.session.globalRole === "SUPER_ADMIN" ||
+      me.memberships.some((m) => m.restaurantId === activeId && m.role === "RESTAURANT_ADMIN"));
+
+  React.useEffect(() => {
+    if (activeName) setEditName(activeName);
+    else if (me && me.ok && me.activeRestaurantName) setEditName(me.activeRestaurantName);
+  }, [activeName, me]);
+
+  const canRenameRestaurant =
+    me &&
+    me.ok &&
+    me.activeRestaurantId &&
+    (me.session.globalRole === "SUPER_ADMIN" ||
+      me.memberships.some((m) => m.restaurantId === me.activeRestaurantId && m.role === "RESTAURANT_ADMIN"));
+
+  const onSaveRestaurantName = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!me?.ok || !me.activeRestaurantId) return;
+    const name = editName.trim();
+    if (!name || name.length > 200) {
+      setErr("Zadejte platný název (1–200 znaků).");
+      return;
+    }
+    setSavingName(true);
+    setErr(null);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${me.activeRestaurantId}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const j = (await r.json()) as { ok?: boolean; error?: string };
+      if (!r.ok || !j.ok) {
+        setErr(j.error ?? "Uložení názvu selhalo.");
+        return;
+      }
+      await load();
+      window.dispatchEvent(new Event("oa-restaurant-updated"));
+    } catch {
+      setErr("Uložení názvu selhalo (síť).");
+    } finally {
+      setSavingName(false);
+    }
+  };
+
+  const onSelect = async (restaurantId: string) => {
+    setSelecting(restaurantId);
+    setErr(null);
+    try {
+      const r = await fetch("/api/admin/restaurant/select", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ restaurantId }),
+      });
+      const j = (await r.json()) as { ok?: boolean; error?: string };
+      if (!r.ok || !j.ok) {
+        setErr(j.error ?? "Výběr restaurace selhal.");
+        return;
+      }
+      await load();
+    } catch {
+      setErr("Výběr restaurace selhal (síť).");
+    } finally {
+      setSelecting(null);
+    }
+  };
+
+  return (
+    <main className="adminPage">
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+        <div>
+          <h1 style={{ margin: "0 0 4px", fontSize: "1.5rem" }}>Admin</h1>
+          {me && me.ok ? (
+            <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
+              Přihlášen: <strong>{me.session.email}</strong> · {me.session.globalRole === "SUPER_ADMIN" ? "SUPER ADMIN" : "uživatel"}
+            </p>
+          ) : (
+            <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
+              Načítání…
+            </p>
+          )}
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
+            Obnovit
+          </button>
+        </div>
+      </div>
+
+      {err ? (
+        <p role="alert" style={{ marginTop: 12, color: "#fecaca" }}>
+          {err}
+        </p>
+      ) : null}
+
+      {canRenameRestaurant ? (
+        <section
+          style={{
+            marginTop: 18,
+            border: "1px solid var(--border)",
+            borderRadius: 16,
+            padding: 16,
+            background: "var(--panel)",
+          }}
+        >
+          <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Název pro zákazníky</h2>
+          <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
+            Zobrazuje se na úvodní stránce, v menu a v záhlaví. Při více restauracích v databázi můžete v{" "}
+            <code style={{ fontSize: 12 }}>.env.local</code> nastavit <code style={{ fontSize: 12 }}>PUBLIC_RESTAURANT_ID</code> na ID této
+            provozovny.
+          </p>
+          <form onSubmit={(e) => void onSaveRestaurantName(e)} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+            <label style={{ display: "grid", gap: 6, flex: "1 1 220px" }}>
+              <span>Název restaurace</span>
+              <input
+                className="chip"
+                style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                autoComplete="organization"
+                maxLength={200}
+              />
+            </label>
+            <button type="submit" className="btnPrimary" disabled={savingName} style={{ cursor: "pointer" }}>
+              {savingName ? "…" : "Uložit název"}
+            </button>
+          </form>
+        </section>
+      ) : null}
+
+      <section
+        style={{
+          marginTop: 18,
+          border: "1px solid var(--border)",
+          borderRadius: 16,
+          padding: 16,
+          background: "var(--panel)",
+        }}
+      >
+        <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Aktivní restaurace</h2>
+        <p className="textMuted" style={{ margin: "0 0 12px" }}>
+          {activeName ? (
+            <>
+              Vybraná: <strong>{activeName}</strong>
+            </>
+          ) : (
+            <>Není vybraná žádná restaurace. Vyberte ji níže.</>
+          )}
+        </p>
+
+        {restaurants && restaurants.ok ? (
+          <div style={{ display: "grid", gap: 8 }}>
+            {restaurants.restaurants.map((r) => {
+              const active = r.id === activeId;
+              return (
+                <button
+                  key={r.id}
+                  type="button"
+                  className={`chip${active ? " chipActive" : ""}`}
+                  onClick={() => void onSelect(r.id)}
+                  disabled={selecting === r.id}
+                  style={{ cursor: "pointer", justifyContent: "space-between", display: "flex", padding: "10px 12px" }}
+                >
+                  <span>{r.name}</span>
+                  <span className="textMuted2" style={{ fontSize: 12 }}>
+                    {active ? "aktivní" : selecting === r.id ? "…" : "vybrat"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="textMuted">Načítání seznamu restaurací…</p>
+        )}
+      </section>
+
+      <section style={{ marginTop: 18, display: "grid", gap: 10 }}>
+        <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Správa</h2>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {me && me.ok && me.session.globalRole === "SUPER_ADMIN" ? (
+            <Link className="chip" href="/admin/restaurants" style={{ textDecoration: "none" }}>
+              Restaurace (superadmin)
+            </Link>
+          ) : null}
+          <Link className="chip" href="/admin/menu" style={{ textDecoration: "none" }}>
+            Menu (úpravy)
+          </Link>
+          <Link className="chip" href="/admin/welcome" style={{ textDecoration: "none" }}>
+            Úvodní stránka
+          </Link>
+          <Link className="chip" href="/admin/devices" style={{ textDecoration: "none" }}>
+            Zařízení
+          </Link>
+          <Link className="chip" href="/admin/users" style={{ textDecoration: "none" }}>
+            Uživatelé
+          </Link>
+          <Link className="chip" href="/admin/account" style={{ textDecoration: "none" }}>
+            Můj účet
+          </Link>
+        </div>
+        <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+          Tip: SUPER_ADMIN může přepínat restauraci. Vedoucí/personál uvidí pouze restaurace, do kterých mají přístup.
+        </p>
+      </section>
+
+      {canManageDotykacka && activeId ? (
+        <section
+          style={{
+            marginTop: 18,
+            border: "1px solid var(--border)",
+            borderRadius: 16,
+            padding: 16,
+            background: "var(--panel)",
+          }}
+        >
+          <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>Dotykačka (cloud)</h2>
+          <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
+            Pokud „vypadne“ přihlášení do Dotypos cloudu, vedoucí může znovu spustit OAuth pro <strong>aktivní restauraci</strong>. Nastavení pobočky a mapy produktů je v detailu restaurace.
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <a
+              className="btnPrimary"
+              style={{ textDecoration: "none", display: "inline-block", padding: "8px 14px", borderRadius: 10 }}
+              href={`/api/integrations/dotykacka/connect?restaurantId=${encodeURIComponent(activeId)}`}
+            >
+              Připojit Dotyku (OAuth)
+            </a>
+            <Link
+              className="chip"
+              href={`/admin/restaurants/${encodeURIComponent(activeId)}?tab=dotykacka`}
+              style={{ textDecoration: "none" }}
+            >
+              Nastavení Dotyky (pobočka + mapa) →
+            </Link>
+          </div>
+        </section>
+      ) : me && me.ok && !activeId ? (
+        <section style={{ marginTop: 18 }}>
+          <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
+            Pro připojení Dotyky nejdřív vyberte aktivní restauraci výše.
+          </p>
+        </section>
+      ) : null}
+    </main>
+  );
+}
+

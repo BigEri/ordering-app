@@ -1,0 +1,20 @@
+# dependencies
+node_modules
+
+# next
+.next
+out
+
+# env
+.env
+.env*.local
+
+# logs / local virtual POS
+data/virtual-pos/events.jsonl
+
+# nahrané fotky menu (admin)
+public/uploads/
+
+# misc
+*.tsbuildinfo
+next-env.d.ts
