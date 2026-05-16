@@ -51,14 +51,20 @@ export function SetupClient({ initialToken }: { initialToken: string }) {
           password,
         }),
       });
-      const j = (await r.json()) as { ok?: boolean; error?: string };
+      let j: { ok?: boolean; error?: string } = {};
+      try {
+        j = (await r.json()) as { ok?: boolean; error?: string };
+      } catch {
+        setErr(r.ok ? "Neplatná odpověď serveru" : `Chyba serveru (${r.status})`);
+        return;
+      }
       if (!r.ok || !j.ok) {
-        setErr(typeof j.error === "string" ? j.error : "Chyba");
+        setErr(typeof j.error === "string" ? j.error : `Chyba (${r.status})`);
         return;
       }
       setDone(true);
     } catch {
-      setErr("Síťová chyba");
+      setErr("Síťová chyba — zkontrolujte, že běží npm run dev");
     } finally {
       setSubmitting(false);
     }

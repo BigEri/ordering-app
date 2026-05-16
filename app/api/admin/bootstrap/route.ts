@@ -36,9 +36,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  // Ensure baseline locales + messages exist before the first user/restaurant is created.
-  await ensureCoreLocalesAndMessages();
-
   let body: unknown;
   try {
     body = (await req.json()) as unknown;
@@ -81,43 +78,63 @@ export async function POST(req: Request) {
         .filter((x): x is NonNullable<typeof x> => x != null && !!x.code && !!x.label)
     : [];
 
-  await prisma.$transaction(async (tx) => {
-    await tx.restaurant.create({ data: { id: restaurantId, name: restaurantName, createdAtIso } });
-    await tx.user.create({
-      data: { id: userId, email, passwordHash, globalRole: "SUPER_ADMIN", createdAtIso },
-    });
-    await tx.membership.create({
-      data: { userId, restaurantId, role: "RESTAURANT_ADMIN", createdAtIso },
-    });
+  try {
+    await ensureCoreLocalesAndMessages();
 
-    if (initialLocales.length > 0) {
-      const csMsgs = await tx.uiMessage.findMany({
-        where: { locale: "cs" },
-        select: { msgKey: true, msgValue: true },
-      });
-
-      for (const loc of initialLocales) {
-        if (loc.code === "cs" || loc.code === "en" || loc.code === "ko") continue;
-
-        await tx.appLocale.upsert({
-          where: { code: loc.code },
-          update: {},
-          create: { code: loc.code, label: loc.label, createdAtIso, enabled: 1 },
+    await prisma.$transaction(
+      async (tx) => {
+        await tx.restaurant.create({ data: { id: restaurantId, name: restaurantName, createdAtIso } });
+        await tx.user.create({
+          data: { id: userId, email, passwordHash, globalRole: "SUPER_ADMIN", createdAtIso },
+        });
+        await tx.membership.create({
+          data: { userId, restaurantId, role: "RESTAURANT_ADMIN", createdAtIso },
         });
 
-        for (const m of csMsgs) {
-          const k = typeof m.msgKey === "string" ? m.msgKey : "";
-          if (!k || k.startsWith("admin.")) continue;
-          const v = typeof m.msgValue === "string" ? m.msgValue : "";
-          await tx.uiMessage.upsert({
-            where: { locale_msgKey: { locale: loc.code, msgKey: k } },
-            update: {},
-            create: { locale: loc.code, msgKey: k, msgValue: v, updatedAtIso: createdAtIso, updatedByUserId: null },
+        if (initialLocales.length > 0) {
+          const csMsgs = await tx.uiMessage.findMany({
+            where: { locale: "cs" },
+            select: { msgKey: true, msgValue: true },
           });
+
+          for (const loc of initialLocales) {
+            if (loc.code === "cs" || loc.code === "en" || loc.code === "ko") continue;
+
+            await tx.appLocale.upsert({
+              where: { code: loc.code },
+              update: {},
+              create: { code: loc.code, label: loc.label, createdAtIso, enabled: 1 },
+            });
+
+            const extraRows = csMsgs
+              .filter((m) => {
+                const k = typeof m.msgKey === "string" ? m.msgKey : "";
+                return k && !k.startsWith("admin.");
+              })
+              .map((m) => ({
+                locale: loc.code,
+                msgKey: m.msgKey as string,
+                msgValue: typeof m.msgValue === "string" ? m.msgValue : "",
+                updatedAtIso: createdAtIso,
+                updatedByUserId: null,
+              }));
+
+            for (let i = 0; i < extraRows.length; i += 100) {
+              await tx.uiMessage.createMany({
+                data: extraRows.slice(i, i + 100),
+                skipDuplicates: true,
+              });
+            }
+          }
         }
-      }
-    }
-  });
+      },
+      { maxWait: 10_000, timeout: 60_000 },
+    );
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Bootstrap failed";
+    console.error("[bootstrap]", e);
+    return NextResponse.json({ ok: false, error: message }, { status: 500 });
+  }
 
   return NextResponse.json({
     ok: true,
