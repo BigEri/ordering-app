@@ -7,7 +7,8 @@
     "dev:webpack": "next dev",
     "dev:clean": "node scripts/clean-next.cjs && next dev --turbopack",
     "preview": "node scripts/preview.cjs",
-    "build": "next build",
+    "postinstall": "prisma generate",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run"
@@ -16,6 +17,7 @@
     "@sentry/nextjs": "^10.47.0",
     "bcryptjs": "^3.0.3",
     "@prisma/client": "^6.16.1",
+    "prisma": "^6.16.1",
     "next": "^15.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -27,7 +29,6 @@
     "@types/react-dom": "^19.0.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.5.0",
-    "prisma": "^6.16.1",
     "typescript": "^5.7.0",
     "vitest": "^3.2.4"
   }

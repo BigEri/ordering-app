@@ -1,31 +1,40 @@
 import { NextResponse } from "next/server";
 
-import { getDotykackaConfig } from "../../../lib/dotykacka/config";
-import { getDefaultPublicMenuRestaurantId } from "../../../lib/server/publicRestaurantName";
+import { hasDatabaseUrl } from "../../../lib/server/dbConfig";
+import { prisma } from "../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
 
-/** Kontrola běhu API a konfigurace POS (bez volání externího systému). */
+/** Pro monitoring / ladění deploye (Vercel, Neon). */
 export async function GET() {
-  const fromEnv = getDotykackaConfig();
-  const def = await getDefaultPublicMenuRestaurantId();
-  const fromRestaurant = def ? getDotykackaConfig(def) : null;
-  const dotykackaSync = fromEnv ?? fromRestaurant;
+  if (!hasDatabaseUrl()) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "Missing DATABASE_URL",
+        hint: "Set in Vercel Environment Variables, then redeploy. See docs/DEPLOY-VERCEL.md",
+      },
+      { status: 503 },
+    );
+  }
 
-  return NextResponse.json(
-    {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    return NextResponse.json({
       ok: true,
-      ts: new Date().toISOString(),
-      pos: {
-        externalUrlConfigured: Boolean(process.env.POS_NOTIFICATION_URL),
+      database: "connected",
+      appAuthSecret: Boolean(process.env.APP_AUTH_SECRET?.trim()),
+      publicAppUrl: Boolean(process.env.NEXT_PUBLIC_APP_URL?.trim()),
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Database error";
+    return NextResponse.json(
+      {
+        ok: false,
+        error: message,
+        hint: "Check DATABASE_URL and run: npx prisma migrate deploy",
       },
-      sentry: {
-        configured: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN || process.env.SENTRY_DSN),
-      },
-      dotykacka: {
-        syncConfigured: dotykackaSync !== null,
-      },
-    },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+      { status: 503 },
+    );
+  }
 }
