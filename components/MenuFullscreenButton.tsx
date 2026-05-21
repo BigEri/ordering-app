@@ -22,11 +22,22 @@ function getFullscreenElement(): Element | null {
   );
 }
 
-/** Rohové tlačítko pro vyzkoušení kiosk režimu na celé obrazovce (tablet / Chrome). */
+function isAndroidKioskWebView(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return navigator.userAgent.includes("TableOrderingKiosk");
+}
+
+/** Rohové tlačítko pro vyzkoušení kiosk režimu na celé obrazovce (tablet / Chrome). V nativním kiosk APK se neukazuje. */
 export function MenuFullscreenButton({ labelEnter, labelExit }: Props) {
+  const [hideKiosk, setHideKiosk] = React.useState(false);
   const [active, setActive] = React.useState(false);
 
+  React.useLayoutEffect(() => {
+    setHideKiosk(isAndroidKioskWebView());
+  }, []);
+
   React.useEffect(() => {
+    if (hideKiosk) return;
     const onChange = () => {
       setActive(!!getFullscreenElement());
     };
@@ -36,7 +47,7 @@ export function MenuFullscreenButton({ labelEnter, labelExit }: Props) {
       document.removeEventListener("fullscreenchange", onChange);
       document.removeEventListener("webkitfullscreenchange", onChange as EventListener);
     };
-  }, []);
+  }, [hideKiosk]);
 
   const toggle = React.useCallback(() => {
     const el = document.documentElement as HTMLElement & {
@@ -61,6 +72,8 @@ export function MenuFullscreenButton({ labelEnter, labelExit }: Props) {
       el.requestFullscreen?.() ?? el.webkitRequestFullscreen?.() ?? el.msRequestFullscreen?.()
     );
   }, []);
+
+  if (hideKiosk) return null;
 
   return (
     <button

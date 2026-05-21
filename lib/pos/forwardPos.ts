@@ -50,7 +50,7 @@ async function maybeSyncDotykacka(
   return undefined;
 }
 
-async function forwardToPos({ eventType, payload, userAgent }: PosForwardOptions) {
+async function forwardToPosInner({ eventType, payload, userAgent }: PosForwardOptions) {
   const sanitized = sanitizePosPayloadForServer(payload);
 
   const posTrust = await resolvePosTrustFromPayload(sanitized);
@@ -215,6 +215,15 @@ async function forwardToPos({ eventType, payload, userAgent }: PosForwardOptions
       },
       { status: 502 },
     );
+  }
+}
+
+async function forwardToPos(options: PosForwardOptions) {
+  try {
+    return await forwardToPosInner(options);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "POS handler failed";
+    return NextResponse.json({ ok: false, virtualPos: true, error: message }, { status: 500 });
   }
 }
 
