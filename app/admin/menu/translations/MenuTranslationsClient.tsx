@@ -29,6 +29,24 @@ function asSeedLocale(code: string): SeedLocale | null {
   return null;
 }
 
+function normLabelKey(s: string): string {
+  return s.trim().toLowerCase();
+}
+
+function sectionDisplayName(sec: DotykackaMenuSection): string {
+  if (sec.labelKey === "other") return "Ostatní";
+  if (sec.labelKey === "all") return "Vše";
+  return (sec.name || "").trim() || "Bez názvu";
+}
+
+/** Text pro štítek ID kategorie v editoru (ne product-customization). */
+function sectionCategoryIdLabel(sec: DotykackaMenuSection): string {
+  if (sec.labelKey === "other") return "other";
+  if (sec.labelKey === "all") return "all";
+  if (sec.categoryId != null) return String(sec.categoryId);
+  return "—";
+}
+
 function emptyLocale(): MenuTextOverridesForLocale {
   return { items: {}, categories: {} };
 }
@@ -430,6 +448,26 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
     return out;
   }, [sections]);
 
+  const dotykackaGroupLabelKeys = React.useMemo(() => {
+    const keys = new Set<string>();
+    for (const g of dotykackaGroupsForEditor) {
+      const l = (g.label ?? "").trim();
+      if (l) keys.add(normLabelKey(l));
+    }
+    return keys;
+  }, [dotykackaGroupsForEditor]);
+
+  const menuCategoriesForEditor = React.useMemo(() => {
+    return sections.map((sec) => {
+      const catKey = menuSectionCategoryKey(sec);
+      const dotykaName = sectionDisplayName(sec);
+      const idLabel = sectionCategoryIdLabel(sec);
+      const ambiguous =
+        dotykaName !== "Bez názvu" && dotykackaGroupLabelKeys.has(normLabelKey(dotykaName));
+      return { sec, catKey, dotykaName, idLabel, ambiguous };
+    });
+  }, [sections, dotykackaGroupLabelKeys]);
+
   const setDotykackaGroupLabel = React.useCallback((locale: string, groupId: string, val: string) => {
     markDirty();
     setDotykackaLabelsByLocale((prev) => {
@@ -784,9 +822,14 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       >
         <div style={{ fontWeight: 650, marginBottom: 6 }}>Co se tu dá upravit</div>
         <ul className="textMuted2" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
-          <li>Názvy a popisy položek, názvy kategorií (podle jazyka).</li>
-          <li>Ingredience (interní klíč + zobrazení v menu pro každý jazyk).</li>
-          <li>Přílohy a úpravy z Dotykačky (skupiny + volby) pro každý jazyk.</li>
+          <li>
+            <strong>Výběr přílohy u jídla</strong> — skupiny a volby s ID z Dotyky (detail objednávky na tabletu).
+          </li>
+          <li>
+            <strong>Kategorie v seznamu menu</strong> — nadpisy sekcí s ID kategorie (ne stejné jako přílohy u jídla).
+          </li>
+          <li>Názvy a popisy položek podle jazyka.</li>
+          <li>Ingredience — ruční text „odebrat z jídla“ (bez ID z Dotyky).</li>
         </ul>
         <p className="textMuted2" style={{ margin: "10px 0 0", lineHeight: 1.55 }}>
           Tip: v <strong>češtině</strong> většinou nemusíte nic vyplňovat. Když necháte pole prázdné, použije se původní český
@@ -867,27 +910,32 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       <section style={{ marginTop: 24, display: "grid", gap: 28 }}>
         {dotykackaGroupsForEditor.length > 0 ? (
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Přílohy a úpravy (Dotykačka)</h2>
+            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Výběr přílohy a úprav u jídla (Dotykačka)</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
-              Překlady názvů skupin a voleb z Dotyky (např. „Přílohy“, „Hranolky“) pro jazyk <strong>{activeLocale}</strong>.
+              Nadpis sekce a názvy voleb v <strong>detailu objednávky</strong> (např. „Přílohy“, „Hranolky“) pro jazyk{" "}
+              <strong>{activeLocale}</strong>. Každá skupina a volba má vlastní ID z Dotyky — překládejte podle ID, ne podle
+              názvu kategorie v seznamu menu.
               {activeLocale === "cs" ? (
                 <>
                   {" "}
-                  Pokud necháte pole prázdné, použije se původní český název z Dotykačky.
+                  Prázdné pole = původní český text z Dotykačky.
                 </>
               ) : null}
             </p>
             <div style={{ display: "grid", gap: 14 }}>
               {dotykackaGroupsForEditor.map((g) => (
                 <div key={g.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
-                  <div className="textMuted2" style={{ fontSize: 13, marginBottom: 6 }}>
-                    Skupina (id {g.id})
+                  <div className="textMuted2" style={{ fontSize: 13, marginBottom: 4 }}>
+                    Skupina customizace (id {g.id})
+                  </div>
+                  <div className="textMuted2" style={{ fontSize: 12, marginBottom: 6, lineHeight: 1.45 }}>
+                    Česky v Dotyce: <strong>{g.label.trim() ? g.label : "—"}</strong>
                   </div>
                   <input
                     className="chip"
                     value={(dotykackaLabelsByLocale[activeLocale]?.groups ?? {})[g.id] ?? ""}
                     onChange={(e) => setDotykackaGroupLabel(activeLocale, g.id, e.target.value)}
-                    placeholder={g.label || "Název skupiny"}
+                    placeholder={g.label || "Překlad názvu skupiny"}
                     style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                     autoComplete="off"
                   />
@@ -896,13 +944,13 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                       {g.options.map((o) => (
                         <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
                           <span className="textMuted2" style={{ fontSize: 13 }}>
-                            Volba (id {o.id})
+                            Volba / produkt (id {o.id})
                           </span>
                           <input
                             className="chip"
                             value={(dotykackaLabelsByLocale[activeLocale]?.options ?? {})[o.id] ?? ""}
                             onChange={(e) => setDotykackaOptionLabel(activeLocale, o.id, e.target.value)}
-                            placeholder={o.label || "Název volby"}
+                            placeholder={o.label || "Překlad volby"}
                             style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                             autoComplete="off"
                           />
@@ -916,27 +964,79 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           </div>
         ) : null}
 
-        {sections.map((sec) => {
+        {menuCategoriesForEditor.length > 0 ? (
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Kategorie v seznamu menu (Dotykačka)</h2>
+            <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
+              Nadpisy <strong>řádků v seznamu jídel</strong> na tabletu (ne výběr přílohy v detailu jídla). Každá kategorie má
+              vlastní ID — liší se od skupin customizace výše.
+            </p>
+            <div style={{ display: "grid", gap: 12 }}>
+              {menuCategoriesForEditor.map(({ sec, catKey, dotykaName, idLabel, ambiguous }) => (
+                <div
+                  key={`cat-${sec.sortOrder}-${catKey}`}
+                  style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}
+                >
+                  <div className="textMuted2" style={{ fontSize: 13, marginBottom: 4 }}>
+                    Kategorie v menu (id {idLabel})
+                  </div>
+                  <div className="textMuted2" style={{ fontSize: 12, marginBottom: ambiguous ? 6 : 8, lineHeight: 1.45 }}>
+                    Česky v Dotyce: <strong>{dotykaName}</strong>
+                  </div>
+                  {ambiguous ? (
+                    <p
+                      className="textMuted2"
+                      style={{
+                        margin: "0 0 8px",
+                        fontSize: 12,
+                        lineHeight: 1.45,
+                        color: "#fde68a",
+                        borderLeft: "3px solid rgba(253, 230, 138, 0.5)",
+                        paddingLeft: 8,
+                      }}
+                    >
+                      Stejný název jako skupina customizace výše — jde o <strong>kategorii v menu</strong>, ne o výběr přílohy
+                      u jídla. Překládejte podle ID kategorie.
+                    </p>
+                  ) : null}
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span className="textMuted2" style={{ fontSize: 13 }}>
+                      Název kategorie v menu ({activeLocale}) — volitelné
+                    </span>
+                    <input
+                      className="chip"
+                      value={(byLocale[activeLocale] ?? emptyLocale()).categories[catKey]?.name ?? ""}
+                      onChange={(e) => setCategoryName(activeLocale, catKey, e.target.value)}
+                      placeholder={dotykaName}
+                      style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
+                      autoComplete="off"
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Položky menu</h2>
+          <p className="textMuted2" style={{ margin: "0 0 16px", lineHeight: 1.55 }}>
+            Názvy a popisy jednotlivých jídel. Názvy kategorií upravujte v sekci výše (podle ID kategorie).
+          </p>
+        {sections.map((sec, secIdx) => {
           const catKey = menuSectionCategoryKey(sec);
-          const catLabel =
-            sec.labelKey === "other" ? "Ostatní" : sec.labelKey === "all" ? "Vše" : sec.name || `Kategorie ${catKey}`;
+          const dotykaName = sectionDisplayName(sec);
+          const idLabel = sectionCategoryIdLabel(sec);
           return (
-            <div key={`${sec.sortOrder}-${catKey}`} style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-              <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>{catLabel}</h2>
-              <label style={{ display: "grid", gap: 6, maxWidth: 560 }}>
-                <span className="textMuted2" style={{ fontSize: 13 }}>
-                  Název sekce ({activeLocale}) — volitelné
+            <div key={`${sec.sortOrder}-${catKey}`} style={{ marginTop: secIdx === 0 ? 0 : 20 }}>
+              <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600 }}>
+                <span className="textMuted2" style={{ fontWeight: 500 }}>
+                  Kategorie (id {idLabel})
                 </span>
-                <input
-                  className="chip"
-                  value={(byLocale[activeLocale] ?? emptyLocale()).categories[catKey]?.name ?? ""}
-                  onChange={(e) => setCategoryName(activeLocale, catKey, e.target.value)}
-                  placeholder={sec.name || catLabel}
-                  style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
-                  autoComplete="off"
-                />
-              </label>
-              <div style={{ marginTop: 16, display: "grid", gap: 12 }}>
+                {" · "}
+                {dotykaName}
+              </h3>
+              <div style={{ display: "grid", gap: 12 }}>
                 {sec.items.map((item) => (
                   <div
                     key={item.id}
@@ -948,10 +1048,15 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                       gap: 8,
                     }}
                   >
-                    <div style={{ fontWeight: 600 }}>{item.name}</div>
+                    <div style={{ fontWeight: 600 }}>
+                      {item.name}
+                      <span className="textMuted2" style={{ fontWeight: 500, fontSize: 12, marginLeft: 8 }}>
+                        (produkt id {item.id})
+                      </span>
+                    </div>
                     <label style={{ display: "grid", gap: 6 }}>
                       <span className="textMuted2" style={{ fontSize: 13 }}>
-                        Název ({activeLocale})
+                        Název položky ({activeLocale})
                       </span>
                       <input
                         className="chip"
@@ -985,11 +1090,11 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
                     <div style={{ marginTop: 4, display: "grid", gap: 8 }}>
                       <div className="textMuted2" style={{ fontSize: 13 }}>
-                        Ingredience ({activeLocale}) — volitelné (bez doplatku, jen poznámka)
+                        Ingredience / „odebrat z jídla“ ({activeLocale}) — volitelné
                       </div>
                       <div className="textMuted2" style={{ fontSize: 13, lineHeight: 1.45 }}>
-                        <strong>Interní název</strong> slouží jako stabilní klíč (např. původní název z Dotykačky / cs).
-                        V menu se zobrazuje primárně pole <strong>Zobrazení v menu</strong> pro daný jazyk.
+                        Ruční texty bez ID z Dotyky — <strong>ne</strong> placené přílohy (ty jsou výše u skupin customizace).
+                        <strong> Interní název</strong> = stabilní klíč; v menu host vidí <strong>Zobrazení v menu</strong>.
                       </div>
                       <div style={{ display: "grid", gap: 8 }}>
                         {(() => {
@@ -1057,6 +1162,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
             </div>
           );
         })}
+        </div>
       </section>
     </div>
   );
