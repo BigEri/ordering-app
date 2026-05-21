@@ -1,6 +1,8 @@
 import { fetchDotykackaProductsForMenu } from "../../../../lib/dotykacka/fetchProducts";
 import { applyMenuItemOverrides } from "../../../../lib/dotykacka/menuItemOverrides";
+import { orderMenuSectionsLikeKiosk } from "../../../../lib/menu/menuSectionsDisplayOrder";
 import { getAdminMenuRestaurantId } from "../../../../lib/server/adminMenuRestaurantContext";
+import { readMenuOverridesForRestaurant } from "../../../../lib/server/menuOverridesRead";
 import { getPublicRestaurantDisplayName } from "../../../../lib/server/publicRestaurantName";
 import { MenuTranslationsClient } from "./MenuTranslationsClient";
 
@@ -17,12 +19,23 @@ export default async function MenuTranslationsPage() {
       </main>
     );
   }
-  const result = await fetchDotykackaProductsForMenu(restaurantId);
+  const [result, menuOverrides] = await Promise.all([
+    fetchDotykackaProductsForMenu(restaurantId),
+    readMenuOverridesForRestaurant(restaurantId),
+  ]);
   const sections = result.ok
-    ? result.sections.map((s) => ({
-        ...s,
-        items: s.items.map(applyMenuItemOverrides),
-      }))
+    ? orderMenuSectionsLikeKiosk(
+        result.sections.map((s) => ({
+          ...s,
+          items: s.items.map(applyMenuItemOverrides),
+        })),
+        {
+          orderByCategory: menuOverrides.orderByCategory,
+          images: menuOverrides.images,
+          hiddenCategoryKeys: menuOverrides.hiddenCategoryKeys,
+          hiddenItemIds: menuOverrides.hiddenItemIds,
+        },
+      )
     : [];
 
   return (

@@ -835,12 +835,14 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         <div style={{ fontWeight: 650, marginBottom: 6 }}>Co se tu dá upravit</div>
         <ul className="textMuted2" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
           <li>
-            <strong>Výběr přílohy u jídla</strong> — skupiny a volby s ID z Dotyky (detail objednávky na tabletu).
+            <strong>Položky menu</strong> — stejné pořadí kategorií a jídel jako na tabletu (včetně úprav pořadí v admin menu).
           </li>
           <li>
-            <strong>Kategorie v seznamu menu</strong> — nadpisy sekcí s ID kategorie (ne stejné jako přílohy u jídla).
+            <strong>Kategorie v seznamu menu</strong> — nadpisy sekcí; kategorie „Doplňky“ a podobné jsou až na konci.
           </li>
-          <li>Názvy a popisy položek podle jazyka (kategorie „Přílohy“ jako pool se v menu neprodávají samostatně — nepřekládejte je dole).</li>
+          <li>
+            <strong>Výběr přílohy / úpravy u jídla</strong> — až dole (Dotykačka, detail objednávky).
+          </li>
           <li>Ingredience — ruční text „odebrat z jídla“ (bez ID z Dotyky).</li>
         </ul>
         <p className="textMuted2" style={{ margin: "10px 0 0", lineHeight: 1.55 }}>
@@ -920,69 +922,6 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       </div>
 
       <section style={{ marginTop: 24, display: "grid", gap: 28 }}>
-        {dotykackaGroupsMergedForEditor.length > 0 ? (
-          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Výběr přílohy a úprav u jídla (Dotykačka)</h2>
-            <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
-              Nadpis sekce a názvy voleb v <strong>detailu objednávky</strong> pro jazyk <strong>{activeLocale}</strong>.
-              Stejné skupiny z Dotyky (stejný název a volby, různá ID) jsou <strong>sloučeny</strong> — stačí jeden překlad.
-              {activeLocale === "cs" ? (
-                <> Prázdné pole = původní český text z Dotykačky.</>
-              ) : null}
-            </p>
-            <div style={{ display: "grid", gap: 14 }}>
-              {dotykackaGroupsMergedForEditor.map((g) => (
-                <div key={g.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
-                  <div className="textMuted2" style={{ fontSize: 13, marginBottom: 4 }}>
-                    Skupina customizace (id {g.id}
-                    {g.merged ? ` · sloučeno s ${g.aliasIds.filter((x) => x !== g.id).join(", ")}` : ""})
-                  </div>
-                  <div className="textMuted2" style={{ fontSize: 12, marginBottom: 6, lineHeight: 1.45 }}>
-                    Česky v Dotyce: <strong>{g.label.trim() ? g.label : "—"}</strong>
-                  </div>
-                  {g.usedBy.length > 0 ? (
-                    <div className="textMuted2" style={{ fontSize: 12, marginBottom: 8, lineHeight: 1.45 }}>
-                      Používá u jídel:{" "}
-                      <strong>
-                        {g.usedBy.length <= 6
-                          ? g.usedBy.join(", ")
-                          : `${g.usedBy.slice(0, 6).join(", ")} … (+${g.usedBy.length - 6})`}
-                      </strong>
-                    </div>
-                  ) : null}
-                  <input
-                    className="chip"
-                    value={getMergedDotykackaGroupLabel(dotykackaLabelsByLocale[activeLocale]?.groups, g)}
-                    onChange={(e) => setDotykackaGroupLabel(activeLocale, g, e.target.value)}
-                    placeholder={g.label || "Překlad názvu skupiny"}
-                    style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
-                    autoComplete="off"
-                  />
-                  {g.options.length > 0 ? (
-                    <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
-                      {g.options.map((o) => (
-                        <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
-                          <span className="textMuted2" style={{ fontSize: 13 }}>
-                            Volba / produkt (id {o.id})
-                          </span>
-                          <input
-                            className="chip"
-                            value={(dotykackaLabelsByLocale[activeLocale]?.options ?? {})[o.id] ?? ""}
-                            onChange={(e) => setDotykackaOptionLabel(activeLocale, o.id, e.target.value)}
-                            placeholder={o.label || "Překlad volby"}
-                            style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
-                            autoComplete="off"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
         {menuCategoriesForEditor.length > 0 ? (
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
             <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Kategorie v seznamu menu (Dotykačka)</h2>
@@ -1040,7 +979,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
           <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Položky menu</h2>
           <p className="textMuted2" style={{ margin: "0 0 16px", lineHeight: 1.55 }}>
-            Názvy a popisy jednotlivých jídel. Názvy kategorií upravujte v sekci výše (podle ID kategorie).
+            Názvy a popisy jednotlivých jídel ve stejném pořadí jako na tabletu. Názvy kategorií upravujte v sekci výše.
           </p>
         {sections.map((sec, secIdx) => {
           const catKey = menuSectionCategoryKey(sec);
@@ -1182,6 +1121,69 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           );
         })}
         </div>
+
+        {dotykackaGroupsMergedForEditor.length > 0 ? (
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
+            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Doplňky — výběr přílohy a úprav u jídla (Dotykačka)</h2>
+            <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
+              Nadpis sekce a názvy voleb v <strong>detailu objednávky</strong> (burger, řízek…) pro jazyk{" "}
+              <strong>{activeLocale}</strong>. Stejné skupiny z Dotyky jsou <strong>sloučeny</strong> — stačí jeden překlad.
+              {activeLocale === "cs" ? (
+                <> Prázdné pole = původní český text z Dotykačky.</>
+              ) : null}
+            </p>
+            <div style={{ display: "grid", gap: 14 }}>
+              {dotykackaGroupsMergedForEditor.map((g) => (
+                <div key={g.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
+                  <div className="textMuted2" style={{ fontSize: 13, marginBottom: 4 }}>
+                    Skupina customizace (id {g.id}
+                    {g.merged ? ` · sloučeno s ${g.aliasIds.filter((x) => x !== g.id).join(", ")}` : ""})
+                  </div>
+                  <div className="textMuted2" style={{ fontSize: 12, marginBottom: 6, lineHeight: 1.45 }}>
+                    Česky v Dotyce: <strong>{g.label.trim() ? g.label : "—"}</strong>
+                  </div>
+                  {g.usedBy.length > 0 ? (
+                    <div className="textMuted2" style={{ fontSize: 12, marginBottom: 8, lineHeight: 1.45 }}>
+                      Používá u jídel:{" "}
+                      <strong>
+                        {g.usedBy.length <= 6
+                          ? g.usedBy.join(", ")
+                          : `${g.usedBy.slice(0, 6).join(", ")} … (+${g.usedBy.length - 6})`}
+                      </strong>
+                    </div>
+                  ) : null}
+                  <input
+                    className="chip"
+                    value={getMergedDotykackaGroupLabel(dotykackaLabelsByLocale[activeLocale]?.groups, g)}
+                    onChange={(e) => setDotykackaGroupLabel(activeLocale, g, e.target.value)}
+                    placeholder={g.label || "Překlad názvu skupiny"}
+                    style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
+                    autoComplete="off"
+                  />
+                  {g.options.length > 0 ? (
+                    <div style={{ marginTop: 10, display: "grid", gap: 8 }}>
+                      {g.options.map((o) => (
+                        <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
+                          <span className="textMuted2" style={{ fontSize: 13 }}>
+                            Volba / produkt (id {o.id})
+                          </span>
+                          <input
+                            className="chip"
+                            value={(dotykackaLabelsByLocale[activeLocale]?.options ?? {})[o.id] ?? ""}
+                            onChange={(e) => setDotykackaOptionLabel(activeLocale, o.id, e.target.value)}
+                            placeholder={o.label || "Překlad volby"}
+                            style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
+                            autoComplete="off"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </section>
     </div>
   );
