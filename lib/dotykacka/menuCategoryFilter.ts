@@ -1,5 +1,6 @@
 /**
- * Skrýt z kioskového menu produkty z kategorií typu „Ingredience“ (ne samostatné jídlo).
+ * Skrýt z kioskového menu produkty z interních kategorií Dotyky (ne samostatné jídlo na tabletu):
+ * ingredience, přílohy jako pool pro customizace u hlavních jídel, atd.
  */
 
 import { pickDotykackaLocalizedName } from "./dotykackaLocalizedName";
@@ -15,7 +16,7 @@ function num(v: unknown): number | null {
 
 /** Výchozí: přesný název kategorie (bez ohledu na velikost písmen). */
 const DEFAULT_HIDE_NAME_RE =
-  /^\s*(ingredience|ingredients|ingredient|suroviny|surovina)\s*$/i;
+  /^\s*(ingredience|ingredients|ingredient|suroviny|surovina|přílohy|příloha|prilohy|priloha|sides|side\s*dishes?|garniture|garnitura)\s*$/i;
 
 function parseEnvCategoryIds(raw: string | undefined): Set<number> {
   const set = new Set<number>();
@@ -64,7 +65,7 @@ export function resolveHiddenMenuCategoryIds(categoryRows: Record<string, unknow
 }
 
 /**
- * Kategorie, jejichž produkty se v menu nezobrazí: ingredienční / env. skryté,
+ * Kategorie, jejichž produkty se v menu nezobrazí: ingredience / přílohy (pool) / env. skryté,
  * smazané kategorie a kategorie se zákazem zobrazení v Dotyce (`display === false`).
  */
 export function resolveProductExcludedCategoryIds(categoryRows: Record<string, unknown>[]): Set<number> {

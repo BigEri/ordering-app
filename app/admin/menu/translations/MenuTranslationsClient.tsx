@@ -840,7 +840,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           <li>
             <strong>Kategorie v seznamu menu</strong> — nadpisy sekcí s ID kategorie (ne stejné jako přílohy u jídla).
           </li>
-          <li>Názvy a popisy položek podle jazyka.</li>
+          <li>Názvy a popisy položek podle jazyka (kategorie „Přílohy“ jako pool se v menu neprodávají samostatně — nepřekládejte je dole).</li>
           <li>Ingredience — ruční text „odebrat z jídla“ (bez ID z Dotyky).</li>
         </ul>
         <p className="textMuted2" style={{ margin: "10px 0 0", lineHeight: 1.55 }}>
