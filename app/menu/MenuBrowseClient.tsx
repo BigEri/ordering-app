@@ -24,7 +24,6 @@ import { buildOrderLineName, menuCartLineToSnapshot, orderLineUnitPriceCzk } fro
 import { clearPendingOrderConfirmed, hasPendingOrderConfirmed, POS_QUEUE_ORDER_SENT } from "../../lib/pos/pendingPosQueue";
 import { postPosJsonResilient } from "../../lib/pos/postPosJsonResilient";
 import { useMenuIdleRedirect } from "../../hooks/useMenuIdleRedirect";
-import { MenuFullscreenButton } from "../../components/MenuFullscreenButton";
 import { useBrowserOnline } from "../../components/OnlineBanner";
 
 function formatCzk(value: number) {
@@ -1367,8 +1366,6 @@ export function MenuBrowseClient({
           locale={menuLocale}
         />
       ) : null}
-
-      <MenuFullscreenButton labelEnter={t("menu.kiosk.fullscreenEnter")} labelExit={t("menu.kiosk.fullscreenExit")} />
 
       {cartPendingModal ? (
         <div

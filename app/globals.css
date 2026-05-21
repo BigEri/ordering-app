@@ -158,41 +158,6 @@ html {
   color: rgba(254, 243, 199, 0.92);
 }
 
-/* Rohové tlačítko fullscreen na stránce menu (kiosk) */
-.menuFullscreenBtn {
-  position: fixed;
-  right: 14px;
-  bottom: 14px;
-  z-index: 44;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 48px;
-  height: 48px;
-  padding: 0;
-  border-radius: 14px;
-  border: 1px solid var(--border-strong);
-  background: var(--panel-strong);
-  color: var(--text);
-  cursor: pointer;
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(12px) saturate(1.15);
-  transition:
-    background 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s ease;
-}
-
-.menuFullscreenBtn:hover {
-  background: var(--panel-elevated);
-  border-color: var(--brand-border);
-  transform: scale(1.04);
-}
-
-.menuFullscreenBtn:active {
-  transform: scale(0.98);
-}
-
 .posNotifyBanner {
   margin: -4px 0 12px;
   padding: 10px 14px;
