@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import Link from "next/link";
+import { AdminChipLink } from "../../../components/admin/AdminNavLink";
 
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../../../lib/menu/welcomeLayoutPreset";
 
@@ -267,7 +267,7 @@ export function WelcomeSettingsClient() {
         Max. velikost pro nahrání: <strong>10 MB</strong> na obrázek.
       </p>
       <p className="textMuted2" style={{ margin: "0 0 20px", maxWidth: 720, lineHeight: 1.55 }}>
-        Fotky na úvodní stránce <Link href="/">/</Link> pro hosty a nepárované tablety. Můžete zadat URL (HTTPS nebo
+        Fotky na úvodní stránce <a href="/">/</a> pro hosty a nepárované tablety. Můžete zadat URL (HTTPS nebo
         lokální cesta z nahraného souboru), nahrát obrázek z telefonu, nebo vybrat fotku z menu. Limit je max.{" "}
         <strong>6 obrázků</strong>. Nahrávání podporuje <strong>JPEG/PNG/WebP</strong> a max. <strong>10 MB</strong> na
         soubor (po nahrání se optimalizuje pro rychlé načítání). Rozložení: klasická mozaika (1+2), dvě poloviny 50/50,
@@ -436,9 +436,7 @@ export function WelcomeSettingsClient() {
           <button type="button" className="btnPrimary" disabled={!canEdit || !rid || saving} onClick={() => void onSave()}>
             {saving ? "Ukládám…" : "Uložit"}
           </button>
-          <Link href="/" className="chip" style={{ textDecoration: "none" }}>
-            Otevřít welcome ↗
-          </Link>
+          <AdminChipLink href="/">Otevřít welcome ↗</AdminChipLink>
         </div>
       </section>
 
@@ -491,7 +489,7 @@ export function WelcomeSettingsClient() {
             ) : null}
             {!menuPickerLoading && !menuPickerErr && menuImages.length === 0 ? (
               <p className="textMuted2" style={{ marginTop: 12 }}>
-                V menu zatím nejsou žádné uložené fotky. Nahrajte fotky u položek v <Link href="/admin/menu">Úpravy menu</Link>.
+                V menu zatím nejsou žádné uložené fotky. Nahrajte fotky u položek v <a href="/admin/menu">Úpravy menu</a>.
               </p>
             ) : null}
 

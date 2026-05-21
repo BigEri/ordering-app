@@ -74,7 +74,7 @@ export function LanguageProvider({
     void (async () => {
       const stored = readStoredLocale();
       try {
-        const r = await fetch("/api/public/locales", { cache: "no-store" });
+        const r = await fetch("/api/public/locales", { credentials: "same-origin" });
         const j = (await r.json()) as { ok?: boolean; locales?: AvailableLocale[] };
         if (!cancelled && r.ok && j.ok && Array.isArray(j.locales) && j.locales.length > 0) {
           const cleaned = j.locales

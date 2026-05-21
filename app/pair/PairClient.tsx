@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
+
+import { AdminChipLink } from "../../components/admin/AdminNavLink";
+import { KioskAnchor } from "../../components/kiosk/KioskAnchor";
 
 type MePayload = {
   ok?: boolean;
@@ -109,9 +111,7 @@ export function PairClient() {
         <p style={{ lineHeight: 1.55, marginBottom: 20 }}>
           Pro zadání kódu z tabletu se musíte přihlásit do administrace.
         </p>
-        <Link href="/admin/login?next=/pair" style={{ textDecoration: "underline", fontWeight: 600 }}>
-          Přihlásit se →
-        </Link>
+        <AdminChipLink href="/admin/login?next=/pair">Přihlásit se →</AdminChipLink>
       </main>
     );
   }
@@ -121,13 +121,11 @@ export function PairClient() {
       <h1 style={{ fontSize: "1.35rem", marginBottom: 8 }}>Párování tabletu</h1>
       <p style={{ lineHeight: 1.55, opacity: 0.9, marginBottom: 12 }}>
         Doporučujeme{" "}
-        <Link href="/admin/devices/pair-kiosk" style={{ fontWeight: 600 }}>
-          Párování u stolů
-        </Link>{" "}
+        <AdminChipLink href="/admin/devices/pair-kiosk">Párování u stolů</AdminChipLink>{" "}
         — výběr stolu přímo z Dotyky. Tato stránka slouží pro ruční zadání ID stolu.
       </p>
       <p style={{ lineHeight: 1.55, opacity: 0.9, marginBottom: 20 }}>
-        Na tabletu otevřete <Link href="/menu">/menu</Link> — zobrazí se šestimístný kód. Zadejte ho níže spolu se stolem.
+        Na tabletu otevřete <KioskAnchor href="/menu">/menu</KioskAnchor> — zobrazí se šestimístný kód. Zadejte ho níže spolu se stolem.
       </p>
 
       <form onSubmit={(e) => void onSubmit(e)} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -220,9 +218,7 @@ export function PairClient() {
       </form>
 
       <p style={{ marginTop: 24, fontSize: 14, opacity: 0.85 }}>
-        <Link href="/admin/devices" style={{ textDecoration: "underline" }}>
-          Zpět na zařízení v administraci →
-        </Link>
+        <AdminChipLink href="/admin/devices">Zpět na zařízení v administraci →</AdminChipLink>
       </p>
     </main>
   );

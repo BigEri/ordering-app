@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AdminChipLink } from "../../components/admin/AdminNavLink";
 import * as React from "react";
 
 type StatusPayload = { ok?: boolean; needsSetup?: boolean; bootstrapConfigured?: boolean };
@@ -95,9 +95,7 @@ export function SetupClient({ initialToken }: { initialToken: string }) {
           V databázi už existuje uživatel. Prvotní nastavení není potřeba.
         </p>
         <p style={{ marginTop: 20 }}>
-          <Link href="/admin/login" style={{ textDecoration: "underline" }}>
-            Přihlásit se do administrace →
-          </Link>
+          <AdminChipLink href="/admin/login">Přihlásit se do administrace →</AdminChipLink>
         </p>
       </main>
     );
@@ -123,9 +121,7 @@ export function SetupClient({ initialToken }: { initialToken: string }) {
         <h1 style={{ fontSize: "1.35rem", marginBottom: 12 }}>Hotovo</h1>
         <p style={{ lineHeight: 1.55 }}>Účet správce a první provozovna byly vytvořeny.</p>
         <p style={{ marginTop: 20 }}>
-          <Link href="/admin/login" style={{ textDecoration: "underline", fontWeight: 600 }}>
-            Přihlásit se →
-          </Link>
+          <AdminChipLink href="/admin/login">Přihlásit se →</AdminChipLink>
         </p>
       </main>
     );

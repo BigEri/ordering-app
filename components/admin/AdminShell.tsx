@@ -45,7 +45,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         setMe(null);
       }
     })();
-  }, [isLogin, pathname]);
+  }, [isLogin]);
 
   React.useEffect(() => {
     if (isLogin || !me?.ok) return;

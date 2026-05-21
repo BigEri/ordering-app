@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
+
+import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 
 import { usePathname } from "next/navigation";
 import type { DotykackaMenuSection } from "../../../../lib/dotykacka/dotykackaMenuSections";
@@ -748,9 +749,9 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         <p className="textMuted2">
           Nastavte <code>PUBLIC_RESTAURANT_ID</code>, aby šlo určit provozovnu pro uložené texty.
         </p>
-        <Link href="/admin" className="chip" style={{ textDecoration: "none" }}>
+        <AdminChipLink href="/admin">
           Zpět do adminu
-        </Link>
+        </AdminChipLink>
       </div>
     );
   }
@@ -767,12 +768,8 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <Link href="/admin/menu" className="chip" style={{ textDecoration: "none" }}>
-            Úpravy menu (pořadí, foto) ↗
-          </Link>
-          <Link href="/menu" className="chip" style={{ textDecoration: "none" }}>
-            Veřejné menu ↗
-          </Link>
+          <AdminChipLink href="/admin/menu">Úpravy menu (pořadí, foto) ↗</AdminChipLink>
+          <AdminChipLink href="/menu">Veřejné menu ↗</AdminChipLink>
         </div>
       </div>
 

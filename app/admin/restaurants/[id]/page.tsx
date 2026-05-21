@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useSearchParams } from "next/navigation";
+
+import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 import { Suspense } from "react";
 import * as React from "react";
 
@@ -44,7 +45,6 @@ function tabFromSearch(raw: string | null): TabId {
 function RestaurantDetailInner() {
   const params = useParams<{ id: string }>();
   const pathname = usePathname() ?? "";
-  const router = useRouter();
   const searchParams = useSearchParams();
   const id = params?.id ?? "";
   const tab = tabFromSearch(searchParams.get("tab"));
@@ -365,48 +365,44 @@ function RestaurantDetailInner() {
 
       <ul className="adminTabs" role="tablist" aria-label="Sekce detailu restaurace">
         <li style={{ display: "contents" }}>
-          <Link
+          <a
             href={tabHref("overview")}
             className={`adminTab${tab === "overview" ? " adminTab--active" : ""}`}
             role="tab"
             aria-selected={tab === "overview"}
-            scroll={false}
           >
             Přehled
-          </Link>
+          </a>
         </li>
         <li style={{ display: "contents" }}>
-          <Link
+          <a
             href={tabHref("users")}
             className={`adminTab${tab === "users" ? " adminTab--active" : ""}`}
             role="tab"
             aria-selected={tab === "users"}
-            scroll={false}
           >
             Uživatelé
-          </Link>
+          </a>
         </li>
         <li style={{ display: "contents" }}>
-          <Link
+          <a
             href={tabHref("menu")}
             className={`adminTab${tab === "menu" ? " adminTab--active" : ""}`}
             role="tab"
             aria-selected={tab === "menu"}
-            scroll={false}
           >
             Menu
-          </Link>
+          </a>
         </li>
         <li style={{ display: "contents" }}>
-          <Link
+          <a
             href={tabHref("dotykacka")}
             className={`adminTab${tab === "dotykacka" ? " adminTab--active" : ""}`}
             role="tab"
             aria-selected={tab === "dotykacka"}
-            scroll={false}
           >
             Dotykačka
-          </Link>
+          </a>
         </li>
       </ul>
 
@@ -464,7 +460,9 @@ function RestaurantDetailInner() {
                 type="button"
                 className="chip"
                 disabled={contextSync !== "done"}
-                onClick={() => router.push("/admin")}
+                onClick={() => {
+                  window.location.href = "/admin";
+                }}
                 style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
               >
                 Přehled admin
@@ -473,7 +471,9 @@ function RestaurantDetailInner() {
                 type="button"
                 className="chip"
                 disabled={contextSync !== "done"}
-                onClick={() => router.push("/admin/users")}
+                onClick={() => {
+                  window.location.href = "/admin/users";
+                }}
                 style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
               >
                 Uživatelé této restaurace
@@ -482,14 +482,14 @@ function RestaurantDetailInner() {
                 type="button"
                 className="chip"
                 disabled={contextSync !== "done"}
-                onClick={() => router.push("/admin/devices")}
+                onClick={() => {
+                  window.location.href = "/admin/devices";
+                }}
                 style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
               >
                 Zařízení této restaurace
               </button>
-              <Link className="chip" href="/admin/restaurants" style={{ textDecoration: "none" }}>
-                ← Seznam restaurací
-              </Link>
+              <AdminChipLink href="/admin/restaurants">← Seznam restaurací</AdminChipLink>
             </div>
             <p className="textMuted2" style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.5 }}>
               Aktivní restaurace se při otevření tohoto detailu nastaví automaticky, aby bylo jasné, co upravujete.
@@ -517,9 +517,9 @@ function RestaurantDetailInner() {
             <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Jazyky pro hosty</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
               Nastavení je pro tuto provozovnu zvlášť. Ovlivňuje přepínač jazyka v menu. Překlady menu upravíte v{" "}
-              <Link href="/admin/menu/translations" className="adminBreadcrumb__link" style={{ textDecoration: "none" }}>
+              <a href="/admin/menu/translations" className="adminBreadcrumb__link">
                 Admin → Menu → Překlady
-              </Link>
+              </a>
               .
             </p>
 
@@ -648,9 +648,9 @@ function RestaurantDetailInner() {
           )}
           <p className="textMuted2" style={{ marginTop: 12, fontSize: 13 }}>
             Přidání účtů probíhá v sekci{" "}
-            <Link href="/admin/users" className="adminBreadcrumb__link" style={{ textDecoration: "none" }}>
+            <a href="/admin/users" className="adminBreadcrumb__link">
               Uživatelé
-            </Link>{" "}
+            </a>{" "}
             (v kontextu aktivní restaurace).
           </p>
         </section>

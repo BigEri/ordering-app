@@ -1,8 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import * as React from "react";
+
+import { AdminChipLink } from "../../../components/admin/AdminNavLink";
+import { postSelectActiveRestaurant } from "../../../lib/admin/clientRestaurantSelect";
 
 type MeResponse =
   | {
@@ -15,7 +16,6 @@ type MeResponse =
 type RestaurantsResponse = { ok: true; restaurants: { id: string; name: string }[] } | { ok: false; error: string };
 
 export default function SuperAdminRestaurantsPage() {
-  const router = useRouter();
   const [me, setMe] = React.useState<MeResponse | null>(null);
   const [restaurants, setRestaurants] = React.useState<RestaurantsResponse | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
@@ -30,7 +30,10 @@ export default function SuperAdminRestaurantsPage() {
   const load = React.useCallback(async () => {
     setErr(null);
     try {
-      const [meR, rR] = await Promise.all([fetch("/api/admin/me", { cache: "no-store" }), fetch("/api/admin/restaurants", { cache: "no-store" })]);
+      const [meR, rR] = await Promise.all([
+        fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" }),
+        fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" }),
+      ]);
       const meJ = (await meR.json()) as MeResponse;
       const rJ = (await rR.json()) as RestaurantsResponse;
       setMe(meJ);
@@ -50,14 +53,9 @@ export default function SuperAdminRestaurantsPage() {
     setSelecting(restaurantId);
     setErr(null);
     try {
-      const r = await fetch("/api/admin/restaurant/select", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ restaurantId }),
-      });
-      const j = (await r.json()) as { ok?: boolean; error?: string };
-      if (!r.ok || !j.ok) {
-        setErr(j.error ?? "Výběr restaurace selhal.");
+      const sel = await postSelectActiveRestaurant(restaurantId);
+      if (!sel.ok) {
+        setErr(sel.error ?? "Výběr restaurace selhal.");
         return;
       }
       window.dispatchEvent(new Event("oa-restaurant-updated"));
@@ -94,7 +92,7 @@ export default function SuperAdminRestaurantsPage() {
       setManagerEmail("");
       setManagerPassword("");
       await load();
-      router.push(`/admin/restaurants/${j.restaurantId}`);
+      window.location.href = `/admin/restaurants/${j.restaurantId}`;
     } catch {
       setErr("Vytvoření restaurace selhalo (síť).");
     } finally {
@@ -195,9 +193,9 @@ export default function SuperAdminRestaurantsPage() {
                       ) : null}
                     </div>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <Link className="chip" href={`/admin/restaurants/${r.id}`} style={{ textDecoration: "none", fontWeight: 600 }}>
-                        Detail →
-                      </Link>
+                      <AdminChipLink href={`/admin/restaurants/${r.id}`}>
+                        <strong>Detail →</strong>
+                      </AdminChipLink>
                       <button
                         type="button"
                         className="chip"

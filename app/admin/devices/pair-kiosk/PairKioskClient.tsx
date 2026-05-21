@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
+
+import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 
 import { tStaff } from "../../../../lib/i18n/tStaff";
 
@@ -259,9 +260,7 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
             {tStaff("admin.devices.pairKioskFromQrHint")}
           </p>
         ) : null}
-        <Link href={loginHref} className="chip" style={{ textDecoration: "none" }}>
-          {tStaff("admin.devices.pairKioskLoginCta")}
-        </Link>
+        <AdminChipLink href={loginHref}>{tStaff("admin.devices.pairKioskLoginCta")}</AdminChipLink>
       </main>
     );
   }
@@ -280,20 +279,10 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
       ) : null}
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <Link href="/admin/devices" className="chip" style={{ textDecoration: "none" }}>
-          ← {tStaff("admin.devices.title")}
-        </Link>
-        <Link href="/pair" className="chip" style={{ textDecoration: "none" }}>
-          {tStaff("admin.devices.pairKioskLegacyLink")}
-        </Link>
+        <AdminChipLink href="/admin/devices">← {tStaff("admin.devices.title")}</AdminChipLink>
+        <AdminChipLink href="/pair">{tStaff("admin.devices.pairKioskLegacyLink")}</AdminChipLink>
         {pairedDeviceId ? (
-          <Link
-            href={`/menu?deviceId=${encodeURIComponent(pairedDeviceId)}`}
-            className="chip"
-            style={{ textDecoration: "none" }}
-          >
-            Otevřít kiosk menu →
-          </Link>
+          <AdminChipLink href={`/menu?deviceId=${encodeURIComponent(pairedDeviceId)}`}>Otevřít kiosk menu →</AdminChipLink>
         ) : null}
       </div>
 

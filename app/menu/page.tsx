@@ -1,6 +1,6 @@
 import { headers } from "next/headers";
 
-import { fetchDotykackaProductsForMenu } from "../../lib/dotykacka/fetchProducts";
+import { fetchDotykackaProductsForMenuCached } from "../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../lib/dotykacka/menuItemOverrides";
 import { getKioskDeviceBinding } from "../../lib/server/kioskDeviceBindings";
 import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
@@ -47,7 +47,7 @@ export default async function MenuPage(props: MenuPageProps) {
   }
   const restaurantName = await getPublicRestaurantDisplayNameForRestaurantId(restaurantId);
 
-  const result = await fetchDotykackaProductsForMenu(restaurantId);
+  const result = await fetchDotykackaProductsForMenuCached(restaurantId);
   if (!result.ok) {
     return (
       <MenuBrowseClient

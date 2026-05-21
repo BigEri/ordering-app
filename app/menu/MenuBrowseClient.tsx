@@ -1,7 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
+
+import { KioskAnchor } from "../../components/kiosk/KioskAnchor";
 
 import { MenuItemOrderModal } from "../../components/MenuItemOrderModal";
 import { MenuItem, type MenuItemData } from "../../components/MenuItem";
@@ -862,9 +863,9 @@ export function MenuBrowseClient({
             Personál: přihlaste se do administrace a otevřete <strong>Zařízení → Párování u stolů</strong>.
           </p>
           <div style={{ marginTop: 10 }}>
-            <Link href="/admin/login" style={{ textDecoration: "underline", fontWeight: 600 }}>
+            <KioskAnchor href="/admin/login" style={{ textDecoration: "underline", fontWeight: 600 }}>
               Přihlásit se (personál) →
-            </Link>
+            </KioskAnchor>
           </div>
         </section>
       </main>
@@ -912,7 +913,7 @@ export function MenuBrowseClient({
           {menuVariant === "editor" ? (
             <p className="menuEditorHint" role="note">
               <strong>Úprava veřejného menu.</strong> Změny se projeví i na stránce{" "}
-              <Link href="/menu">/menu</Link> pro zákazníky.
+              <KioskAnchor href="/menu">/menu</KioskAnchor> pro zákazníky.
             </p>
           ) : null}
 
@@ -950,21 +951,21 @@ export function MenuBrowseClient({
           {menuVariant === "editor" && !restaurantId ? (
             <p className="menuEditorHint menuEditorHint--muted" role="status">
               Veřejné menu pro hosty neví, kterou provozovnu zobrazit — použijte <code>PUBLIC_RESTAURANT_ID</code>, odkaz{" "}
-              <code>?rid=…</code>, nebo párování tabletu v <Link href="/admin/devices">Zařízení</Link> /{" "}
-              <Link href="/admin/devices/pair-kiosk">párování u stolů</Link> (cookie <code>oa_menu_rid</code>).
+              <code>?rid=…</code>, nebo párování tabletu v <KioskAnchor href="/admin/devices">Zařízení</KioskAnchor> /{" "}
+              <KioskAnchor href="/admin/devices/pair-kiosk">párování u stolů</KioskAnchor> (cookie <code>oa_menu_rid</code>).
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "active_mismatch" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
               <strong>Aktivní restaurace</strong> nesedí s tímto menu. V{" "}
-              <Link href="/admin">Admin → Přehled</Link> vyberte stejnou provozovnu.
+              <KioskAnchor href="/admin">Admin → Přehled</KioskAnchor> vyberte stejnou provozovnu.
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "no_active" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
-              Vyberte v <Link href="/admin">Admin → Přehled</Link> aktivní restauraci (stejná jako toto veřejné menu).
+              Vyberte v <KioskAnchor href="/admin">Admin → Přehled</KioskAnchor> aktivní restauraci (stejná jako toto veřejné menu).
             </p>
           ) : null}
 
@@ -976,7 +977,7 @@ export function MenuBrowseClient({
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "unauthorized" ? (
             <p className="menuEditorHint">
-              <Link href="/admin/login">Přihlaste se</Link> do administrace.
+              <KioskAnchor href="/admin/login">Přihlaste se</KioskAnchor> do administrace.
             </p>
           ) : null}
 
@@ -986,15 +987,15 @@ export function MenuBrowseClient({
                 <input type="checkbox" checked={editMode} onChange={(e) => setEditMode(e.target.checked)} />
                 <span>Zobrazit nástroje úprav (pořadí, fotka)</span>
               </label>
-              <Link href="/menu" className="chip" style={{ textDecoration: "none" }}>
+              <KioskAnchor href="/menu" className="chip" style={{ textDecoration: "none" }}>
                 Náhled pro zákazníka ↗
-              </Link>
-              <Link href="/admin" className="chip" style={{ textDecoration: "none" }}>
+              </KioskAnchor>
+              <KioskAnchor href="/admin" className="chip" style={{ textDecoration: "none" }}>
                 Přehled admin ↗
-              </Link>
-              <Link href="/admin/menu/translations" className="chip" style={{ textDecoration: "none" }}>
+              </KioskAnchor>
+              <KioskAnchor href="/admin/menu/translations" className="chip" style={{ textDecoration: "none" }}>
                 Překlady jazyků ↗
-              </Link>
+              </KioskAnchor>
             </div>
           ) : null}
 
@@ -1047,9 +1048,9 @@ export function MenuBrowseClient({
               ) : null}
             </span>
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
-              <Link href="/admin/devices/pair-kiosk" style={{ textDecoration: "underline", fontWeight: 600 }}>
+              <KioskAnchor href="/admin/devices/pair-kiosk" style={{ textDecoration: "underline", fontWeight: 600 }}>
                 Pro obsluhu: párování u stolů (výběr z Dotyky) →
-              </Link>
+              </KioskAnchor>
             </div>
           </aside>
         ) : null}

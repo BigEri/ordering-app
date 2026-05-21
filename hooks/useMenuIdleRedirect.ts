@@ -1,7 +1,9 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import * as React from "react";
+
+import { kioskNavigate } from "../lib/kiosk/nav";
 
 /** Po této době bez interakce na `/menu` přesměrování na úvodní stránku (2 min 30 s). */
 export const MENU_IDLE_REDIRECT_MS = 150_000;
@@ -11,7 +13,6 @@ export const MENU_IDLE_REDIRECT_MS = 150_000;
  * Na jiné kartě se odpočet pozastaví.
  */
 export function useMenuIdleRedirect() {
-  const router = useRouter();
   const pathname = usePathname() ?? "";
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -26,9 +27,9 @@ export function useMenuIdleRedirect() {
     clearTimer();
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
-      router.replace("/");
+      kioskNavigate("/");
     }, MENU_IDLE_REDIRECT_MS);
-  }, [clearTimer, router]);
+  }, [clearTimer]);
 
   React.useEffect(() => {
     if (pathname.startsWith("/admin")) {

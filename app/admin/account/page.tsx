@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { AdminChipLink } from "../../../components/admin/AdminNavLink";
 import * as React from "react";
 
 type Resp = { ok: true } | { ok: false; error: string };
@@ -61,9 +61,7 @@ export default function AdminAccountPage() {
             Změna hesla pro přihlášeného uživatele.
           </p>
         </div>
-        <Link className="chip" href="/admin" style={{ textDecoration: "none" }}>
-          ← Admin
-        </Link>
+        <AdminChipLink href="/admin">← Admin</AdminChipLink>
       </div>
 
       {err ? (

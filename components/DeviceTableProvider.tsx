@@ -21,6 +21,15 @@ const COOKIE_MAX_AGE_SEC = 10 * 365 * 24 * 60 * 60;
 const HEARTBEAT_MS = 45_000;
 const CONFIG_POLL_MS = 60_000;
 
+/** Kiosk tablet / host menu — ne admin ani setup. */
+function needsKioskDeviceContext(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  if (pathname.startsWith("/admin")) return false;
+  if (pathname === "/setup" || pathname === "/virtual-pos") return false;
+  if (pathname === "/pair" || pathname.startsWith("/pair/")) return false;
+  return true;
+}
+
 function fetchDeviceConfig(deviceId: string) {
   const u = new URL("/api/devices/config", typeof window !== "undefined" ? window.location.origin : "http://localhost");
   u.searchParams.set("deviceId", deviceId);
@@ -315,6 +324,11 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
   );
 
   React.useEffect(() => {
+    if (!needsKioskDeviceContext(pathname)) {
+      setReady(true);
+      return;
+    }
+
     let cancelled = false;
 
     (async () => {
@@ -367,11 +381,11 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     return () => {
       cancelled = true;
     };
-  }, [syncPairingWithConfig]);
+  }, [syncPairingWithConfig, pathname]);
 
   React.useEffect(() => {
+    if (!needsKioskDeviceContext(pathname)) return;
     if (!deviceId || !ready) return;
-    if (pathname?.startsWith("/admin")) return;
 
     const poll = async () => {
       try {
@@ -399,8 +413,8 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
   }, [deviceId, ready, pathname, syncPairingWithConfig]);
 
   React.useEffect(() => {
+    if (!needsKioskDeviceContext(pathname)) return;
     if (!deviceId || !ready) return;
-    if (pathname?.startsWith("/admin")) return;
 
     const send = () => {
       void fetch("/api/devices/presence", {
@@ -427,8 +441,8 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
 
   /** Párování tabletu v adminu → uloží cookie veřejné provozovny a obnoví SSR `/menu` (fotky, ingredience). */
   React.useEffect(() => {
+    if (!needsKioskDeviceContext(pathname)) return;
     if (!deviceId || !ready) return;
-    if (pathname?.startsWith("/admin")) return;
     if (pathname !== "/menu" && !pathname?.startsWith("/menu/")) return;
     if (kioskMenuCookieSynced.current) return;
     let cancelled = false;
@@ -460,7 +474,7 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
   }, [deviceId, ready, pathname, router]);
 
   React.useEffect(() => {
-    if (pathname?.startsWith("/admin")) return;
+    if (!needsKioskDeviceContext(pathname)) return;
     if (pathname !== "/menu" && !pathname?.startsWith("/menu/")) return;
     let cancelled = false;
     void (async () => {

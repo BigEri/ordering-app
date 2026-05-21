@@ -1,9 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import * as React from "react";
+
+import { KioskAnchor } from "./kiosk/KioskAnchor";
+import { buildKioskMenuUrl, kioskNavigate } from "../lib/kiosk/nav";
 
 import type { WelcomeLayoutPreset } from "../lib/menu/welcomeLayoutPreset";
 import { usePosTableFields } from "./DeviceTableProvider";
@@ -390,7 +391,6 @@ export function WelcomePage({
   showcaseImageUrls?: readonly string[];
   layoutPreset?: WelcomeLayoutPreset;
 }) {
-  const router = useRouter();
   const { setLocale, t, availableLocales } = useLanguage();
   const { ready, needsPairing, pairingCode, pairingExpiresAtIso } = usePosTableFields();
 
@@ -398,9 +398,9 @@ export function WelcomePage({
     (code: string) => {
       setLocale(code);
       if (!ready || needsPairing) return;
-      router.push("/menu");
+      kioskNavigate(buildKioskMenuUrl());
     },
-    [needsPairing, ready, router, setLocale],
+    [needsPairing, ready, setLocale],
   );
 
   const actions = ready && !needsPairing ? null : (
@@ -410,9 +410,9 @@ export function WelcomePage({
         <p className="welcomeKioskPairingText">
           Přihlaste se do administrace (vedoucí / správce) pro nastavení zařízení a propojení s Dotykačkou.
         </p>
-        <Link href="/admin/login" className="chip" style={{ display: "inline-block", textDecoration: "none" }}>
+        <KioskAnchor href="/admin/login" className="chip" style={{ display: "inline-block", textDecoration: "none" }}>
           Přihlásit se →
-        </Link>
+        </KioskAnchor>
       </div>
 
       <div className="welcomeKioskPairingCard" style={{ marginTop: 12 }}>

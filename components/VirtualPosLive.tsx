@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { KioskAnchor } from "./kiosk/KioskAnchor";
 import * as React from "react";
 
 import type { VirtualPosEvent } from "../lib/pos/virtualPosTypes";
@@ -84,9 +84,9 @@ export function VirtualPosLive({ initialEvents }: { initialEvents: VirtualPosEve
           </div>
           <div className="virtualPosActions">
             <VirtualPosClearButton disabled={events.length === 0} />
-            <Link href="/menu" className="chip chipLink">
+            <KioskAnchor href="/menu" className="chip chipLink">
               Zpět na menu
-            </Link>
+            </KioskAnchor>
           </div>
         </div>
         <div className="virtualPosMetaRow">

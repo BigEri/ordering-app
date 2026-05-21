@@ -1,4 +1,4 @@
-import { fetchDotykackaProductsForMenu } from "../../../lib/dotykacka/fetchProducts";
+import { fetchDotykackaProductsForMenuCached } from "../../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../../lib/dotykacka/menuItemOverrides";
 import { getAdminMenuRestaurantId } from "../../../lib/server/adminMenuRestaurantContext";
 import { getPublicRestaurantDisplayName } from "../../../lib/server/publicRestaurantName";
@@ -18,7 +18,7 @@ export default async function AdminMenuPage() {
       </main>
     );
   }
-  const result = await fetchDotykackaProductsForMenu(restaurantId);
+  const result = await fetchDotykackaProductsForMenuCached(restaurantId);
   if (!result.ok) {
     return (
       <MenuBrowseClient
