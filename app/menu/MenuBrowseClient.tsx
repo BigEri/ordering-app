@@ -24,6 +24,7 @@ import {
 import { buildOrderLineName, menuCartLineToSnapshot, orderLineUnitPriceCzk } from "../../lib/menu/orderLineLabel";
 import { clearPendingOrderConfirmed, hasPendingOrderConfirmed, POS_QUEUE_ORDER_SENT } from "../../lib/pos/pendingPosQueue";
 import { postPosJsonResilient } from "../../lib/pos/postPosJsonResilient";
+import { buildDotykackaCustomizationAliasIndex, resolveDotykackaGroupLabel } from "../../lib/menu/dotykackaLabelMerge";
 import { useMenuIdleRedirect } from "../../hooks/useMenuIdleRedirect";
 import { useBrowserOnline } from "../../components/OnlineBanner";
 
@@ -66,13 +67,18 @@ type EditorStatus = { canEdit: boolean; reason?: string };
 
 type DotykackaLabelOverrides = { groups: Record<string, string>; options: Record<string, string> };
 
-function applyDotykackaLabelOverridesToItem(item: MenuItemData, ov: DotykackaLabelOverrides | null): MenuItemData {
+function applyDotykackaLabelOverridesToItem(
+  item: MenuItemData,
+  ov: DotykackaLabelOverrides | null,
+  aliasIndex: Map<string, string[]>,
+): MenuItemData {
   if (!ov) return item;
   const groups = item.dotykackaCustomizationGroups;
   if (!groups || groups.length === 0) return item;
   const mapped = groups.map((g) => {
     const gid = String(g.customizationId ?? "").trim();
-    const sectionLabel = gid && ov.groups[gid] ? ov.groups[gid]! : g.sectionLabel;
+    const resolved = gid ? resolveDotykackaGroupLabel(ov.groups, gid, aliasIndex) : undefined;
+    const sectionLabel = resolved ?? g.sectionLabel;
     const options = (g.options ?? []).map((o) => {
       const oid = String(o.productId ?? "").trim();
       const label = oid && ov.options[oid] ? ov.options[oid]! : o.label;
@@ -138,6 +144,10 @@ export function MenuBrowseClient({
   const [textOverrides, setTextOverrides] = React.useState<MenuTextOverridesForLocale>({ items: {}, categories: {} });
   const [ingredientOverrides, setIngredientOverrides] = React.useState<MenuIngredientOverridesForLocale>({ items: {} });
   const [dotykackaLabelOverrides, setDotykackaLabelOverrides] = React.useState<DotykackaLabelOverrides | null>(null);
+  const dotykackaCustomizationAliasIndex = React.useMemo(
+    () => buildDotykackaCustomizationAliasIndex(sections),
+    [sections],
+  );
   const [editorStatus, setEditorStatus] = React.useState<EditorStatus | null>(null);
   const [editMode, setEditMode] = React.useState(menuVariant === "editor");
   const [photoModal, setPhotoModal] = React.useState<MenuItemData | null>(null);
@@ -684,12 +694,14 @@ export function MenuBrowseClient({
   const openMenuItem = React.useCallback(
     (item: MenuItemData) => {
       if (itemNeedsOrderModal(item)) {
-        setCustomizeItem(applyDotykackaLabelOverridesToItem(item, dotykackaLabelOverrides));
+        setCustomizeItem(
+          applyDotykackaLabelOverridesToItem(item, dotykackaLabelOverrides, dotykackaCustomizationAliasIndex),
+        );
         return;
       }
       addToCartDirect(item);
     },
-    [addToCartDirect, dotykackaLabelOverrides],
+    [addToCartDirect, dotykackaCustomizationAliasIndex, dotykackaLabelOverrides],
   );
 
   const confirmOrder = React.useCallback(async () => {

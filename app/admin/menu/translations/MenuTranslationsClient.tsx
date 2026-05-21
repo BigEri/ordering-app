@@ -13,6 +13,13 @@ import type {
   MenuIngredientOverrideLine,
   MenuIngredientOverridesForLocale,
 } from "../../../../lib/menu/menuIngredientOverridesTypes";
+import {
+  buildRawDotykackaGroupsFromSections,
+  expandDotykackaGroupLabelsForSave,
+  getMergedDotykackaGroupLabel,
+  mergeDotykackaEditorGroups,
+  type DotykackaEditorGroupMerged,
+} from "../../../../lib/menu/dotykackaLabelMerge";
 
 type LocaleCode = string;
 type AdminLocale = { code: string; label: string; enabled: boolean };
@@ -426,36 +433,19 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
   const hasMissingIngredientTranslations = missingIngredientTranslations.length > 0;
 
-  const dotykackaGroupsForEditor = React.useMemo(() => {
-    const out: Array<{ id: string; label: string; options: Array<{ id: string; label: string }> }> = [];
-    const seenG = new Set<string>();
-    for (const sec of sections) {
-      for (const it of sec.items) {
-        const gs = it.dotykackaCustomizationGroups ?? [];
-        for (const g of gs) {
-          const gid = String(g.customizationId ?? "").trim();
-          if (!gid) continue;
-          if (seenG.has(gid)) continue;
-          seenG.add(gid);
-          out.push({
-            id: gid,
-            label: g.sectionLabel,
-            options: (g.options ?? []).map((o) => ({ id: String(o.productId ?? "").trim(), label: o.label })).filter((o) => o.id),
-          });
-        }
-      }
-    }
-    return out;
-  }, [sections]);
+  const dotykackaGroupsMergedForEditor = React.useMemo(
+    () => mergeDotykackaEditorGroups(buildRawDotykackaGroupsFromSections(sections)),
+    [sections],
+  );
 
   const dotykackaGroupLabelKeys = React.useMemo(() => {
     const keys = new Set<string>();
-    for (const g of dotykackaGroupsForEditor) {
+    for (const g of dotykackaGroupsMergedForEditor) {
       const l = (g.label ?? "").trim();
       if (l) keys.add(normLabelKey(l));
     }
     return keys;
-  }, [dotykackaGroupsForEditor]);
+  }, [dotykackaGroupsMergedForEditor]);
 
   const menuCategoriesForEditor = React.useMemo(() => {
     return sections.map((sec) => {
@@ -468,13 +458,21 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
     });
   }, [sections, dotykackaGroupLabelKeys]);
 
-  const setDotykackaGroupLabel = React.useCallback((locale: string, groupId: string, val: string) => {
-    markDirty();
-    setDotykackaLabelsByLocale((prev) => {
-      const cur = prev[locale] ?? { groups: {}, options: {} };
-      return { ...prev, [locale]: { ...cur, groups: { ...cur.groups, [groupId]: val } } };
-    });
-  }, [markDirty]);
+  const setDotykackaGroupLabel = React.useCallback(
+    (locale: string, merged: Pick<DotykackaEditorGroupMerged, "aliasIds">, val: string) => {
+      markDirty();
+      setDotykackaLabelsByLocale((prev) => {
+        const cur = prev[locale] ?? { groups: {}, options: {} };
+        const nextGroups = { ...cur.groups };
+        for (const id of merged.aliasIds) {
+          if (val.trim()) nextGroups[id] = val;
+          else delete nextGroups[id];
+        }
+        return { ...prev, [locale]: { ...cur, groups: nextGroups } };
+      });
+    },
+    [markDirty],
+  );
   const setDotykackaOptionLabel = React.useCallback((locale: string, optionId: string, val: string) => {
     markDirty();
     setDotykackaLabelsByLocale((prev) => {
@@ -487,19 +485,19 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
   React.useEffect(() => {
     const seedLc = asSeedLocale(activeLocale);
     if (!seedLc) return;
-    if (dotykackaGroupsForEditor.length === 0) return;
+    if (dotykackaGroupsMergedForEditor.length === 0) return;
     setDotykackaLabelsByLocale((prev) => {
       const cur = prev[activeLocale] ?? { groups: {}, options: {} };
       let changed = false;
       const nextGroups = { ...(cur.groups ?? {}) };
       const nextOptions = { ...(cur.options ?? {}) };
 
-      for (const g of dotykackaGroupsForEditor) {
-        const gid = String(g.id ?? "").trim();
-        if (gid && !(nextGroups[gid] ?? "").trim() && (g.label ?? "").trim()) {
+      for (const g of dotykackaGroupsMergedForEditor) {
+        const hasAny = g.aliasIds.some((id) => (nextGroups[id] ?? "").trim());
+        if (!hasAny && (g.label ?? "").trim()) {
           const hit = seedTranslate(g.label, seedLc);
           if (hit) {
-            nextGroups[gid] = hit;
+            for (const id of g.aliasIds) nextGroups[id] = hit;
             changed = true;
           }
         }
@@ -518,7 +516,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       if (!changed) return prev;
       return { ...prev, [activeLocale]: { groups: nextGroups, options: nextOptions } };
     });
-  }, [activeLocale, dotykackaGroupsForEditor]);
+  }, [activeLocale, dotykackaGroupsMergedForEditor]);
 
   const onSave = React.useCallback(
     async (opts?: { silent?: boolean }) => {
@@ -613,7 +611,12 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         const rDl = await fetch("/api/admin/menu/dotykacka-labels", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ restaurantId, locale: activeLocale, groups: dl.groups, options: dl.options }),
+          body: JSON.stringify({
+            restaurantId,
+            locale: activeLocale,
+            groups: expandDotykackaGroupLabelsForSave(dl.groups, dotykackaGroupsMergedForEditor),
+            options: dl.options,
+          }),
         });
         if (!rDl.ok && !silent) setErr("Uložení úprav (Dotykačka) se nezdařilo.");
       } catch {
@@ -650,7 +653,16 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       }
     }
     },
-    [activeLocale, byLocale, dotykackaLabelsByLocale, enabledLocales, enabledLocaleCodes, ingredientsByLocale, restaurantId],
+    [
+      activeLocale,
+      byLocale,
+      dotykackaGroupsMergedForEditor,
+      dotykackaLabelsByLocale,
+      enabledLocales,
+      enabledLocaleCodes,
+      ingredientsByLocale,
+      restaurantId,
+    ],
   );
 
   const autoSaveKey = React.useMemo(() => {
@@ -908,33 +920,40 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       </div>
 
       <section style={{ marginTop: 24, display: "grid", gap: 28 }}>
-        {dotykackaGroupsForEditor.length > 0 ? (
+        {dotykackaGroupsMergedForEditor.length > 0 ? (
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
             <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Výběr přílohy a úprav u jídla (Dotykačka)</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
-              Nadpis sekce a názvy voleb v <strong>detailu objednávky</strong> (např. „Přílohy“, „Hranolky“) pro jazyk{" "}
-              <strong>{activeLocale}</strong>. Každá skupina a volba má vlastní ID z Dotyky — překládejte podle ID, ne podle
-              názvu kategorie v seznamu menu.
+              Nadpis sekce a názvy voleb v <strong>detailu objednávky</strong> pro jazyk <strong>{activeLocale}</strong>.
+              Stejné skupiny z Dotyky (stejný název a volby, různá ID) jsou <strong>sloučeny</strong> — stačí jeden překlad.
               {activeLocale === "cs" ? (
-                <>
-                  {" "}
-                  Prázdné pole = původní český text z Dotykačky.
-                </>
+                <> Prázdné pole = původní český text z Dotykačky.</>
               ) : null}
             </p>
             <div style={{ display: "grid", gap: 14 }}>
-              {dotykackaGroupsForEditor.map((g) => (
+              {dotykackaGroupsMergedForEditor.map((g) => (
                 <div key={g.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
                   <div className="textMuted2" style={{ fontSize: 13, marginBottom: 4 }}>
-                    Skupina customizace (id {g.id})
+                    Skupina customizace (id {g.id}
+                    {g.merged ? ` · sloučeno s ${g.aliasIds.filter((x) => x !== g.id).join(", ")}` : ""})
                   </div>
                   <div className="textMuted2" style={{ fontSize: 12, marginBottom: 6, lineHeight: 1.45 }}>
                     Česky v Dotyce: <strong>{g.label.trim() ? g.label : "—"}</strong>
                   </div>
+                  {g.usedBy.length > 0 ? (
+                    <div className="textMuted2" style={{ fontSize: 12, marginBottom: 8, lineHeight: 1.45 }}>
+                      Používá u jídel:{" "}
+                      <strong>
+                        {g.usedBy.length <= 6
+                          ? g.usedBy.join(", ")
+                          : `${g.usedBy.slice(0, 6).join(", ")} … (+${g.usedBy.length - 6})`}
+                      </strong>
+                    </div>
+                  ) : null}
                   <input
                     className="chip"
-                    value={(dotykackaLabelsByLocale[activeLocale]?.groups ?? {})[g.id] ?? ""}
-                    onChange={(e) => setDotykackaGroupLabel(activeLocale, g.id, e.target.value)}
+                    value={getMergedDotykackaGroupLabel(dotykackaLabelsByLocale[activeLocale]?.groups, g)}
+                    onChange={(e) => setDotykackaGroupLabel(activeLocale, g, e.target.value)}
                     placeholder={g.label || "Překlad názvu skupiny"}
                     style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                     autoComplete="off"
