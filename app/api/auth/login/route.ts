@@ -8,6 +8,7 @@ import {
   listMembershipsForUser,
   sessionCookieName,
 } from "../../../../lib/server/auth";
+import { prisma } from "../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
 
@@ -56,16 +57,27 @@ export async function POST(req: Request) {
     maxAge: 60 * 60 * 24 * 14,
   });
 
+  const cookieOpts = {
+    httpOnly: true,
+    sameSite: "lax" as const,
+    secure: process.env.NODE_ENV === "production",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 30,
+  };
+
   if (user.globalRole !== "SUPER_ADMIN") {
     const memberships = await listMembershipsForUser(user.id);
     if (memberships.length === 1) {
-      res.cookies.set(activeRestaurantCookieName(), memberships[0].restaurantId, {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: process.env.NODE_ENV === "production",
-        path: "/",
-        maxAge: 60 * 60 * 24 * 30,
-      });
+      res.cookies.set(activeRestaurantCookieName(), memberships[0].restaurantId, cookieOpts);
+    }
+  } else {
+    const restaurants = await prisma.restaurant.findMany({
+      orderBy: { createdAtIso: "desc" },
+      select: { id: true },
+      take: 2,
+    });
+    if (restaurants.length === 1) {
+      res.cookies.set(activeRestaurantCookieName(), restaurants[0].id, cookieOpts);
     }
   }
 

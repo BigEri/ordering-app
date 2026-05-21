@@ -1,7 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import * as React from "react";
+
+import { AdminChipLink } from "../../components/admin/AdminNavLink";
+import { postSelectActiveRestaurant } from "../../lib/admin/clientRestaurantSelect";
 
 type MeResponse =
   | {
@@ -28,7 +30,10 @@ export default function AdminHomePage() {
   const load = React.useCallback(async () => {
     setErr(null);
     try {
-      const [meR, rR] = await Promise.all([fetch("/api/admin/me", { cache: "no-store" }), fetch("/api/admin/restaurants", { cache: "no-store" })]);
+      const [meR, rR] = await Promise.all([
+        fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" }),
+        fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" }),
+      ]);
       const meJ = (await meR.json()) as MeResponse;
       const rJ = (await rR.json()) as RestaurantsResponse;
       setMe(meJ);
@@ -85,6 +90,7 @@ export default function AdminHomePage() {
       const r = await fetch(`/api/admin/restaurants/${me.activeRestaurantId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ name }),
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
@@ -105,17 +111,13 @@ export default function AdminHomePage() {
     setSelecting(restaurantId);
     setErr(null);
     try {
-      const r = await fetch("/api/admin/restaurant/select", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ restaurantId }),
-      });
-      const j = (await r.json()) as { ok?: boolean; error?: string };
-      if (!r.ok || !j.ok) {
-        setErr(j.error ?? "Výběr restaurace selhal.");
+      const sel = await postSelectActiveRestaurant(restaurantId);
+      if (!sel.ok) {
+        setErr(sel.error ?? "Výběr restaurace selhal.");
         return;
       }
       await load();
+      window.dispatchEvent(new Event("oa-restaurant-updated"));
     } catch {
       setErr("Výběr restaurace selhal (síť).");
     } finally {
@@ -236,25 +238,13 @@ export default function AdminHomePage() {
         <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Správa</h2>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {me && me.ok && me.session.globalRole === "SUPER_ADMIN" ? (
-            <Link className="chip" href="/admin/restaurants" style={{ textDecoration: "none" }}>
-              Restaurace (superadmin)
-            </Link>
+            <AdminChipLink href="/admin/restaurants">Restaurace (superadmin)</AdminChipLink>
           ) : null}
-          <Link className="chip" href="/admin/menu" style={{ textDecoration: "none" }}>
-            Menu (úpravy)
-          </Link>
-          <Link className="chip" href="/admin/welcome" style={{ textDecoration: "none" }}>
-            Úvodní stránka
-          </Link>
-          <Link className="chip" href="/admin/devices" style={{ textDecoration: "none" }}>
-            Zařízení
-          </Link>
-          <Link className="chip" href="/admin/users" style={{ textDecoration: "none" }}>
-            Uživatelé
-          </Link>
-          <Link className="chip" href="/admin/account" style={{ textDecoration: "none" }}>
-            Můj účet
-          </Link>
+          <AdminChipLink href="/admin/menu">Menu (úpravy)</AdminChipLink>
+          <AdminChipLink href="/admin/welcome">Úvodní stránka</AdminChipLink>
+          <AdminChipLink href="/admin/devices">Zařízení</AdminChipLink>
+          <AdminChipLink href="/admin/users">Uživatelé</AdminChipLink>
+          <AdminChipLink href="/admin/account">Můj účet</AdminChipLink>
         </div>
         <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
           Tip: SUPER_ADMIN může přepínat restauraci. Vedoucí/personál uvidí pouze restaurace, do kterých mají přístup.
@@ -283,13 +273,9 @@ export default function AdminHomePage() {
             >
               Připojit Dotyku (OAuth)
             </a>
-            <Link
-              className="chip"
-              href={`/admin/restaurants/${encodeURIComponent(activeId)}?tab=dotykacka`}
-              style={{ textDecoration: "none" }}
-            >
+            <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(activeId)}?tab=dotykacka`}>
               Nastavení Dotyky (pobočka + mapa) →
-            </Link>
+            </AdminChipLink>
           </div>
         </section>
       ) : me && me.ok && !activeId ? (

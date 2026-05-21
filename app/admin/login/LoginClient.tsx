@@ -16,6 +16,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
       const r = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ email, password }),
       });
       const data = (await r.json()) as { ok?: boolean; error?: string };

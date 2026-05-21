@@ -55,7 +55,7 @@ export default function AdminDevicesPage() {
   const load = React.useCallback(async () => {
     setLoadErr(false);
     try {
-      const r = await fetch("/api/devices", { cache: "no-store" });
+      const r = await fetch("/api/devices", { cache: "no-store", credentials: "same-origin" });
       const data = (await r.json()) as { ok?: boolean; devices?: DeviceRow[] };
       if (!r.ok || !data.ok || !data.devices) {
         setLoadErr(true);
@@ -95,7 +95,7 @@ export default function AdminDevicesPage() {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch("/api/admin/me", { cache: "no-store" });
+        const r = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
         const j = (await r.json()) as {
           ok?: boolean;
           activeRestaurantId?: string | null;

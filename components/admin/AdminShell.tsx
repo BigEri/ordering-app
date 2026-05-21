@@ -1,8 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
+
+import { AdminNavLink } from "./AdminNavLink";
+import { useAdminRestaurantBootstrap } from "./useAdminRestaurantBootstrap";
 
 type MeOk = {
   ok: true;
@@ -12,40 +14,27 @@ type MeOk = {
   memberships: { restaurantId: string; role: string }[];
 };
 
-function AdminNavLink({
-  href,
-  label,
-  active,
-}: {
-  href: string;
-  label: string;
-  active: boolean;
-}) {
-  return (
-    <Link
-      href={href}
-      className={`adminNavLink${active ? " adminNavLink--active" : ""}`}
-      style={{ textDecoration: "none" }}
-    >
-      {label}
-    </Link>
-  );
-}
-
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const [me, setMe] = React.useState<MeOk | null>(null);
   const [restaurantNameById, setRestaurantNameById] = React.useState<Record<string, string>>({});
   const [activeRestaurantLabel, setActiveRestaurantLabel] = React.useState<string | null>(null);
+  const [clientReady, setClientReady] = React.useState(false);
 
   const isLogin = pathname === "/admin/login";
+
+  useAdminRestaurantBootstrap(!isLogin);
+
+  React.useEffect(() => {
+    setClientReady(true);
+  }, []);
 
   React.useEffect(() => {
     if (isLogin) return;
     void (async () => {
       try {
-        const r = await fetch("/api/admin/me", { cache: "no-store" });
+        const r = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
         const j = (await r.json()) as MeOk | { ok: false };
         if (r.ok && j.ok) {
           setMe(j);
@@ -62,7 +51,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (isLogin || !me?.ok) return;
     void (async () => {
       try {
-        const r = await fetch("/api/admin/restaurants", { cache: "no-store" });
+        const r = await fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" });
         const j = (await r.json()) as { ok?: boolean; restaurants?: { id: string; name: string }[] };
         if (!r.ok || !j.ok || !j.restaurants) return;
         const map: Record<string, string> = {};
@@ -83,12 +72,12 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     const onRestaurantUpdated = () => {
       void (async () => {
         try {
-          const mr = await fetch("/api/admin/me", { cache: "no-store" });
+          const mr = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
           const mj = (await mr.json()) as MeOk | { ok: false };
           if (mr.ok && mj.ok) {
             setMe(mj);
             const rid = mj.activeRestaurantId;
-            const r2 = await fetch("/api/admin/restaurants", { cache: "no-store" });
+            const r2 = await fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" });
             const j2 = (await r2.json()) as { ok?: boolean; restaurants?: { id: string; name: string }[] };
             if (r2.ok && j2.ok && j2.restaurants) {
               const map: Record<string, string> = {};
@@ -145,7 +134,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetch(`/api/admin/restaurants/${id}`, { cache: "no-store" });
+        const r = await fetch(`/api/admin/restaurants/${id}`, { cache: "no-store", credentials: "same-origin" });
         const j = (await r.json()) as { ok?: boolean; restaurant?: { name?: string } };
         if (cancelled || !j.ok || !j.restaurant?.name) return;
         setRestaurantNameById((prev) => ({ ...prev, [id]: j.restaurant!.name! }));
@@ -158,27 +147,24 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     };
   }, [pathname, isSuper, isLogin, restaurantNameById]);
 
-
-
   const onBack = () => {
     if (pathname === "/admin" || pathname === "/admin/login") {
-      router.push("/menu");
+      window.location.href = "/menu";
       return;
     }
     if (pathname.startsWith("/admin/restaurants/") && pathname !== "/admin/restaurants") {
-      router.push("/admin/restaurants");
+      window.location.href = "/admin/restaurants";
       return;
     }
     if (window.history.length > 1) {
       router.back();
       return;
     }
-    router.push("/admin");
+    window.location.href = "/admin";
   };
 
   const onLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
-    // Android kiosk wrapper intercepts this URL to reset install mode.
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     window.location.href = "/kiosk/reset-mode";
   };
 
@@ -187,7 +173,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="adminShell">
+    <div className={`adminShell${clientReady ? " adminShell--ready" : ""}`}>
       <aside className="adminShell__aside" aria-label="Admin menu">
         <div className="adminShell__brand">
           <span className="adminShell__brandTitle">Admin</span>
@@ -195,8 +181,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="adminShell__nav">
           <AdminNavLink href="/admin" label="Přehled" active={pathname === "/admin"} />
-          {isSuper ? <AdminNavLink href="/admin/restaurants" label="Restaurace" active={pathname.startsWith("/admin/restaurants")} /> : null}
-          <AdminNavLink href="/admin/menu" label="Menu (úpravy)" active={pathname.startsWith("/admin/menu") && !pathname.startsWith("/admin/menu/translations")} />
+          {isSuper ? (
+            <AdminNavLink href="/admin/restaurants" label="Restaurace" active={pathname.startsWith("/admin/restaurants")} />
+          ) : null}
+          <AdminNavLink
+            href="/admin/menu"
+            label="Menu (úpravy)"
+            active={pathname.startsWith("/admin/menu") && !pathname.startsWith("/admin/menu/translations")}
+          />
           <AdminNavLink href="/admin/menu/translations" label="Překlady menu" active={pathname.startsWith("/admin/menu/translations")} />
           <AdminNavLink href="/admin/welcome" label="Úvodní stránka" active={pathname.startsWith("/admin/welcome")} />
           <AdminNavLink href="/admin/users" label="Uživatelé" active={pathname.startsWith("/admin/users")} />
@@ -243,9 +235,9 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               <React.Fragment key={`${b.label}-${i}`}>
                 {i > 0 ? <span className="adminBreadcrumb__sep">/</span> : null}
                 {b.href ? (
-                  <Link href={b.href} className="adminBreadcrumb__link">
+                  <a href={b.href} className="adminBreadcrumb__link">
                     {b.label}
-                  </Link>
+                  </a>
                 ) : (
                   <span className="adminBreadcrumb__current">{b.label}</span>
                 )}

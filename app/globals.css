@@ -2812,6 +2812,10 @@ html {
   background: var(--page-bg);
 }
 
+.adminShell--ready .adminShell__nav {
+  touch-action: manipulation;
+}
+
 @media (max-width: 900px) {
   .adminShell {
     grid-template-columns: 1fr;
@@ -2889,6 +2893,16 @@ html {
   font-size: 14px;
   color: var(--muted);
   border: 1px solid transparent;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (max-width: 900px) {
+  .adminNavLink {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
 }
 
 .adminNavLink:hover {
