@@ -2,7 +2,9 @@ import { headers } from "next/headers";
 
 import { fetchDotykackaProductsForMenuCached } from "../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../lib/dotykacka/menuItemOverrides";
+import { orderMenuSectionsLikeKiosk } from "../../lib/menu/menuSectionsDisplayOrder";
 import { getKioskDeviceBinding } from "../../lib/server/kioskDeviceBindings";
+import { readMenuOverridesForRestaurant } from "../../lib/server/menuOverridesRead";
 import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
 import { getPublicRestaurantDisplayNameForRestaurantId } from "../../lib/server/publicRestaurantName";
 import { MenuBrowseClient } from "./MenuBrowseClient";
@@ -47,7 +49,10 @@ export default async function MenuPage(props: MenuPageProps) {
   }
   const restaurantName = await getPublicRestaurantDisplayNameForRestaurantId(restaurantId);
 
-  const result = await fetchDotykackaProductsForMenuCached(restaurantId);
+  const [result, menuOverrides] = await Promise.all([
+    fetchDotykackaProductsForMenuCached(restaurantId),
+    readMenuOverridesForRestaurant(restaurantId),
+  ]);
   if (!result.ok) {
     return (
       <MenuBrowseClient
@@ -59,16 +64,27 @@ export default async function MenuPage(props: MenuPageProps) {
       />
     );
   }
+  const sections = orderMenuSectionsLikeKiosk(
+    result.sections.map((s) => ({
+      ...s,
+      items: s.items.map(applyMenuItemOverrides),
+    })),
+    {
+      orderByCategory: menuOverrides.orderByCategory,
+      images: menuOverrides.images,
+      hiddenCategoryKeys: menuOverrides.hiddenCategoryKeys,
+      hiddenItemIds: menuOverrides.hiddenItemIds,
+    },
+  );
+
   return (
     <MenuBrowseClient
-      sections={result.sections.map((s) => ({
-        ...s,
-        items: s.items.map(applyMenuItemOverrides),
-      }))}
+      sections={sections}
       loadError={null}
       restaurantName={restaurantName}
       restaurantId={restaurantId}
       menuVariant="guest"
+      initialMenuOverrides={menuOverrides}
     />
   );
 }

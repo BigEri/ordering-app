@@ -11,6 +11,7 @@ import { applyMenuOverrides } from "../../lib/menu/applyMenuOverrides";
 import { applyMenuIngredientOverrides } from "../../lib/menu/applyMenuIngredientOverrides";
 import { applyMenuTextOverrides } from "../../lib/menu/applyMenuTextOverrides";
 import { menuSectionCategoryKey } from "../../lib/menu/menuSectionKey";
+import type { MenuOverridesPayload } from "../../lib/server/menuOverridesRead";
 import type { MenuTextOverridesForLocale } from "../../lib/menu/menuTextOverridesTypes";
 import type { MenuIngredientOverridesForLocale } from "../../lib/menu/menuIngredientOverridesTypes";
 import { usePosTableFields } from "../../components/DeviceTableProvider";
@@ -61,6 +62,8 @@ type MenuBrowseClientProps = {
   restaurantId: string | null;
   /** `guest` = jen náhled pro zákazníky; `editor` = nástroje úprav (stránka /admin/menu). */
   menuVariant?: "guest" | "editor";
+  /** SSR z `/menu` — skryté položky a pořadí bez čekání na `/api/menu/overrides`. */
+  initialMenuOverrides?: MenuOverridesPayload;
 };
 
 type EditorStatus = { canEdit: boolean; reason?: string };
@@ -97,6 +100,7 @@ export function MenuBrowseClient({
   restaurantName,
   restaurantId,
   menuVariant = "guest",
+  initialMenuOverrides,
 }: MenuBrowseClientProps) {
   useMenuIdleRedirect();
   const online = useBrowserOnline();
@@ -125,17 +129,14 @@ export function MenuBrowseClient({
   const cartRef = React.useRef<HTMLElement | null>(null);
   const { addOrder } = useOrders();
 
-  const [overrides, setOverrides] = React.useState<{
-    images: Record<string, string>;
-    orderByCategory: Record<string, string[]>;
-    hiddenItemIds: string[];
-    hiddenCategoryKeys: string[];
-  }>({
-    images: {},
-    orderByCategory: {},
-    hiddenItemIds: [],
-    hiddenCategoryKeys: [],
-  });
+  const [overrides, setOverrides] = React.useState<MenuOverridesPayload>(() =>
+    initialMenuOverrides ?? {
+      images: {},
+      orderByCategory: {},
+      hiddenItemIds: [],
+      hiddenCategoryKeys: [],
+    },
+  );
   const hiddenSet = React.useMemo(() => new Set<string>(overrides.hiddenItemIds ?? []), [overrides.hiddenItemIds]);
   const hiddenCategorySet = React.useMemo(
     () => new Set<string>(overrides.hiddenCategoryKeys ?? []),
@@ -302,7 +303,9 @@ export function MenuBrowseClient({
     const withIngredients = applyMenuIngredientOverrides(withText, ingredientOverrides);
     const shouldHide = menuVariant !== "editor" || !editMode || !canEditMenu;
     if (!shouldHide) return withIngredients;
-    // V náhledu pro hosty (a v editoru mimo edit mód) skryjeme položky, které admin označil jako hidden.
+    // Host menu: sekce už přišly odfiltrované ze serveru; znovu nefiltrovat (hydratace = stejný DOM).
+    if (menuVariant === "guest") return withIngredients;
+    // V editoru mimo edit mód skryjeme položky, které admin označil jako hidden.
     if (hiddenSet.size === 0 && hiddenCategorySet.size === 0) return withIngredients;
     return withIngredients
       .filter((sec) => !hiddenCategorySet.has(menuSectionCategoryKey(sec)))
