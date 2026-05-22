@@ -25,6 +25,20 @@ type HealthPayload = {
 
 type DotyTable = { id: number; name: string };
 
+function resolveDotykackaTableDisplay(
+  tableId: string,
+  tableLabel: string,
+  dotyById: Map<string, DotyTable>,
+): { name: string; fromDotyka: boolean } {
+  const tid = tableId.trim();
+  const hit = tid ? dotyById.get(tid) : undefined;
+  if (hit?.name) return { name: hit.name, fromDotyka: true };
+  const lbl = tableLabel.trim();
+  if (lbl) return { name: lbl, fromDotyka: false };
+  if (tid) return { name: `Stůl ${tid}`, fromDotyka: false };
+  return { name: "—", fromDotyka: false };
+}
+
 export default function AdminDevicesPage() {
   const [devices, setDevices] = React.useState<DeviceRow[] | null>(null);
   const [loadErr, setLoadErr] = React.useState(false);
@@ -306,6 +320,14 @@ export default function AdminDevicesPage() {
       timeStyle: "medium",
     });
 
+  const dotyTableById = React.useMemo(() => {
+    const m = new Map<string, DotyTable>();
+    for (const t of dotyTables ?? []) {
+      m.set(String(t.id), t);
+    }
+    return m;
+  }, [dotyTables]);
+
   return (
     <main className="adminPage">
       <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{tStaff("admin.devices.title")}</h1>
@@ -418,14 +440,16 @@ export default function AdminDevicesPage() {
               <tr style={{ background: "var(--panel)" }}>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.device")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.table")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.restaurant")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.dotykackaTable")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.status")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.last")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.actions")}</th>
               </tr>
             </thead>
             <tbody>
-              {devices.map((d) => (
+              {devices.map((d) => {
+                const doty = resolveDotykackaTableDisplay(d.tableId, d.tableLabel, dotyTableById);
+                return (
                 <tr key={d.deviceId} style={{ borderTop: "1px solid var(--border)" }}>
                   <td style={{ padding: "10px 12px", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
                     {d.deviceId}
@@ -436,8 +460,16 @@ export default function AdminDevicesPage() {
                       ({d.tableId})
                     </span>
                   </td>
-                  <td style={{ padding: "10px 12px", fontSize: 12, fontFamily: "ui-monospace, monospace", wordBreak: "break-all" }}>
-                    {d.restaurantId ? <span title={d.restaurantId}>{d.restaurantId}</span> : "—"}
+                  <td style={{ padding: "10px 12px" }}>
+                    <strong style={{ fontSize: 15 }}>{doty.name}</strong>
+                    <div className="textMuted2" style={{ marginTop: 4, fontSize: 12, fontFamily: "ui-monospace, monospace" }}>
+                      ID {d.tableId || "—"}
+                      {doty.fromDotyka ? (
+                        <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· z Dotykačky</span>
+                      ) : (
+                        <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· jen v aplikaci</span>
+                      )}
+                    </div>
                   </td>
                   <td style={{ padding: "10px 12px" }}>
                     {d.online ? (
@@ -490,7 +522,8 @@ export default function AdminDevicesPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
         </div>
