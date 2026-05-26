@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { verifySessionToken } from "./lib/server/sessionToken";
+import { verifySessionTokenEdge } from "./lib/server/sessionToken.edge";
 
 const ADMIN_LOGIN_PATH = "/admin/login";
 const SESSION_COOKIE = "oa_session";
@@ -34,7 +34,7 @@ function isBootstrapApi(pathname: string) {
   return pathname === "/api/admin/bootstrap" || pathname === "/api/admin/boots";
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   if (!isAdminPath(pathname) && !isAdminApi(pathname) && !isLegacyAdminApi(pathname)) {
@@ -50,7 +50,7 @@ export function middleware(req: NextRequest) {
   }
 
   const sessionToken = req.cookies.get(SESSION_COOKIE)?.value ?? "";
-  const session = sessionToken ? verifySessionToken(sessionToken) : null;
+  const session = sessionToken ? await verifySessionTokenEdge(sessionToken) : null;
   if (!session) {
     if (isAdminApi(pathname) || isLegacyAdminApi(pathname)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
