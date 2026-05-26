@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { nowIso } from "../../../../../lib/server/db";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
-import { isAllowedStoredImageUrl, tryDeleteLocalMenuImageFile } from "../../../../../lib/server/menuImageStorage";
+import { isAllowedStoredImageUrl, tryDeleteStoredMenuImage } from "../../../../../lib/server/menuImageStorage";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ const MAX_URL = 2000;
 
 export async function PATCH(req: Request): Promise<NextResponse> {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const cookieHeader = req.headers.get("cookie");
     let body: unknown;
     try {
@@ -50,7 +50,7 @@ export async function PATCH(req: Request): Promise<NextResponse> {
 
     if (imageUrl === null || imageUrl === "") {
       await prisma.menuImage.deleteMany({ where: { restaurantId, menuItemId } });
-      await tryDeleteLocalMenuImageFile(previousUrl);
+      await tryDeleteStoredMenuImage(previousUrl);
       return NextResponse.json({ ok: true, cleared: true });
     }
 
@@ -76,7 +76,7 @@ export async function PATCH(req: Request): Promise<NextResponse> {
     });
 
     if (previousUrl && previousUrl !== imageUrl) {
-      await tryDeleteLocalMenuImageFile(previousUrl);
+      await tryDeleteStoredMenuImage(previousUrl);
     }
 
     return NextResponse.json({ ok: true, imageUrl });

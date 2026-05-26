@@ -131,7 +131,7 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
       if (cancelled || attempts++ > 28) return;
       try {
         const r = await fetch(
-          `/api/public/device-pairing-lookup?deviceId=${encodeURIComponent(deviceFromWelcome)}`,
+          `/api/admin/devices/pairing-lookup?deviceId=${encodeURIComponent(deviceFromWelcome)}`,
           { cache: "no-store" },
         );
         const j = (await r.json()) as { ok?: boolean; code?: string | null };

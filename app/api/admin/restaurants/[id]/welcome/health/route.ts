@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "../../../../../../../lib/server/adminGuard";
+import { requireAdminSession, type AdminSession } from "../../../../../../../lib/server/adminGuard";
 import { userHasRestaurantAccess } from "../../../../../../../lib/server/auth";
 import { getRestaurantWelcomeForAdmin } from "../../../../../../../lib/server/restaurantWelcome";
 import { prisma } from "../../../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function assertWelcomeRead(session: ReturnType<typeof requireAdminSession>, restaurantId: string) {
+async function assertWelcomeRead(session: AdminSession, restaurantId: string) {
   if (session.globalRole === "SUPER_ADMIN") return;
   const a = await userHasRestaurantAccess(session.userId, restaurantId);
   if (!a.ok) throw new Error("FORBIDDEN");
@@ -57,7 +57,7 @@ async function headCheckImage(url: string, timeoutMs = 7000): Promise<{ ok: bool
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const { id } = await ctx.params;
     const rid = id?.trim() ?? "";
     if (!rid) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });

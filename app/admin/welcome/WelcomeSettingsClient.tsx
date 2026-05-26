@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { FilePickButton } from "../../../components/FilePickButton";
 import { AdminChipLink } from "../../../components/admin/AdminNavLink";
 
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../../../lib/menu/welcomeLayoutPreset";
@@ -29,7 +30,6 @@ export function WelcomeSettingsClient() {
   const [layoutPreset, setLayoutPreset] = React.useState<WelcomeLayoutPreset>("mosaic");
   const [imageUrls, setImageUrls] = React.useState<string[]>([]);
   const [hydrated, setHydrated] = React.useState(false);
-  const fileRefs = React.useRef<Array<HTMLInputElement | null>>([]);
   const [menuPickerOpen, setMenuPickerOpen] = React.useState(false);
   const [menuPickerLoading, setMenuPickerLoading] = React.useState(false);
   const [menuPickerErr, setMenuPickerErr] = React.useState<string | null>(null);
@@ -391,22 +391,14 @@ export function WelcomeSettingsClient() {
                   placeholder="https://… nebo /uploads/welcome/…"
                   onChange={(e) => setUrlAt(idx, e.target.value)}
                 />
-                <input
-                  ref={(el) => {
-                    fileRefs.current[idx] = el;
-                  }}
-                  type="file"
+                <FilePickButton
+                  className="chip"
                   accept="image/jpeg,image/png,image/webp"
-                  hidden
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] ?? null;
-                    e.target.value = "";
-                    void onUpload(idx, f);
-                  }}
-                />
-                <button type="button" className="chip" disabled={!canEdit || !rid} onClick={() => fileRefs.current[idx]?.click()}>
+                  disabled={!canEdit || !rid}
+                  onFile={(f) => void onUpload(idx, f)}
+                >
                   Nahrát
-                </button>
+                </FilePickButton>
                 <button type="button" className="chip" disabled={!canEdit || !rid} onClick={() => void openMenuPicker(idx)}>
                   Vybrat z menu…
                 </button>

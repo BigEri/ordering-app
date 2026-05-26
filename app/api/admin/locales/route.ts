@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "../../../../lib/server/adminGuard";
 import { nowIso } from "../../../../lib/server/db";
 import { prisma } from "../../../../lib/server/prisma";
+import { secureCompareStrings } from "../../../../lib/server/secureCompare";
 
 function normalizeCode(raw: unknown): string {
   const s = typeof raw === "string" ? raw.trim().toLowerCase() : "";
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    requireAdminSession(req.headers.get("cookie"));
+    await requireAdminSession(req.headers.get("cookie"));
     const rows = await prisma.appLocale.findMany({
       orderBy: [{ createdAtIso: "asc" }, { code: "asc" }],
       select: { code: true, label: true, enabled: true, createdAtIso: true },
@@ -50,7 +51,7 @@ export async function POST(req: Request) {
     }
     const auth = req.headers.get("authorization") ?? "";
     const bearer = auth.replace(/^Bearer\s+/i, "").trim();
-    if (bearer !== token) {
+    if (!secureCompareStrings(bearer, token)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
 

@@ -10,7 +10,7 @@ type DotyTable = { id: number; name: string; enabled?: boolean; display?: boolea
 
 export async function GET(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const rid = await requireActiveRestaurantId(session, req.headers.get("cookie"));
     if (!rid) {
       return NextResponse.json(

@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   let session: AdminSession;
   try {
-    session = requireAdminSession(req.headers.get("cookie"));
+    session = await requireAdminSession(req.headers.get("cookie"));
     if (session.globalRole === "SUPER_ADMIN") {
       if (!restaurantIdRaw) {
         restaurantIdRaw = (await requireActiveRestaurantId(session, req.headers.get("cookie"))) ?? "";

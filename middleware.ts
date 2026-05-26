@@ -1,5 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
+import { verifySessionToken } from "./lib/server/sessionToken";
+
 const ADMIN_LOGIN_PATH = "/admin/login";
 const SESSION_COOKIE = "oa_session";
 const ACTIVE_RESTAURANT_COOKIE = "oa_rid";
@@ -48,14 +50,19 @@ export function middleware(req: NextRequest) {
   }
 
   const sessionToken = req.cookies.get(SESSION_COOKIE)?.value ?? "";
-  if (!sessionToken) {
+  const session = sessionToken ? verifySessionToken(sessionToken) : null;
+  if (!session) {
     if (isAdminApi(pathname) || isLegacyAdminApi(pathname)) {
       return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     }
     const url = req.nextUrl.clone();
     url.pathname = ADMIN_LOGIN_PATH;
     url.searchParams.set("next", pathname);
-    return NextResponse.redirect(url);
+    const res = NextResponse.redirect(url);
+    if (sessionToken) {
+      res.cookies.delete(SESSION_COOKIE);
+    }
+    return res;
   }
 
   // Lightweight guard in Edge runtime: if no active restaurant cookie, push user to /admin

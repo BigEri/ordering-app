@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
+import { setKioskDeviceSecretForPos } from "../lib/pos/kioskDeviceSecretStore";
 import { randomUuid } from "../lib/randomUuid";
 
 const STORAGE_DEVICE_ID = "kiosk.deviceId";
@@ -10,6 +11,7 @@ const STORAGE_TABLE_ID = "kiosk.tableId";
 const STORAGE_TABLE_LABEL = "kiosk.tableLabel";
 /** Poslední známý reload nonce ze serveru — při vyšším čísle v /api/devices/config se stránka obnoví. */
 const STORAGE_RELOAD_NONCE = "kiosk.reloadNonce";
+const STORAGE_DEVICE_SECRET = "kiosk.deviceSecret";
 /** Záložní cookie (když localStorage selže nebo se maže). */
 const COOKIE_DEVICE_ID = "kiosk_device_id";
 const IDB_NAME = "kiosk_device";
@@ -281,7 +283,23 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
   /** Kdy vyprší aktuální kód (ms) — aby poll nevolal upsert při každém intervalu. */
   const pairingExpiryMsRef = React.useRef(0);
 
-  type ConfigBinding = { tableId: string; tableLabel: string; restaurantId?: string | null } | null;
+  type ConfigBinding = {
+    tableId: string;
+    tableLabel: string;
+    restaurantId?: string | null;
+    deviceSecret?: string | null;
+  } | null;
+
+  const applyDeviceSecret = React.useCallback((secret: string | null | undefined) => {
+    const s = secret?.trim() ?? "";
+    if (!s) return;
+    try {
+      window.localStorage.setItem(STORAGE_DEVICE_SECRET, s);
+    } catch {
+      /* ignore */
+    }
+    setKioskDeviceSecretForPos(s);
+  }, []);
 
   const syncPairingWithConfig = React.useCallback(
     async (did: string, binding: ConfigBinding, cancelled: () => boolean) => {
@@ -294,6 +312,7 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
         setPairingCode(null);
         setPairingExpiresAtIso(null);
         pairingExpiryMsRef.current = 0;
+        applyDeviceSecret(binding.deviceSecret);
         return;
       }
 
@@ -320,7 +339,7 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
         /* ignore */
       }
     },
-    [pathname],
+    [pathname, applyDeviceSecret],
   );
 
   React.useEffect(() => {
@@ -335,6 +354,13 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
       const id = await getOrCreateDeviceIdAsync();
       if (cancelled) return;
       setDeviceId(id);
+
+      try {
+        const storedSecret = window.localStorage.getItem(STORAGE_DEVICE_SECRET);
+        if (storedSecret) setKioskDeviceSecretForPos(storedSecret);
+      } catch {
+        /* ignore */
+      }
 
       let { tableId: tid, tableLabel: lbl } = readLocalTable();
 
@@ -364,11 +390,14 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
         const r = await fetchDeviceConfig(id);
         const data = (await r.json()) as {
           ok?: boolean;
-          binding?: { tableId: string; tableLabel: string; restaurantId?: string | null } | null;
+          binding?: ConfigBinding;
           reloadNonce?: number;
         };
         if (cancelled) return;
-        if (data.ok && data.binding) applyBinding(data.binding);
+        if (data.ok && data.binding) {
+          applyBinding(data.binding);
+          applyDeviceSecret(data.binding.deviceSecret);
+        }
         if (!cancelled) applyServerReloadNonce(data.reloadNonce);
         await syncPairingWithConfig(id, data.ok ? data.binding ?? null : null, () => cancelled);
       } catch {
@@ -381,7 +410,7 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     return () => {
       cancelled = true;
     };
-  }, [syncPairingWithConfig, pathname]);
+  }, [syncPairingWithConfig, pathname, applyDeviceSecret]);
 
   React.useEffect(() => {
     if (!needsKioskDeviceContext(pathname)) return;
@@ -392,13 +421,14 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
         const r = await fetchDeviceConfig(deviceId);
         const data = (await r.json()) as {
           ok?: boolean;
-          binding?: { tableId: string; tableLabel: string; restaurantId?: string | null } | null;
+          binding?: ConfigBinding;
           reloadNonce?: number;
         };
         if (data.ok && data.binding) {
           setTableId(data.binding.tableId);
           setTableLabel(data.binding.tableLabel);
           writeLocalTable(data.binding.tableId, data.binding.tableLabel);
+          applyDeviceSecret(data.binding.deviceSecret);
         }
         applyServerReloadNonce(data.reloadNonce);
         await syncPairingWithConfig(deviceId, data.ok ? data.binding ?? null : null, () => false);
@@ -410,7 +440,7 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     void poll();
     const t = window.setInterval(poll, CONFIG_POLL_MS);
     return () => window.clearInterval(t);
-  }, [deviceId, ready, pathname, syncPairingWithConfig]);
+  }, [deviceId, ready, pathname, syncPairingWithConfig, applyDeviceSecret]);
 
   React.useEffect(() => {
     if (!needsKioskDeviceContext(pathname)) return;

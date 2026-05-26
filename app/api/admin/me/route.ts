@@ -18,7 +18,7 @@ function cookieValue(cookieHeader: string | null | undefined, name: string): str
 export async function GET(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
     const rid = cookieValue(cookieHeader, "oa_rid");
     const memberships = await prisma.membership.findMany({
       where: { userId: session.userId },

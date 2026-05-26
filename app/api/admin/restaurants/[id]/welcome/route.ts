@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "../../../../../../lib/server/adminGuard";
+import { requireAdminSession, type AdminSession } from "../../../../../../lib/server/adminGuard";
 import { userHasRestaurantAccess } from "../../../../../../lib/server/auth";
 import { parseWelcomeLayoutPreset } from "../../../../../../lib/menu/welcomeLayoutPreset";
 import { getRestaurantWelcomeForAdmin, upsertRestaurantWelcome } from "../../../../../../lib/server/restaurantWelcome";
@@ -8,13 +8,13 @@ import { prisma } from "../../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function assertWelcomeRead(session: ReturnType<typeof requireAdminSession>, restaurantId: string) {
+async function assertWelcomeRead(session: AdminSession, restaurantId: string) {
   if (session.globalRole === "SUPER_ADMIN") return;
   const a = await userHasRestaurantAccess(session.userId, restaurantId);
   if (!a.ok) throw new Error("FORBIDDEN");
 }
 
-async function assertWelcomeWrite(session: ReturnType<typeof requireAdminSession>, restaurantId: string) {
+async function assertWelcomeWrite(session: AdminSession, restaurantId: string) {
   if (session.globalRole === "SUPER_ADMIN") return;
   const a = await userHasRestaurantAccess(session.userId, restaurantId);
   if (!a.ok || a.role !== "RESTAURANT_ADMIN") throw new Error("FORBIDDEN");
@@ -22,7 +22,7 @@ async function assertWelcomeWrite(session: ReturnType<typeof requireAdminSession
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const { id } = await ctx.params;
     const rid = id?.trim() ?? "";
     if (!rid) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
@@ -41,7 +41,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const { id } = await ctx.params;
     const rid = id?.trim() ?? "";
     if (!rid) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });

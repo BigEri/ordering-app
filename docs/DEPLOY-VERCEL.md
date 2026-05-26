@@ -29,8 +29,24 @@ V projektu: **Settings → Environment Variables** (Production + Preview):
 | `DATABASE_URL` | pooled URL z Neonu |
 | `APP_AUTH_SECRET` | dlouhý náhodný řetězec (stejný jako lokálně) |
 | `NEXT_PUBLIC_APP_URL` | `https://vase-app.vercel.app` nebo vaše doména |
+| `S3_BUCKET` | bucket pro fotky menu a úvodní stránky |
+| `S3_ACCESS_KEY_ID` | přístupový klíč (R2 / S3) |
+| `S3_SECRET_ACCESS_KEY` | tajný klíč |
+| `S3_PUBLIC_URL_BASE` | veřejná URL bucketu (R2 public URL nebo CDN) |
+| `S3_REGION` | u R2: `auto` |
+| `S3_ENDPOINT` | u R2: `https://<accountid>.r2.cloudflarestorage.com` |
+| `S3_FORCE_PATH_STYLE` | u R2: `1` |
 
 Volitelně doplňte z `.env.example` (Dotykačka, `BOOTSTRAP_TOKEN`, …).
+
+### Obrázky (Cloudflare R2 — stručně)
+
+1. R2 → Create bucket → zapněte **Public access** (nebo custom domain).
+2. **Manage R2 API tokens** → token s oprávněním Object Read & Write pro bucket.
+3. `S3_PUBLIC_URL_BASE` = veřejná URL z R2 (např. `https://pub-….r2.dev`).
+4. Po deployi: `GET /api/health` → `"imageStorage": "s3"`.
+
+Bez S3 env zůstane režim `local` — na Vercelu fotky po redeploy zmizí.
 
 ### 3) Migrace databáze (z PC, jednou)
 
@@ -69,3 +85,5 @@ Tím se na Vercelu vygeneruje Prisma Client před `next build`.
 ## Tablety (Android)
 
 V APK nastavte **base_url** na stejnou HTTPS doménu jako `NEXT_PUBLIC_APP_URL`.
+
+**Nahrávání fotek v adminu:** výběr souboru musí v nativní vrstvě WebView obsloužit `WebChromeClient.onShowFileChooser` (jinak tlačítko „Vybrat soubor“ v prohlížeči v APK nic neudělá — v Chrome na PC to funguje). Alternativa bez úpravy APK: vložit **URL obrázku** (HTTPS) místo uploadu ze zařízení.

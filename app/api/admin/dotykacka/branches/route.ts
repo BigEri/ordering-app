@@ -16,7 +16,7 @@ export type DotyBranch = { id: number; name: string; deleted?: boolean };
  */
 export async function GET(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const restaurantId = new URL(req.url).searchParams.get("restaurantId")?.trim() ?? "";
     if (!restaurantId) {
       return NextResponse.json({ ok: false, error: "Chybí restaurantId (query)." }, { status: 400 });

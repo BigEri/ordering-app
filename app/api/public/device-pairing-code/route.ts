@@ -2,11 +2,23 @@ import { NextResponse } from "next/server";
 
 import { upsertDevicePairingCodeAsync } from "../../../../lib/server/devicePairingCodes";
 import { getKioskDeviceBinding } from "../../../../lib/server/kioskDeviceBindings";
+import { checkRateLimit, clientIpFromRequest } from "../../../../lib/server/rateLimit";
 
 export const dynamic = "force-dynamic";
 
+const MAX_PAIRING_CODE_PER_IP = 30;
+const PAIRING_CODE_WINDOW_MS = 60 * 60 * 1000;
+
 /** Tablet zaregistruje kód pro párování v administraci (bez přihlášení). */
 export async function POST(req: Request) {
+  const ip = clientIpFromRequest(req);
+  const rl = checkRateLimit(`pair-code:${ip}`, MAX_PAIRING_CODE_PER_IP, PAIRING_CODE_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
   let body: unknown;
   try {
     body = await req.json();

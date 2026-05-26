@@ -22,17 +22,18 @@ export async function restaurantExistsInDb(id: string): Promise<boolean> {
 
 /**
  * Přihlášený admin + aktivní provozovna (`oa_rid`) — stejný kontext jako v administraci.
- * Použije se pro `/menu` a veřejné API, aby „host“ viděl menu aktivní restaurace.
  */
-export function resolveAdminActiveRestaurantForPublicMenu(cookieHeader: string | null | undefined): string | null {
+export async function resolveAdminActiveRestaurantForPublicMenuAsync(
+  cookieHeader: string | null | undefined,
+): Promise<string | null> {
   const session = getSessionFromCookieHeader(cookieHeader);
   if (!session) return null;
   const rid = cookieValue(cookieHeader, activeRestaurantCookieName())?.trim() ?? "";
-  // NOTE: now async; keep sync signature by trusting rid format here.
   if (!rid) return null;
   if (session.globalRole === "SUPER_ADMIN") return rid;
-  // NOTE: now async; callers should use the async resolver below.
-  return null;
+  const access = await userHasRestaurantAccess(session.userId, rid);
+  if (!access.ok) return null;
+  return rid;
 }
 
 /**
@@ -53,7 +54,7 @@ export function resolvePublicMenuRestaurantIdSync(opts: {
 export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request): Promise<string | null> {
   const url = new URL(req.url);
   const cookieHeader = req.headers.get("cookie");
-  const adminActive = null; // handled in async resolution below
+  const adminActive = await resolveAdminActiveRestaurantForPublicMenuAsync(cookieHeader);
   const kioskRid = cookieValue(cookieHeader, PUBLIC_MENU_RESTAURANT_COOKIE)?.trim() ?? "";
   const ridRaw = url.searchParams.get("rid")?.trim() ?? "";
 
@@ -72,8 +73,9 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
     }
   }
 
-  // Priority: trusted query -> kiosk cookie -> singleton default
+  // Priority: trusted ?rid= → aktivní admin restaurace → kiosk cookie → výchozí
   if (trustedRidQuery) return trustedRidQuery;
+  if (adminActive && (await restaurantExistsInDb(adminActive))) return adminActive;
   if (kioskRid && (await restaurantExistsInDb(kioskRid))) return kioskRid;
   return await getDefaultPublicMenuRestaurantId();
 }

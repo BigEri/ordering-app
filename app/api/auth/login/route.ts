@@ -9,10 +9,22 @@ import {
   sessionCookieName,
 } from "../../../../lib/server/auth";
 import { prisma } from "../../../../lib/server/prisma";
+import { checkRateLimit, clientIpFromRequest } from "../../../../lib/server/rateLimit";
 
 export const dynamic = "force-dynamic";
 
+const MAX_LOGIN_ATTEMPTS = 20;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
 export async function POST(req: Request) {
+  const ip = clientIpFromRequest(req);
+  const rl = checkRateLimit(`login:${ip}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
   let body: unknown;
   try {
     body = (await req.json()) as unknown;
@@ -42,10 +54,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
   }
 
+  const svRow = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { sessionVersion: true },
+  });
+  const sv = svRow?.sessionVersion ?? 0;
+
   const token = createSessionToken({
     userId: user.id,
     email: user.email,
     globalRole: user.globalRole,
+    sv,
   });
 
   const res = NextResponse.json({ ok: true });

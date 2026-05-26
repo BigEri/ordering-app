@@ -22,7 +22,7 @@ function errCs(msg: string | undefined): string {
     Unauthorized: "Nejste přihlášeni.",
     "No restaurant selected": "Není vybraná aktivní restaurace.",
     "User not found": "Uživatel neexistuje.",
-    "Password too short": "Heslo je moc krátké (min. 6 znaků).",
+    "Password too short": "Heslo je moc krátké (min. 8 znaků).",
   };
   return m[msg] ?? msg;
 }
@@ -136,8 +136,8 @@ export default function AdminUsersPage() {
   const onResetPasswordSubmit = async (userId: string, email: string) => {
     const newPassword = resetNewPassword;
     if (!newPassword) return;
-    if (newPassword.length < 6) {
-      setErr("Heslo je moc krátké (min. 6 znaků).");
+    if (newPassword.length < 8) {
+      setErr("Heslo je moc krátké (min. 8 znaků).");
       return;
     }
     if (!window.confirm(`Opravdu nastavit nové heslo pro „${email}“?`)) return;
@@ -288,7 +288,7 @@ export default function AdminUsersPage() {
                               type="password"
                               value={resetNewPassword}
                               onChange={(e) => setResetNewPassword(e.target.value)}
-                              placeholder="Nové heslo (min. 6)"
+                              placeholder="Nové heslo (min. 8)"
                               autoComplete="new-password"
                               className="chip"
                               style={{
@@ -303,7 +303,7 @@ export default function AdminUsersPage() {
                             <button
                               type="button"
                               className="btnPrimary"
-                              disabled={resettingId === u.id || resetNewPassword.length < 6}
+                              disabled={resettingId === u.id || resetNewPassword.length < 8}
                               style={{ cursor: "pointer" }}
                               onClick={() => void onResetPasswordSubmit(u.id, u.email)}
                             >

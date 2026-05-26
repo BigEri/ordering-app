@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   }
 
   try {
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
     if (session.globalRole === "SUPER_ADMIN") {
       return NextResponse.json({ ok: true, canEdit: true, restaurantId });
     }

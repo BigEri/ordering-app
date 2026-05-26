@@ -5,16 +5,20 @@ import type { DotykackaSyncResult } from "../dotykacka/syncOrder";
 import { syncBillRequestToDotykacka, syncOrderConfirmedToDotykacka } from "../dotykacka/syncOrder";
 import { recordPresenceFromPosPayload } from "../server/deviceRegistry";
 import { markRestaurantDotykackaSyncFailed, markRestaurantDotykackaSyncOk } from "../server/restaurantDotykacka";
-import { isSuccessfulDuplicate, markPosRequestSuccessful } from "../server/posRequestDedupe";
+import { verifyDeviceSecret } from "../server/deviceSecret";
+import { getKioskDeviceBinding } from "../server/kioskDeviceBindings";
+import { isSuccessfulDuplicateAsync, markPosRequestSuccessfulAsync } from "../server/posRequestDedupe";
 import { resolvePosTrustFromPayload } from "./resolvePosTrustFromPayload";
 import { appendVirtualPosEvent } from "./virtualPosLog";
 import { recordIntegrationAuditEvent } from "../server/integrationAudit";
+import { checkRateLimit } from "../server/rateLimit";
 
-type PosForwardOptions = {
+export type PosForwardOptions = {
   eventType: string;
   payload: unknown;
   /** Pro zápis do evidence zařízení (stejné ID jako u heartbeatu). */
   userAgent?: string | null;
+  deviceSecretHeader?: string | null;
 };
 
 /** Klíče s prefixem `_` jsou jen pro klienta (např. snapshot) — neposílají se do externího POS. */
@@ -50,8 +54,48 @@ async function maybeSyncDotykacka(
   return undefined;
 }
 
-async function forwardToPosInner({ eventType, payload, userAgent }: PosForwardOptions) {
+async function verifyPosDeviceSecret(
+  sanitized: unknown,
+  deviceSecretHeader: string | null | undefined,
+): Promise<{ ok: true } | { ok: false; status: number; error: string }> {
+  if (!sanitized || typeof sanitized !== "object" || Array.isArray(sanitized)) {
+    return { ok: true };
+  }
+  const deviceId = typeof (sanitized as Record<string, unknown>).deviceId === "string"
+    ? ((sanitized as Record<string, unknown>).deviceId as string).trim()
+    : "";
+  if (!deviceId) return { ok: true };
+
+  const binding = await getKioskDeviceBinding(deviceId);
+  if (!binding) return { ok: true };
+  if (!verifyDeviceSecret(deviceSecretHeader, binding.deviceSecret)) {
+    return { ok: false, status: 403, error: "Invalid device credentials" };
+  }
+  return { ok: true };
+}
+
+async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHeader }: PosForwardOptions) {
+  const deviceIdForRl =
+    payload && typeof payload === "object" && !Array.isArray(payload)
+      ? typeof (payload as Record<string, unknown>).deviceId === "string"
+        ? ((payload as Record<string, unknown>).deviceId as string).trim()
+        : ""
+      : "";
+  const rlKey = deviceIdForRl ? `pos:${deviceIdForRl}` : `pos-ip:unknown`;
+  const rl = checkRateLimit(rlKey, 120, 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   const sanitized = sanitizePosPayloadForServer(payload);
+
+  const secretCheck = await verifyPosDeviceSecret(sanitized, deviceSecretHeader);
+  if (!secretCheck.ok) {
+    return NextResponse.json({ ok: false, error: secretCheck.error }, { status: secretCheck.status });
+  }
 
   const posTrust = await resolvePosTrustFromPayload(sanitized);
   if (!posTrust.ok) {
@@ -68,7 +112,7 @@ async function forwardToPosInner({ eventType, payload, userAgent }: PosForwardOp
       ? (sanitizedForPipeline as Record<string, unknown>).clientRequestId
       : undefined;
   const clientRequestId = typeof cid === "string" ? cid : undefined;
-  if (clientRequestId && isSuccessfulDuplicate(clientRequestId)) {
+  if (clientRequestId && (await isSuccessfulDuplicateAsync(clientRequestId))) {
     return NextResponse.json({ ok: true, virtualPos: true, deduped: true }, { status: 200 });
   }
 
@@ -166,7 +210,7 @@ async function forwardToPosInner({ eventType, payload, userAgent }: PosForwardOp
 
   const targetUrl = getPosNotificationUrl();
   if (!targetUrl) {
-    markPosRequestSuccessful(clientRequestId);
+    await markPosRequestSuccessfulAsync(clientRequestId);
     return NextResponse.json(
       {
         ok: true,
@@ -191,7 +235,7 @@ async function forwardToPosInner({ eventType, payload, userAgent }: PosForwardOp
       body: JSON.stringify({ type: eventType, payload: sanitizedForPipeline, tsIso: logged.tsIso }),
     });
 
-    markPosRequestSuccessful(clientRequestId);
+    await markPosRequestSuccessfulAsync(clientRequestId);
     return NextResponse.json(
       {
         ok: true,

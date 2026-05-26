@@ -1,3 +1,6 @@
+import { DEVICE_SECRET_HEADER } from "../server/deviceSecret";
+import { getKioskDeviceSecretForPos } from "./kioskDeviceSecretStore";
+
 /**
  * Klient volající naše /api/pos/* route handlery.
  * Kontroluje HTTP stav, JSON `{ ok: false }` a `forwardedStatus` z virtuálního POS.
@@ -21,9 +24,13 @@ function extractPosErrorDetail(data: unknown): string | undefined {
 
 export async function postPosJson(url: string, body: unknown): Promise<PostPosJsonResult> {
   try {
+    const headers: Record<string, string> = { "content-type": "application/json" };
+    const secret = getKioskDeviceSecretForPos();
+    if (secret) headers[DEVICE_SECRET_HEADER] = secret;
+
     const res = await fetch(url, {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers,
       body: JSON.stringify(body),
     });
 

@@ -5,7 +5,7 @@ import { requireAdminSession } from "../../../../lib/server/adminGuard";
 
 export async function GET(req: Request) {
   try {
-    requireAdminSession(req.headers.get("cookie"));
+    await requireAdminSession(req.headers.get("cookie"));
   } catch {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }

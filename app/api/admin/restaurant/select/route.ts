@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const body = (await req.json()) as { restaurantId?: unknown };
     const restaurantId = typeof body?.restaurantId === "string" ? body.restaurantId.trim() : "";
     if (!restaurantId) {

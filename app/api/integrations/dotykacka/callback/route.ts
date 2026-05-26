@@ -160,14 +160,7 @@ export async function GET(req: NextRequest) {
     <a class="btn" href="${escapeHtml(backHref)}">Zpět do administrace</a>
   </div>
 
-  <details>
-    <summary>Pokročilé: ruční konfigurace (nedoporučeno)</summary>
-    <p>Pokud potřebujete, můžete dočasně zkopírovat hodnoty do <strong>.env</strong> (necommitovat). Pro multi-restaurant je ale lepší používat OAuth z adminu, aby se token uložil do databáze.</p>
-    <code>DOTYKACKA_REFRESH_TOKEN=${escapeHtml(token)}
-DOTYKACKA_CLOUD_ID=${escapeHtml(cloudid)}</code>
-    <p>Volitelně <code>state</code>: <code>${escapeHtml(state)}</code></p>
-    <p>Dále nastavte <code>DOTYKACKA_BRANCH_ID</code> a <code>DOTYKACKA_PRODUCT_MAP_JSON</code> — viz <code>ENV.example</code>.</p>
-  </details>
+  <p style="margin-top:14px;font-size:0.9rem;color:#6b7280;">Citlivé údaje (refresh token) se z bezpečnostních důvodů v prohlížeči nezobrazují. Použijte OAuth z administrace.</p>
 </body>
 </html>`;
 

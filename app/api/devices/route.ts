@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
     const rid = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
     if (!rid) {
       return NextResponse.json(

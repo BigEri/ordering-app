@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
+import { absolutePublicImageUrl } from "../../../../../lib/server/objectStorage";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -57,7 +58,7 @@ async function headCheckImage(url: string, timeoutMs = 7000): Promise<{ ok: bool
 
 export async function GET(req: Request): Promise<NextResponse> {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const cookieHeader = req.headers.get("cookie");
     const { searchParams } = new URL(req.url);
     const restaurantId = (searchParams.get("restaurantId") ?? "").trim();
@@ -75,8 +76,8 @@ export async function GET(req: Request): Promise<NextResponse> {
       select: { imageUrl: true },
     });
     const urls = rows
-      .map((r) => String(r.imageUrl ?? "").trim())
-      .filter((u) => u.toLowerCase().startsWith("https://"));
+      .map((r) => absolutePublicImageUrl(String(r.imageUrl ?? "").trim()))
+      .filter((u): u is string => Boolean(u));
 
     const checks = await Promise.all(
       urls.map(async (url) => {

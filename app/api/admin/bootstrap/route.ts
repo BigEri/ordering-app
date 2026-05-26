@@ -3,7 +3,9 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 import { ensureCoreLocalesAndMessages, nowIso } from "../../../../lib/server/db";
+import { PASSWORD_MIN_LENGTH, isPasswordLongEnough } from "../../../../lib/server/passwordPolicy";
 import { prisma } from "../../../../lib/server/prisma";
+import { secureCompareStrings } from "../../../../lib/server/secureCompare";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +34,7 @@ export async function POST(req: Request) {
 
   const auth = req.headers.get("authorization") ?? "";
   const bearer = auth.replace(/^Bearer\s+/i, "").trim();
-  if (bearer !== token) {
+  if (!secureCompareStrings(bearer, token)) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
@@ -52,6 +54,12 @@ export async function POST(req: Request) {
   const initialLocalesRaw = o.initialLocales;
   if (!restaurantName || !email || !password) {
     return NextResponse.json({ ok: false, error: "Missing restaurantName/email/password" }, { status: 400 });
+  }
+  if (!isPasswordLongEnough(password)) {
+    return NextResponse.json(
+      { ok: false, error: `Password too short (min. ${PASSWORD_MIN_LENGTH} characters)` },
+      { status: 400 },
+    );
   }
 
   const existing = await prisma.user.count();

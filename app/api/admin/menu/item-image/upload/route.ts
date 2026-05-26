@@ -1,20 +1,20 @@
-/**
- * Nahrání souboru do `public/uploads/menu/{restaurantId}/`.
- * Na bezstavové hostování (např. Vercel) soubory při redeploy mizí — v produkci použijte CDN/S3 nebo Cloudinary.
- */
+/** Nahrání menu fotky — S3/R2 pokud je nastaveno v env, jinak lokálně `public/uploads/menu/`. */
 import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "../../../../../../lib/server/adminGuard";
 import { nowIso } from "../../../../../../lib/server/db";
 import { canEditMenuForRestaurant } from "../../../../../../lib/server/menuEditorAuth";
-import { tryDeleteLocalMenuImageFile, writeMenuImageUpload } from "../../../../../../lib/server/menuImageStorage";
+import { resolveImageMime } from "../../../../../../lib/server/imageMime";
+import { tryDeleteStoredMenuImage, writeMenuImageUpload } from "../../../../../../lib/server/menuImageStorage";
+import { objectStorageMode } from "../../../../../../lib/server/objectStorage";
+import { objectStorageErrorMessage } from "../../../../../../lib/server/objectStorageError";
 import { prisma } from "../../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const cookieHeader = req.headers.get("cookie");
 
     let formData: FormData;
@@ -45,8 +45,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     }
 
-    const mime = (file.type || "").split(";")[0]!.trim().toLowerCase();
     const buf = Buffer.from(await file.arrayBuffer());
+    const mime = resolveImageMime(buf, file.type || "");
 
     let publicPath: string;
     try {
@@ -62,6 +62,10 @@ export async function POST(req: Request) {
       }
       if (code === "INVALID_IMAGE" || code === "INVALID_ID") {
         return NextResponse.json({ ok: false, error: "Neplatný obrázek." }, { status: 400 });
+      }
+      const storage = objectStorageErrorMessage(e);
+      if (storage) {
+        return NextResponse.json({ ok: false, error: storage }, { status: 502 });
       }
       throw e;
     }
@@ -87,16 +91,19 @@ export async function POST(req: Request) {
         },
       });
     } catch (e) {
-      await tryDeleteLocalMenuImageFile(publicPath);
+      await tryDeleteStoredMenuImage(publicPath);
       throw e;
     }
 
-    await tryDeleteLocalMenuImageFile(oldUrl);
+    await tryDeleteStoredMenuImage(oldUrl);
 
-    return NextResponse.json({ ok: true, imageUrl: publicPath });
+    return NextResponse.json({ ok: true, imageUrl: publicPath, storage: objectStorageMode() });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
     if (msg === "UNAUTHORIZED") return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    return NextResponse.json({ ok: false, error: "Error" }, { status: 500 });
+    const storage = objectStorageErrorMessage(e);
+    if (storage) return NextResponse.json({ ok: false, error: storage }, { status: 502 });
+    console.error("[menu item-image upload]", e);
+    return NextResponse.json({ ok: false, error: "Nahrání selhalo (server)." }, { status: 500 });
   }
 }

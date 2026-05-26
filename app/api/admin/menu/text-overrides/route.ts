@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const cookieHeader = req.headers.get("cookie");
     const url = new URL(req.url);
     const restaurantId = url.searchParams.get("restaurantId")?.trim() ?? "";
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const cookieHeader = req.headers.get("cookie");
     let body: unknown;
     try {

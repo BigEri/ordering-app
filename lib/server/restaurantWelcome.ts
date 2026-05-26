@@ -1,6 +1,6 @@
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../menu/welcomeLayoutPreset";
 import { WELCOME_SHOWCASE_IMAGE_URLS } from "../menu/welcomeShowcaseImages";
-import { isAllowedWelcomeImageUrl } from "./welcomeImageStorage";
+import { isAllowedWelcomeImageUrl, tryDeleteStoredWelcomeImage } from "./welcomeImageStorage";
 import { nowIso } from "./db";
 import { prisma } from "./prisma";
 
@@ -110,14 +110,14 @@ export async function getRestaurantWelcomeForAdmin(restaurantId: string): Promis
   };
 }
 
-export function upsertRestaurantWelcome(opts: {
+export async function upsertRestaurantWelcome(opts: {
   restaurantId: string;
   layoutPreset: WelcomeLayoutPreset;
   imageUrls: string[];
   updatedByUserId: string | null;
 }): Promise<void> {
   const rid = opts.restaurantId.trim();
-  if (!rid) return Promise.resolve();
+  if (!rid) return;
   const cleaned: string[] = [];
   for (const u of opts.imageUrls) {
     const t = typeof u === "string" ? u.trim() : "";
@@ -125,14 +125,18 @@ export function upsertRestaurantWelcome(opts: {
     cleaned.push(t);
     if (cleaned.length >= MAX_URLS) break;
   }
+  const prev = await getRestaurantWelcomeRow(rid);
+  const removed = (prev?.imageUrls ?? []).filter((u) => !cleaned.includes(u));
+
   const urlsJson = JSON.stringify(cleaned);
   const preset = parseWelcomeLayoutPreset(opts.layoutPreset);
   const ts = nowIso();
-  return prisma.restaurantWelcome
-    .upsert({
-      where: { restaurantId: rid },
-      update: { layoutPreset: preset, imageUrlsJson: urlsJson, updatedAtIso: ts, updatedByUserId: opts.updatedByUserId },
-      create: { restaurantId: rid, layoutPreset: preset, imageUrlsJson: urlsJson, updatedAtIso: ts, updatedByUserId: opts.updatedByUserId },
-    })
-    .then(() => undefined);
+  await prisma.restaurantWelcome.upsert({
+    where: { restaurantId: rid },
+    update: { layoutPreset: preset, imageUrlsJson: urlsJson, updatedAtIso: ts, updatedByUserId: opts.updatedByUserId },
+    create: { restaurantId: rid, layoutPreset: preset, imageUrlsJson: urlsJson, updatedAtIso: ts, updatedByUserId: opts.updatedByUserId },
+  });
+  for (const url of removed) {
+    await tryDeleteStoredWelcomeImage(url);
+  }
 }

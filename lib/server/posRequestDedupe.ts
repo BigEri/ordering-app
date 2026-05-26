@@ -1,27 +1,42 @@
-/**
- * Idempotence POS požadavků podle clientRequestId — značí se až po úspěšném dokončení.
- * In-memory, jeden proces.
- */
+import { nowIso } from "./db";
+import { prisma } from "./prisma";
 
 const TTL_MS = 24 * 60 * 60 * 1000;
-const successIds = new Map<string, number>();
-
-function prune(now: number) {
-  for (const [id, ts] of successIds) {
-    if (now - ts > TTL_MS) successIds.delete(id);
-  }
-}
 
 /** Už jsme tento požadavek úspěšně dokončili — opakování jen vrátí deduped. */
-export function isSuccessfulDuplicate(clientRequestId: string | undefined): boolean {
-  if (!clientRequestId?.trim()) return false;
-  const now = Date.now();
-  prune(now);
-  return successIds.has(clientRequestId.trim());
+export async function isSuccessfulDuplicateAsync(clientRequestId: string | undefined): Promise<boolean> {
+  const id = clientRequestId?.trim();
+  if (!id) return false;
+  const row = await prisma.posRequestDedupe.findUnique({
+    where: { clientRequestId: id },
+    select: { completedAtIso: true },
+  });
+  if (!row?.completedAtIso) return false;
+  const completedMs = new Date(row.completedAtIso).getTime();
+  if (!Number.isFinite(completedMs) || Date.now() - completedMs > TTL_MS) {
+    await prisma.posRequestDedupe.deleteMany({ where: { clientRequestId: id } }).catch(() => {});
+    return false;
+  }
+  return true;
 }
 
 /** Zavolat až po úspěšné odpovědi (200, uloženo / přeposláno). */
-export function markPosRequestSuccessful(clientRequestId: string | undefined): void {
-  if (!clientRequestId?.trim()) return;
-  successIds.set(clientRequestId.trim(), Date.now());
+export async function markPosRequestSuccessfulAsync(clientRequestId: string | undefined): Promise<void> {
+  const id = clientRequestId?.trim();
+  if (!id) return;
+  const completedAtIso = nowIso();
+  await prisma.posRequestDedupe.upsert({
+    where: { clientRequestId: id },
+    update: { completedAtIso },
+    create: { clientRequestId: id, completedAtIso },
+  });
+}
+
+/** Občasné čištění starých záznamů (volitelné, např. z health/cron). */
+export async function prunePosRequestDedupeAsync(): Promise<number> {
+  const cutoff = new Date(Date.now() - TTL_MS).toISOString();
+  const r = await prisma.posRequestDedupe.deleteMany({
+    where: { completedAtIso: { lt: cutoff } },
+  });
+  return r.count;
 }

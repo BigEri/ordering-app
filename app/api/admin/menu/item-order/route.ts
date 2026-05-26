@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function PATCH(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const cookieHeader = req.headers.get("cookie");
     let body: unknown;
     try {

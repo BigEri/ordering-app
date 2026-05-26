@@ -23,7 +23,7 @@ async function canManageRestaurantLocales(
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const { id } = await ctx.params;
     const restaurantId = typeof id === "string" ? id.trim() : "";
     if (!restaurantId) {
@@ -66,7 +66,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
 export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const { id } = await ctx.params;
     const restaurantId = typeof id === "string" ? id.trim() : "";
     if (!restaurantId) {

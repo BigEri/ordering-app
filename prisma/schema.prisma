@@ -68,6 +68,8 @@ model User {
   passwordHash String
   globalRole   String
   createdAtIso String
+  /** Zvýšení invaliduje staré session cookies (změna hesla). */
+  sessionVersion Int @default(0)
 
   memberships Membership[]
   uiMessagesUpdated UiMessage[] @relation("UiMessageUpdatedBy")
@@ -259,8 +261,28 @@ model KioskDeviceBinding {
   tableLabel   String
   pairingLocked Int    @default(0)
   updatedAtIso String
+  /** Tajný klíč pro POS požadavky z tabletu (header x-device-secret). */
+  deviceSecret String?
+  reloadNonce  Int    @default(0)
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model PosRequestDedupe {
+  clientRequestId String @id
+  completedAtIso  String
+
+  @@index([completedAtIso], map: "idx_pos_dedupe_completed")
+}
+
+model PosActionWebhookCallback {
+  callbackId    String  @id
+  body          String?
+  createdAtIso  String
+  expiresAtIso  String
+  resolvedAtIso String?
+
+  @@index([expiresAtIso], map: "idx_pos_webhook_cb_exp")
 }
 
 model DevicePairingCode {

@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     if (session.globalRole === "SUPER_ADMIN") {
       const rows = await prisma.restaurant.findMany({
         orderBy: { createdAtIso: "desc" },
@@ -35,7 +35,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     if (session.globalRole !== "SUPER_ADMIN") {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }

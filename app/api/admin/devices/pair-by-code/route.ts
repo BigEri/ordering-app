@@ -5,6 +5,7 @@ import { requireAdminSession, requireActiveRestaurantId } from "../../../../../l
 import { prisma } from "../../../../../lib/server/prisma";
 import { getActivePairingCodeRowAsync, markPairingCodeUsedAsync } from "../../../../../lib/server/devicePairingCodes";
 import { setAdminBinding } from "../../../../../lib/server/deviceRegistry";
+import { checkRateLimit, clientIpFromRequest } from "../../../../../lib/server/rateLimit";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
 
   let session: AdminSession;
   try {
-    session = requireAdminSession(req.headers.get("cookie"));
+    session = await requireAdminSession(req.headers.get("cookie"));
     if (session.globalRole === "SUPER_ADMIN") {
       if (!restaurantIdRaw) {
         restaurantIdRaw = (await requireActiveRestaurantId(session, req.headers.get("cookie"))) ?? "";
@@ -60,13 +61,22 @@ export async function POST(req: Request) {
     }
   }
 
+  const ip = clientIpFromRequest(req);
+  const rl = checkRateLimit(`pair-by-code:${ip}`, 40, 15 * 60 * 1000);
+  if (!rl.ok) {
+    return NextResponse.json(
+      { ok: false, error: "Too many attempts" },
+      { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
+    );
+  }
+
   const row = await getActivePairingCodeRowAsync(codeRaw);
   if (!row) {
     return NextResponse.json({ ok: false, error: "Neplatný nebo expirovaný kód." }, { status: 400 });
   }
 
-  setAdminBinding(row.deviceId, tableId, tableLabel, restaurantIdRaw);
+  const { deviceSecret } = await setAdminBinding(row.deviceId, tableId, tableLabel, restaurantIdRaw);
   await markPairingCodeUsedAsync(codeRaw);
 
-  return NextResponse.json({ ok: true, deviceId: row.deviceId });
+  return NextResponse.json({ ok: true, deviceId: row.deviceId, deviceSecret });
 }

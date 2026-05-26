@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { requireAdminSession } from "../../../../lib/server/adminGuard";
+import { requireAdminSession, type AdminSession } from "../../../../lib/server/adminGuard";
 import {
   activeRestaurantCookieName,
   userHasRestaurantAccess,
@@ -25,9 +25,9 @@ export async function POST(req: NextRequest) {
   }
 
   const cookieHeader = req.headers.get("cookie");
-  let session: ReturnType<typeof requireAdminSession>;
+  let session: AdminSession;
   try {
-    session = requireAdminSession(cookieHeader);
+    session = await requireAdminSession(cookieHeader);
   } catch {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
@@ -54,6 +54,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const reloadNonce = bumpDeviceReloadNonce(deviceId);
+  const reloadNonce = await bumpDeviceReloadNonce(deviceId);
   return NextResponse.json({ ok: true, deviceId, reloadNonce });
 }

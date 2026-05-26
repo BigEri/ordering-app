@@ -11,7 +11,7 @@ function errCs(msg: string | undefined): string {
     Unauthorized: "Nejste přihlášeni.",
     "Invalid credentials": "Staré heslo není správně.",
     "Passwords do not match": "Nové heslo se neshoduje.",
-    "Password too short": "Nové heslo je moc krátké (min. 6 znaků).",
+    "Password too short": "Nové heslo je moc krátké (min. 8 znaků).",
     "Missing password": "Vyplňte všechna pole.",
   };
   return m[msg] ?? msg;

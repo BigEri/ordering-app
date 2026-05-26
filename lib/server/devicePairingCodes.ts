@@ -1,12 +1,17 @@
+import crypto from "crypto";
+
 import { nowIso } from "./db";
 import { prisma } from "./prisma";
 
 const CODE_TTL_MS = 60 * 60 * 1000;
+const PAIRING_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function randomPairingCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.randomBytes(6);
   let s = "";
-  for (let i = 0; i < 6; i++) s += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < 6; i++) {
+    s += PAIRING_CODE_CHARS[bytes[i]! % PAIRING_CODE_CHARS.length];
+  }
   return s;
 }
 

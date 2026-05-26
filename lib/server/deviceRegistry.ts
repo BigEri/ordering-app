@@ -3,7 +3,13 @@
  */
 
 import { getDefaultPublicMenuRestaurantIdFromEnv } from "./publicRestaurantName";
-import { getKioskDeviceBinding, listAllKioskDeviceBindings, upsertKioskDeviceBinding } from "./kioskDeviceBindings";
+import {
+  bumpKioskDeviceReloadNonce,
+  getKioskDeviceBinding,
+  getKioskDeviceReloadNonce,
+  listAllKioskDeviceBindings,
+  upsertKioskDeviceBinding,
+} from "./kioskDeviceBindings";
 
 export type DeviceRecord = {
   deviceId: string;
@@ -21,19 +27,12 @@ const ONLINE_THRESHOLD_MS = 120_000;
 const presenceByDevice = new Map<string, DeviceRecord>();
 /** Přepsání z adminu (paměť; kopírované i do DB při novém bindu). */
 const adminBindingByDevice = new Map<string, { tableId: string; tableLabel: string }>();
-const reloadNonceByDevice = new Map<string, number>();
-
-export function bumpDeviceReloadNonce(deviceId: string): number {
-  const id = deviceId.trim();
-  if (!id) return 0;
-  const prev = reloadNonceByDevice.get(id) ?? 0;
-  const next = prev + 1;
-  reloadNonceByDevice.set(id, next);
-  return next;
+export async function bumpDeviceReloadNonce(deviceId: string): Promise<number> {
+  return bumpKioskDeviceReloadNonce(deviceId);
 }
 
-export function getDeviceReloadNonce(deviceId: string): number {
-  return reloadNonceByDevice.get(deviceId.trim()) ?? 0;
+export async function getDeviceReloadNonce(deviceId: string): Promise<number> {
+  return getKioskDeviceReloadNonce(deviceId);
 }
 
 export function clearDeviceFromMemory(deviceId: string): void {
@@ -44,12 +43,22 @@ export function clearDeviceFromMemory(deviceId: string): void {
   // NOTE: keep reloadNonceByDevice - it is used to force refresh after admin actions.
 }
 
-export function setAdminBinding(deviceId: string, tableId: string, tableLabel: string, restaurantId: string) {
+export async function setAdminBinding(
+  deviceId: string,
+  tableId: string,
+  tableLabel: string,
+  restaurantId: string,
+): Promise<{ deviceSecret: string }> {
   const tid = tableId.trim();
   const lbl = tableLabel.trim();
   const rid = restaurantId.trim();
   adminBindingByDevice.set(deviceId, { tableId: tid, tableLabel: lbl });
-  upsertKioskDeviceBinding({ deviceId, restaurantId: rid, tableId: tid, tableLabel: lbl });
+  const { deviceSecret } = await upsertKioskDeviceBinding({
+    deviceId,
+    restaurantId: rid,
+    tableId: tid,
+    tableLabel: lbl,
+  });
 
   const prev = presenceByDevice.get(deviceId);
   if (prev) {
@@ -67,6 +76,7 @@ export function setAdminBinding(deviceId: string, tableId: string, tableLabel: s
       lastSeen: Date.now(),
     });
   }
+  return { deviceSecret };
 }
 
 export function getAdminBinding(deviceId: string) {

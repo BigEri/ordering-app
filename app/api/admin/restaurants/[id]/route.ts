@@ -17,7 +17,7 @@ async function canUpdateRestaurantName(session: AdminSession, restaurantId: stri
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     if (session.globalRole !== "SUPER_ADMIN") {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
@@ -48,7 +48,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
     const { id } = await ctx.params;
     const restaurantId = typeof id === "string" ? id.trim() : "";
     if (!restaurantId) {

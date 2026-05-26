@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
+import { PASSWORD_MIN_LENGTH, isPasswordLongEnough } from "../../../../../lib/server/passwordPolicy";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
 
     if (session.globalRole !== "SUPER_ADMIN") {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
@@ -30,14 +31,17 @@ export async function POST(req: Request) {
     if (!userId || !newPassword) {
       return NextResponse.json({ ok: false, error: "Missing userId/password" }, { status: 400 });
     }
-    if (newPassword.length < 6) {
-      return NextResponse.json({ ok: false, error: "Password too short" }, { status: 400 });
+    if (!isPasswordLongEnough(newPassword)) {
+      return NextResponse.json(
+        { ok: false, error: `Password too short (min. ${PASSWORD_MIN_LENGTH} characters)` },
+        { status: 400 },
+      );
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 12);
     const r = await prisma.user.updateMany({
       where: { id: userId },
-      data: { passwordHash },
+      data: { passwordHash, sessionVersion: { increment: 1 } },
     });
     if (r.count === 0) {
       return NextResponse.json({ ok: false, error: "User not found" }, { status: 404 });

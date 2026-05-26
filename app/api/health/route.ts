@@ -1,6 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { hasDatabaseUrl } from "../../../lib/server/dbConfig";
+import {
+  getObjectStorageConfigHint,
+  isObjectStorageEnabled,
+  objectStorageMode,
+} from "../../../lib/server/objectStorage";
+import { pruneExpiredPosWebhookCallbacksAsync } from "../../../lib/server/posActionWebhookRegistry";
+import { prunePosRequestDedupeAsync } from "../../../lib/server/posRequestDedupe";
 import { prisma } from "../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +27,14 @@ export async function GET() {
 
   try {
     await prisma.$queryRaw`SELECT 1`;
+    void prunePosRequestDedupeAsync().catch(() => {});
+    void pruneExpiredPosWebhookCallbacksAsync().catch(() => {});
     return NextResponse.json({
       ok: true,
       database: "connected",
-      appAuthSecret: Boolean(process.env.APP_AUTH_SECRET?.trim()),
-      publicAppUrl: Boolean(process.env.NEXT_PUBLIC_APP_URL?.trim()),
+      imageStorage: objectStorageMode(),
+      imageStorageConfigured: isObjectStorageEnabled(),
+      imageStorageHint: getObjectStorageConfigHint(),
     });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Database error";

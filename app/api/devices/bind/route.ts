@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   let session: AdminSession;
   try {
-    session = requireAdminSession(req.headers.get("cookie"));
+    session = await requireAdminSession(req.headers.get("cookie"));
     if (session.globalRole === "SUPER_ADMIN") {
       if (!restaurantIdRaw) {
         restaurantIdRaw = (await requireActiveRestaurantId(session, req.headers.get("cookie"))) ?? "";
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  setAdminBinding(deviceId, tableId, tableLabel, restaurantIdRaw);
-  bumpDeviceReloadNonce(deviceId);
+  const { deviceSecret } = await setAdminBinding(deviceId, tableId, tableLabel, restaurantIdRaw);
+  await bumpDeviceReloadNonce(deviceId);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deviceSecret });
 }

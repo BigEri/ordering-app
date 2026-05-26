@@ -33,7 +33,7 @@ export async function GET(req: NextRequest) {
 
   if (restaurantId) {
     try {
-      const session = requireAdminSession(req.headers.get("cookie"));
+      const session = await requireAdminSession(req.headers.get("cookie"));
       if (session.globalRole !== "SUPER_ADMIN") {
         const a = await userHasRestaurantAccess(session.userId, restaurantId);
         if (!a.ok) {
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
   // (prevents tampering/replay and ensures restaurantId belongs to this admin session)
   let state = crypto.randomUUID();
   if (restaurantId) {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     state = await createDotykackaOAuthState({ restaurantId, createdByUserId: session.userId });
   }
 

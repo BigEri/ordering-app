@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 
-import { requireAdminSession } from "../../../../../../../lib/server/adminGuard";
+import { requireAdminSession, type AdminSession } from "../../../../../../../lib/server/adminGuard";
 import { userHasRestaurantAccess } from "../../../../../../../lib/server/auth";
+import { resolveImageMime } from "../../../../../../../lib/server/imageMime";
+import { objectStorageMode } from "../../../../../../../lib/server/objectStorage";
+import { objectStorageErrorMessage } from "../../../../../../../lib/server/objectStorageError";
 import { writeWelcomeImageUpload } from "../../../../../../../lib/server/welcomeImageStorage";
 import { prisma } from "../../../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
 
-async function assertWelcomeWrite(session: ReturnType<typeof requireAdminSession>, restaurantId: string) {
+async function assertWelcomeWrite(session: AdminSession, restaurantId: string) {
   if (session.globalRole === "SUPER_ADMIN") return;
   const a = await userHasRestaurantAccess(session.userId, restaurantId);
   if (!a.ok || a.role !== "RESTAURANT_ADMIN") throw new Error("FORBIDDEN");
@@ -15,7 +18,7 @@ async function assertWelcomeWrite(session: ReturnType<typeof requireAdminSession
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
-    const session = requireAdminSession(req.headers.get("cookie"));
+    const session = await requireAdminSession(req.headers.get("cookie"));
     const { id } = await ctx.params;
     const restaurantId = id?.trim() ?? "";
     if (!restaurantId) return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
@@ -38,8 +41,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
     }
 
-    const mime = (file.type || "").split(";")[0]!.trim().toLowerCase();
     const buf = Buffer.from(await file.arrayBuffer());
+    const mime = resolveImageMime(buf, file.type || "");
 
     let publicPath: string;
     try {
@@ -56,14 +59,21 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       if (code === "INVALID_IMAGE" || code === "INVALID_ID") {
         return NextResponse.json({ ok: false, error: "Neplatný obrázek." }, { status: 400 });
       }
+      const storage = objectStorageErrorMessage(e);
+      if (storage) {
+        return NextResponse.json({ ok: false, error: storage }, { status: 502 });
+      }
       throw e;
     }
 
-    return NextResponse.json({ ok: true, imageUrl: publicPath });
+    return NextResponse.json({ ok: true, imageUrl: publicPath, storage: objectStorageMode() });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
     if (msg === "UNAUTHORIZED") return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
     if (msg === "FORBIDDEN") return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-    return NextResponse.json({ ok: false, error: "Error" }, { status: 500 });
+    const storage = objectStorageErrorMessage(e);
+    if (storage) return NextResponse.json({ ok: false, error: storage }, { status: 502 });
+    console.error("[welcome upload]", e);
+    return NextResponse.json({ ok: false, error: "Nahrání selhalo (server)." }, { status: 500 });
   }
 }

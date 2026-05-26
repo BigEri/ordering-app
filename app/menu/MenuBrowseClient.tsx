@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { FilePickButton } from "../../components/FilePickButton";
 import { KioskAnchor } from "../../components/kiosk/KioskAnchor";
 
 import { MenuItemOrderModal } from "../../components/MenuItemOrderModal";
@@ -155,7 +156,7 @@ export function MenuBrowseClient({
   const [photoUrlDraft, setPhotoUrlDraft] = React.useState("");
   const [photoSaving, setPhotoSaving] = React.useState(false);
   const [photoUploading, setPhotoUploading] = React.useState(false);
-  const photoFileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const [photoUploadErr, setPhotoUploadErr] = React.useState<string | null>(null);
   const [menuEditorErr, setMenuEditorErr] = React.useState<string | null>(null);
   const [menuImagesHealthErr, setMenuImagesHealthErr] = React.useState<string | null>(null);
   const [brokenMenuImageUrls, setBrokenMenuImageUrls] = React.useState<Array<{ url: string; status?: number; reason?: string }>>([]);
@@ -584,22 +585,32 @@ export function MenuBrowseClient({
       if (!restaurantId || !photoModal) return;
       setPhotoUploading(true);
       setMenuEditorErr(null);
+      setPhotoUploadErr(null);
       try {
         const fd = new FormData();
         fd.set("restaurantId", restaurantId);
         fd.set("menuItemId", photoModal.id);
         fd.set("file", file);
-        const r = await fetch("/api/admin/menu/item-image/upload", { method: "POST", body: fd });
+        const r = await fetch("/api/admin/menu/item-image/upload", {
+          method: "POST",
+          body: fd,
+          credentials: "same-origin",
+        });
         const j = (await r.json()) as { ok?: boolean; imageUrl?: string; error?: string };
         if (!r.ok || !j.ok || !j.imageUrl) {
-          setMenuEditorErr(j.error ?? "Nahrání fotky se nezdařilo.");
+          const msg = j.error ?? "Nahrání fotky se nezdařilo.";
+          setMenuEditorErr(msg);
+          setPhotoUploadErr(msg);
           return;
         }
         setOverrides((o) => ({ ...o, images: { ...o.images, [photoModal.id]: j.imageUrl! } }));
         setPhotoUrlDraft(j.imageUrl);
+        setPhotoUploadErr(null);
         setPhotoModal(null);
       } catch {
-        setMenuEditorErr("Nahrání fotky se nezdařilo (síť).");
+        const msg = "Nahrání fotky se nezdařilo (síť).";
+        setMenuEditorErr(msg);
+        setPhotoUploadErr(msg);
       } finally {
         setPhotoUploading(false);
       }
@@ -1146,6 +1157,7 @@ export function MenuBrowseClient({
                             onClick={() => {
                               setPhotoModal(item);
                               setPhotoUrlDraft(item.imageUrl ?? "");
+                              setPhotoUploadErr(null);
                             }}
                           >
                             Foto
@@ -1431,7 +1443,12 @@ export function MenuBrowseClient({
           onClick={() => setPhotoModal(null)}
           className="modalOverlay modalOverlay--60"
         >
-          <div onClick={(e) => e.stopPropagation()} className="modalCard" style={{ maxWidth: 480 }}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="modalCard"
+            style={{ maxWidth: 480 }}
+          >
             <strong className="modalTitle">Fotka: {photoModal.name}</strong>
             <p className="textMuted2" style={{ margin: "8px 0 12px", fontSize: 13 }}>
               Nahrajte obrázek z počítače nebo z galerie (mobil), nebo vložte veřejnou HTTPS adresu (např. Cloudinary). Hosté ji uvidí na kartě jídla.
@@ -1439,30 +1456,21 @@ export function MenuBrowseClient({
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
               Max. velikost pro nahrání: <strong>5&nbsp;MB</strong>. Podporované typy: <strong>JPEG/PNG/WebP</strong>.
             </p>
-            <input
-              ref={photoFileInputRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              tabIndex={-1}
-              aria-hidden={true}
-              style={{ position: "absolute", width: 1, height: 1, opacity: 0, pointerEvents: "none" }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) void uploadMenuPhotoFile(f);
-              }}
-            />
             <div style={{ marginBottom: 12 }}>
-              <button
-                type="button"
+              <FilePickButton
                 className="chip"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 disabled={photoSaving || photoUploading || !restaurantId}
-                onClick={() => photoFileInputRef.current?.click()}
-                style={{ cursor: "pointer" }}
+                onFile={(f) => void uploadMenuPhotoFile(f)}
               >
                 {photoUploading ? "Nahrávám…" : "Vybrat soubor…"}
-              </button>
+              </FilePickButton>
             </div>
+            {photoUploadErr ? (
+              <p role="alert" style={{ margin: "0 0 12px", color: "#fecaca", fontSize: 14 }}>
+                {photoUploadErr}
+              </p>
+            ) : null}
             <label style={{ display: "grid", gap: 6 }}>
               <span>URL obrázku</span>
               <input

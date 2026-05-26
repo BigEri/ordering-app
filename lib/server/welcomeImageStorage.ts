@@ -2,7 +2,17 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import sharp from "sharp";
+
 import { randomUuid } from "../randomUuid";
+import { resolveImageMime } from "./imageMime";
+import {
+  deleteObjectStorageFileByUrl,
+  isManagedObjectStorageUrl,
+  isObjectStorageEnabled,
+  isServerlessReadOnlyFs,
+  putObjectStorageFile,
+  writeLocalPublicFile,
+} from "./objectStorage";
 
 export const WELCOME_UPLOAD_PUBLIC_PREFIX = "/uploads/welcome";
 
@@ -29,6 +39,9 @@ function validateMagicBytes(buf: Buffer, mime: string): boolean {
 export function isAllowedWelcomeImageUrl(imageUrl: string, restaurantId: string, maxLen = 2000): boolean {
   if (!imageUrl || imageUrl.length > maxLen) return false;
   if (imageUrl.includes("..")) return false;
+  if (isManagedObjectStorageUrl(imageUrl)) {
+    return imageUrl.includes(`/welcome/${restaurantId}/`);
+  }
   if (/^https?:\/\//i.test(imageUrl)) return true;
   if (imageUrl.startsWith("/images/")) return true;
   const welcomePrefix = `${WELCOME_UPLOAD_PUBLIC_PREFIX}/${restaurantId}/`;
@@ -39,8 +52,9 @@ export function isAllowedWelcomeImageUrl(imageUrl: string, restaurantId: string,
 export async function writeWelcomeImageUpload(
   restaurantId: string,
   buffer: Buffer,
-  mime: string,
+  mimeDeclared: string,
 ): Promise<{ publicPath: string }> {
+  const mime = resolveImageMime(buffer, mimeDeclared);
   if (!MIME_TO_EXT[mime]) throw new Error("UNSUPPORTED_MIME");
   if (buffer.length > MAX_BYTES) throw new Error("TOO_LARGE");
   if (!validateMagicBytes(buffer, mime)) throw new Error("INVALID_IMAGE");
@@ -66,10 +80,50 @@ export async function writeWelcomeImageUpload(
   }
 
   const name = `${randomUuid()}.webp`;
-  const dir = path.join(process.cwd(), "public", "uploads", "welcome", restaurantId);
-  await fs.mkdir(dir, { recursive: true });
-  const fsPath = path.join(dir, name);
-  await fs.writeFile(fsPath, outBuf);
-  const publicPath = `${WELCOME_UPLOAD_PUBLIC_PREFIX}/${restaurantId}/${name}`;
-  return { publicPath };
+
+  if (isObjectStorageEnabled()) {
+    const { publicUrl } = await putObjectStorageFile({
+      key: `welcome/${restaurantId}/${name}`,
+      body: outBuf,
+      contentType: "image/webp",
+    });
+    return { publicPath: publicUrl };
+  }
+
+  if (isServerlessReadOnlyFs()) {
+    throw new Error("STORAGE_NOT_CONFIGURED");
+  }
+
+  const local = await writeLocalPublicFile({
+    segments: ["uploads", "welcome", restaurantId],
+    fileName: name,
+    body: outBuf,
+  });
+  return { publicPath: local.publicPath };
+}
+
+function filesystemPathFromPublicWelcomeUrl(imageUrl: string): string | null {
+  if (!imageUrl.startsWith(`${WELCOME_UPLOAD_PUBLIC_PREFIX}/`)) return null;
+  const rel = imageUrl.replace(/^\//, "");
+  const full = path.join(process.cwd(), "public", ...rel.split("/"));
+  const resolved = path.resolve(full);
+  const pubRoot = path.resolve(path.join(process.cwd(), "public", "uploads", "welcome"));
+  if (!resolved.startsWith(pubRoot + path.sep)) return null;
+  return resolved;
+}
+
+export async function tryDeleteStoredWelcomeImage(imageUrl: string | null | undefined): Promise<void> {
+  if (!imageUrl?.trim()) return;
+  if (isManagedObjectStorageUrl(imageUrl)) {
+    await deleteObjectStorageFileByUrl(imageUrl);
+    return;
+  }
+  if (!imageUrl.startsWith(WELCOME_UPLOAD_PUBLIC_PREFIX)) return;
+  const fsPath = filesystemPathFromPublicWelcomeUrl(imageUrl);
+  if (!fsPath) return;
+  try {
+    await fs.unlink(fsPath);
+  } catch {
+    /* ignore */
+  }
 }

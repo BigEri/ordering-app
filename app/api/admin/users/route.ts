@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
 import { requireActiveRestaurantId, requireAdminSession } from "../../../../lib/server/adminGuard";
+import { PASSWORD_MIN_LENGTH, isPasswordLongEnough } from "../../../../lib/server/passwordPolicy";
 import { nowIso, type MembershipRole } from "../../../../lib/server/db";
 import { prisma } from "../../../../lib/server/prisma";
 
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
     const restaurantId = await requireActiveRestaurantId(session, cookieHeader);
     const rows = await prisma.membership.findMany({
       where: { restaurantId },
@@ -48,7 +49,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
     const restaurantId = await requireActiveRestaurantId(session, cookieHeader);
 
     let body: unknown;
@@ -66,6 +67,12 @@ export async function POST(req: Request) {
     const role = typeof o.role === "string" ? o.role : "";
     if (!email || !password || (role !== "RESTAURANT_ADMIN" && role !== "STAFF")) {
       return NextResponse.json({ ok: false, error: "Missing email/password/role" }, { status: 400 });
+    }
+    if (!isPasswordLongEnough(password)) {
+      return NextResponse.json(
+        { ok: false, error: `Password too short (min. ${PASSWORD_MIN_LENGTH} characters)` },
+        { status: 400 },
+      );
     }
 
     // Only restaurant admins (or super admin) can manage users.
@@ -117,7 +124,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
-    const session = requireAdminSession(cookieHeader);
+    const session = await requireAdminSession(cookieHeader);
     const restaurantId = await requireActiveRestaurantId(session, cookieHeader);
     if (!restaurantId) {
       return NextResponse.json({ ok: false, error: "No restaurant selected" }, { status: 400 });
