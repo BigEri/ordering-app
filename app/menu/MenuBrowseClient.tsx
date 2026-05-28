@@ -1456,6 +1456,9 @@ export function MenuBrowseClient({
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
               Max. velikost pro nahrání: <strong>5&nbsp;MB</strong>. Podporované typy: <strong>JPEG/PNG/WebP</strong>.
             </p>
+            <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
+              Máte-li zároveň vyplněnou URL i nahrajete soubor, použije se <strong>nahraný soubor</strong> — ten se zobrazí hostům na kartě jídla.
+            </p>
             <div style={{ marginBottom: 12 }}>
               <FilePickButton
                 className="chip"
