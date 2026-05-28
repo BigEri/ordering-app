@@ -21,12 +21,12 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
       });
       const data = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !data.ok) {
-        setErr(data.error ?? "Přihlášení se nezdařilo.");
+        setErr(data.error ?? "Nepodařilo se přihlásit. Zkontrolujte e‑mail a heslo a zkuste to znovu.");
         return;
       }
       window.location.href = nextPath;
     } catch {
-      setErr("Přihlášení se nezdařilo (síť).");
+      setErr("Nepodařilo se přihlásit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
     <main style={{ maxWidth: 520, margin: "0 auto", padding: "40px 16px 64px" }}>
       <h1 style={{ margin: "0 0 8px", fontSize: "1.6rem" }}>Admin</h1>
       <p className="textMuted" style={{ margin: "0 0 20px" }}>
-        Přihlášení pro vedoucího / personál restaurace.
+        Přihlášení pro správu restaurace.
       </p>
 
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>

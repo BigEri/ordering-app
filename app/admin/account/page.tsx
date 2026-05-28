@@ -8,6 +8,7 @@ type Resp = { ok: true } | { ok: false; error: string };
 function errCs(msg: string | undefined): string {
   if (!msg) return "Operace selhala.";
   const m: Record<string, string> = {
+    Error: "Něco se pokazilo. Zkuste to prosím znovu.",
     Unauthorized: "Nejste přihlášeni.",
     "Invalid credentials": "Staré heslo není správně.",
     "Passwords do not match": "Nové heslo se neshoduje.",
@@ -46,7 +47,7 @@ export default function AdminAccountPage() {
       setNewPassword2("");
       setSaved(true);
     } catch {
-      setErr("Operace selhala (síť).");
+      setErr("Nepodařilo se uložit změnu (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setSaving(false);
     }

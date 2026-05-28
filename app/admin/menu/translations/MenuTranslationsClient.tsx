@@ -236,7 +236,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         setAutoSaveState("idle");
         setAutoSaveErr(null);
       } catch {
-        if (!cancelled) setErr("Načtení se nezdařilo (síť).");
+        if (!cancelled) setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -618,9 +618,9 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
             options: dl.options,
           }),
         });
-        if (!rDl.ok && !silent) setErr("Uložení úprav (Dotykačka) se nezdařilo.");
+        if (!rDl.ok && !silent) setErr("Úpravy pro Dotykačku se nepodařilo uložit. Zkuste to prosím znovu.");
       } catch {
-        if (!silent) setErr("Uložení úprav (Dotykačka) se nezdařilo (síť).");
+        if (!silent) setErr("Úpravy pro Dotykačku se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
       }
 
       setSavedAt(Date.now());
@@ -636,7 +636,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         dotykackaLabelsByLocale: nextDotykacka,
       });
     } catch {
-      const msg = "Uložení se nezdařilo (síť).";
+      const msg = "Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.";
       if (silent) setAutoSaveErr(msg);
       else setErr(msg);
       setAutoSaveState("error");
@@ -797,7 +797,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           Překlady menu
         </h1>
         <p className="textMuted2">
-          Nastavte <code>PUBLIC_RESTAURANT_ID</code>, aby šlo určit provozovnu pro uložené texty.
+          Nejdřív vyberte provozovnu (aktivní restauraci). Potom tu můžete upravovat překlady položek a kategorií.
         </p>
         <AdminChipLink href="/admin">
           Zpět do adminu

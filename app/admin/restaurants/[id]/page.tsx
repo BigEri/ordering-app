@@ -90,7 +90,7 @@ function RestaurantDetailInner() {
       if (!dR.ok || !dJ.ok) setErr(!dR.ok ? "Nelze načíst detail restaurace." : ("error" in dJ ? dJ.error : "Chyba"));
       if (!uR.ok || !uJ.ok) setErr(!uR.ok ? "Nelze načíst uživatele restaurace." : ("error" in uJ ? uJ.error : "Chyba"));
     } catch {
-      setErr("Načtení se nezdařilo (síť).");
+      setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     }
   }, [id]);
 
@@ -113,7 +113,7 @@ function RestaurantDetailInner() {
       setLocales(Array.isArray(j.locales) ? j.locales : []);
       setLocalesHasConfig(Boolean(j.hasConfig));
     } catch {
-      setLocalesErr("Nelze načíst jazykové nastavení (síť).");
+      setLocalesErr("Nepodařilo se načíst jazykové nastavení (zřejmě výpadek připojení). Zkuste to prosím znovu.");
       setLocales(null);
     } finally {
       setLocalesLoading(false);
@@ -144,7 +144,7 @@ function RestaurantDetailInner() {
         setApiBaseDraft(j.apiBase || "");
       }
     } catch {
-      setDotyk({ ok: false, error: "Načtení Dotyky selhalo (síť)." });
+      setDotyk({ ok: false, error: "Nepodařilo se načíst nastavení Dotykačky (zřejmě výpadek připojení)." });
     } finally {
       setDotykLoading(false);
     }
@@ -166,7 +166,7 @@ function RestaurantDetailInner() {
       }
       setBranchesFromApi(Array.isArray(j.branches) ? j.branches : []);
     } catch {
-      setBranchesErr("Načtení poboček selhalo (síť).");
+      setBranchesErr("Nepodařilo se načíst pobočky (zřejmě výpadek připojení). Zkuste to prosím znovu.");
       setBranchesFromApi(null);
     } finally {
       setBranchesLoading(false);
@@ -259,7 +259,7 @@ function RestaurantDetailInner() {
       setDotykMsg("Uloženo.");
       await loadDotykacka();
     } catch {
-      setDotykMsg("Uložení selhalo (síť).");
+      setDotykMsg("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setDotykSaving(false);
     }
@@ -290,7 +290,7 @@ function RestaurantDetailInner() {
       setDotykMsg(nextDisabled ? "Dotykačka odpojena (disabled)." : "Dotykačka znovu zapnuta.");
       await loadDotykacka();
     } catch {
-      setDotykMsg("Změna stavu selhala (síť).");
+      setDotykMsg("Změna se nezdařila (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setDotykToggleSaving(false);
     }
@@ -320,7 +320,7 @@ function RestaurantDetailInner() {
       await load();
       window.dispatchEvent(new Event("oa-restaurant-updated"));
     } catch {
-      setErr("Uložení názvu selhalo (síť).");
+      setErr("Název se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setSavingName(false);
     }
@@ -554,7 +554,7 @@ function RestaurantDetailInner() {
                       setLocalesSavedMsg("Uloženo.");
                       await loadLocales();
                     } catch {
-                      setLocalesErr("Uložení selhalo (síť).");
+                      setLocalesErr("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
                     } finally {
                       setLocalesSaving(false);
                     }

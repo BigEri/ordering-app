@@ -286,7 +286,7 @@ export function MenuBrowseClient({
         setMenuImagesHealthCheckedCount(typeof j.checkedCount === "number" ? j.checkedCount : null);
       } catch {
         if (cancelled) return;
-        setMenuImagesHealthErr("Nelze ověřit externí URL obrázků v menu (síť).");
+        setMenuImagesHealthErr("Nepodařilo se ověřit externí odkazy na obrázky (zřejmě výpadek připojení).");
         setBrokenMenuImageUrls([]);
         setMenuImagesHealthCheckedAtIso(new Date().toISOString());
         setMenuImagesHealthCheckedCount(null);
@@ -364,7 +364,7 @@ export function MenuBrowseClient({
           }
         }
       } catch {
-        setMenuEditorErr("Uložení viditelnosti selhalo (síť).");
+        setMenuEditorErr("Nepodařilo se uložit změnu (zřejmě výpadek připojení). Zkuste to prosím znovu.");
       }
     },
     [restaurantId, canEditMenu],
@@ -407,7 +407,7 @@ export function MenuBrowseClient({
           }
         }
       } catch {
-        setMenuEditorErr("Uložení viditelnosti kategorie selhalo (síť).");
+        setMenuEditorErr("Nepodařilo se uložit změnu (zřejmě výpadek připojení). Zkuste to prosím znovu.");
       }
     },
     [restaurantId, canEditMenu],
@@ -468,7 +468,7 @@ export function MenuBrowseClient({
         }
         return true;
       } catch {
-        setMenuEditorErr("Pořadí se nepodařilo uložit (síť).");
+        setMenuEditorErr("Pořadí se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
         return false;
       } finally {
         setOrderSavingKey(null);
@@ -546,7 +546,7 @@ export function MenuBrowseClient({
       });
       setPhotoModal(null);
     } catch {
-      setMenuEditorErr("Fotku se nepodařilo uložit (síť).");
+      setMenuEditorErr("Fotku se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setPhotoSaving(false);
     }
@@ -574,7 +574,7 @@ export function MenuBrowseClient({
       });
       setPhotoModal(null);
     } catch {
-      setMenuEditorErr("Fotku se nepodařilo odstranit (síť).");
+      setMenuEditorErr("Fotku se nepodařilo odstranit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setPhotoSaving(false);
     }
@@ -608,7 +608,7 @@ export function MenuBrowseClient({
         setPhotoUploadErr(null);
         setPhotoModal(null);
       } catch {
-        const msg = "Nahrání fotky se nezdařilo (síť).";
+        const msg = "Nahrání se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.";
         setMenuEditorErr(msg);
         setPhotoUploadErr(msg);
       } finally {

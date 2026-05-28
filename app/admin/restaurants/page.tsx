@@ -38,10 +38,10 @@ export default function SuperAdminRestaurantsPage() {
       const rJ = (await rR.json()) as RestaurantsResponse;
       setMe(meJ);
       setRestaurants(rJ);
-      if (!meR.ok || !meJ.ok) setErr("Nelze načíst profil.");
-      if (!rR.ok || !rJ.ok) setErr("Nelze načíst restaurace.");
+      if (!meR.ok || !meJ.ok) setErr("Nepodařilo se načíst váš profil.");
+      if (!rR.ok || !rJ.ok) setErr("Nepodařilo se načíst seznam restaurací.");
     } catch {
-      setErr("Načtení se nezdařilo (síť).");
+      setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     }
   }, []);
 
@@ -55,13 +55,13 @@ export default function SuperAdminRestaurantsPage() {
     try {
       const sel = await postSelectActiveRestaurant(restaurantId);
       if (!sel.ok) {
-        setErr(sel.error ?? "Výběr restaurace selhal.");
+        setErr(sel.error ?? "Restauraci se nepodařilo vybrat. Zkuste to prosím znovu.");
         return;
       }
       window.dispatchEvent(new Event("oa-restaurant-updated"));
       window.location.href = next;
     } catch {
-      setErr("Výběr restaurace selhal (síť).");
+      setErr("Restauraci se nepodařilo vybrat (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setSelecting(null);
     }
@@ -85,7 +85,7 @@ export default function SuperAdminRestaurantsPage() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string; restaurantId?: string };
       if (!r.ok || !j.ok || !j.restaurantId) {
-        setErr(j.error ?? "Vytvoření restaurace selhalo.");
+        setErr(j.error ?? "Restauraci se nepodařilo vytvořit. Zkuste to prosím znovu.");
         return;
       }
       setRestaurantName("");
@@ -94,7 +94,7 @@ export default function SuperAdminRestaurantsPage() {
       await load();
       window.location.href = `/admin/restaurants/${j.restaurantId}`;
     } catch {
-      setErr("Vytvoření restaurace selhalo (síť).");
+      setErr("Restauraci se nepodařilo vytvořit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setCreating(false);
     }

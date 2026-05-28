@@ -39,13 +39,13 @@ export default function AdminHomePage() {
       setMe(meJ);
       setRestaurants(rJ);
       if (!meR.ok || (meJ as { ok?: boolean }).ok !== true) {
-        setErr("Nelze načíst profil (nejspíš vypršelo přihlášení).");
+        setErr("Nepodařilo se načíst váš profil (možná vypršelo přihlášení).");
       }
       if (!rR.ok || (rJ as { ok?: boolean }).ok !== true) {
-        setErr("Nelze načíst restaurace.");
+        setErr("Nepodařilo se načíst seznam restaurací.");
       }
     } catch {
-      setErr("Načtení se nezdařilo (síť).");
+      setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     }
   }, []);
 
@@ -95,13 +95,13 @@ export default function AdminHomePage() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(j.error ?? "Uložení názvu selhalo.");
+        setErr(j.error ?? "Název se nepodařilo uložit. Zkuste to prosím znovu.");
         return;
       }
       await load();
       window.dispatchEvent(new Event("oa-restaurant-updated"));
     } catch {
-      setErr("Uložení názvu selhalo (síť).");
+      setErr("Název se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setSavingName(false);
     }
@@ -113,13 +113,13 @@ export default function AdminHomePage() {
     try {
       const sel = await postSelectActiveRestaurant(restaurantId);
       if (!sel.ok) {
-        setErr(sel.error ?? "Výběr restaurace selhal.");
+        setErr(sel.error ?? "Restauraci se nepodařilo vybrat. Zkuste to prosím znovu.");
         return;
       }
       await load();
       window.dispatchEvent(new Event("oa-restaurant-updated"));
     } catch {
-      setErr("Výběr restaurace selhal (síť).");
+      setErr("Restauraci se nepodařilo vybrat (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setSelecting(null);
     }
@@ -165,9 +165,7 @@ export default function AdminHomePage() {
         >
           <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Název pro zákazníky</h2>
           <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
-            Zobrazuje se na úvodní stránce, v menu a v záhlaví. Při více restauracích v databázi můžete v{" "}
-            <code style={{ fontSize: 12 }}>.env.local</code> nastavit <code style={{ fontSize: 12 }}>PUBLIC_RESTAURANT_ID</code> na ID této
-            provozovny.
+            Zobrazuje se na úvodní stránce, v menu a v záhlaví aplikace.
           </p>
           <form onSubmit={(e) => void onSaveRestaurantName(e)} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
             <label style={{ display: "grid", gap: 6, flex: "1 1 220px" }}>

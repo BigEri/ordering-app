@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   const rl = checkRateLimit(`login:${ip}`, MAX_LOGIN_ATTEMPTS, LOGIN_WINDOW_MS);
   if (!rl.ok) {
     return NextResponse.json(
-      { ok: false, error: "Too many attempts" },
+      { ok: false, error: "Příliš mnoho pokusů. Zkuste to prosím za chvíli znovu." },
       { status: 429, headers: { "Retry-After": String(rl.retryAfterSec) } },
     );
   }
@@ -29,11 +29,11 @@ export async function POST(req: Request) {
   try {
     body = (await req.json()) as unknown;
   } catch {
-    return NextResponse.json({ ok: false, error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Nepodařilo se zpracovat požadavek." }, { status: 400 });
   }
 
   if (!body || typeof body !== "object") {
-    return NextResponse.json({ ok: false, error: "Invalid payload" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Nepodařilo se zpracovat požadavek." }, { status: 400 });
   }
 
   const o = body as Record<string, unknown>;
@@ -41,17 +41,17 @@ export async function POST(req: Request) {
   const password = typeof o.password === "string" ? o.password : "";
 
   if (!email || !password) {
-    return NextResponse.json({ ok: false, error: "Missing email or password" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "Vyplňte prosím e‑mail i heslo." }, { status: 400 });
   }
 
   const user = await getUserByEmail(email);
   if (!user) {
-    return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "Nesprávný e‑mail nebo heslo." }, { status: 401 });
   }
 
   const ok = await bcrypt.compare(password, user.passwordHash);
   if (!ok) {
-    return NextResponse.json({ ok: false, error: "Invalid credentials" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "Nesprávný e‑mail nebo heslo." }, { status: 401 });
   }
 
   const svRow = await prisma.user.findUnique({

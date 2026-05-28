@@ -119,7 +119,7 @@ export function WelcomeSettingsClient() {
         setHealthCheckedAtIso(new Date().toISOString());
         setHealthCheckedCount(typeof j.checkedCount === "number" ? j.checkedCount : null);
       } catch {
-        setHealthErr("Nelze ověřit externí URL obrázků (síť).");
+        setHealthErr("Nepodařilo se ověřit externí odkazy na obrázky (zřejmě výpadek připojení).");
         setBrokenExternalUrls([]);
         setHealthCheckedAtIso(new Date().toISOString());
         setHealthCheckedCount(null);
@@ -168,7 +168,7 @@ export function WelcomeSettingsClient() {
           .filter((x) => x.menuItemId && x.imageUrl);
         setMenuImages(cleaned);
       } catch {
-        setMenuPickerErr("Nelze načíst fotky z menu (síť).");
+        setMenuPickerErr("Nepodařilo se načíst fotky z menu (zřejmě výpadek připojení).");
         setMenuImages([]);
       } finally {
         setMenuPickerLoading(false);
@@ -213,7 +213,7 @@ export function WelcomeSettingsClient() {
       }
       setUrlAt(idx, j.imageUrl);
     } catch {
-      setSaveErr("Nahrání selhalo (síť).");
+      setSaveErr("Nahrání se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     }
   };
 
@@ -246,7 +246,7 @@ export function WelcomeSettingsClient() {
         else setImageUrls(defaultAppUrls());
       }
     } catch {
-      setSaveErr("Uložení selhalo (síť).");
+      setSaveErr("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setSaving(false);
     }
@@ -267,11 +267,8 @@ export function WelcomeSettingsClient() {
         Max. velikost pro nahrání: <strong>10 MB</strong> na obrázek.
       </p>
       <p className="textMuted2" style={{ margin: "0 0 20px", maxWidth: 720, lineHeight: 1.55 }}>
-        Fotky na úvodní stránce <a href="/">/</a> pro hosty a nepárované tablety. Můžete zadat URL (HTTPS nebo
-        lokální cesta z nahraného souboru), nahrát obrázek z telefonu, nebo vybrat fotku z menu. Limit je max.{" "}
-        <strong>6 obrázků</strong>. Nahrávání podporuje <strong>JPEG/PNG/WebP</strong> a max. <strong>10 MB</strong> na
-        soubor (po nahrání se optimalizuje pro rychlé načítání). Rozložení: klasická mozaika (1+2), dvě poloviny 50/50,
-        čtyři čtvrtiny 2×2, nebo jedna plocha se střídáním fotek.
+        Nastavte fotky, které se zobrazují na úvodní stránce pro hosty. Můžete vložit veřejnou HTTPS adresu, nahrát obrázek z telefonu,
+        nebo vybrat fotku z menu. Maximum je <strong>6 obrázků</strong>, jeden soubor může mít až <strong>10 MB</strong>.
       </p>
 
       {brokenExternalUrls.length > 0 ? (

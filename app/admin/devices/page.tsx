@@ -558,9 +558,7 @@ export default function AdminDevicesPage() {
         </p>
         {dotyTablesErr ? (
           <p className="textMuted2" style={{ margin: "0 0 8px", fontSize: 13 }}>
-            Seznam stolů z Dotyky se nepovedlo načíst (zkontrolujte Dotyku u aktivní restaurace v administraci nebo{" "}
-            <code>.env</code>). ID stolu můžete zadat ručně níže — z administrace Dotyky nebo z API{" "}
-            <code>…/tables</code> (<code>data[].id</code>).
+            Seznam stolů z Dotykačky se nepodařilo načíst. Zkontrolujte propojení Dotykačky u aktivní restaurace, případně zadejte ID stolu ručně níže.
           </p>
         ) : null}
         <form onSubmit={onBind} style={{ display: "grid", gap: 12, maxWidth: 420 }}>

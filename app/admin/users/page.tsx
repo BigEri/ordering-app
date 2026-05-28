@@ -15,6 +15,7 @@ type UsersResponse =
 function errCs(msg: string | undefined): string {
   if (!msg) return "Operace selhala.";
   const m: Record<string, string> = {
+    Error: "Něco se pokazilo. Zkuste to prosím znovu.",
     "Cannot remove yourself": "Sebe z této restaurace nemůžete odebrat.",
     "User not in restaurant": "Uživatel v této restauraci není.",
     "Only superadmin can remove restaurant admins": "Odebrat vedoucího může jen superadmin.",
@@ -50,10 +51,10 @@ export default function AdminUsersPage() {
       const j = (await r.json()) as UsersResponse;
       setData(j);
       if (!r.ok || !j.ok) {
-        setErr(!r.ok ? "Nelze načíst uživatele." : ("error" in j ? j.error : "Nelze načíst uživatele."));
+        setErr(!r.ok ? "Nepodařilo se načíst seznam uživatelů." : ("error" in j ? j.error : "Nepodařilo se načíst seznam uživatelů."));
       }
     } catch {
-      setErr("Nelze načíst uživatele (síť).");
+      setErr("Nepodařilo se načíst seznam uživatelů (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setLoading(false);
     }
@@ -76,7 +77,7 @@ export default function AdminUsersPage() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(j.error ?? "Uložení selhalo.");
+        setErr(j.error ?? "Uložení se nepodařilo. Zkuste to prosím znovu.");
         return;
       }
       setEmail("");
@@ -85,7 +86,7 @@ export default function AdminUsersPage() {
       setSaved(true);
       await load();
     } catch {
-      setErr("Uložení selhalo (síť).");
+      setErr("Uložení se nepodařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setSaving(false);
     }
@@ -121,7 +122,7 @@ export default function AdminUsersPage() {
       }
       await load();
     } catch {
-      setErr("Odebrání selhalo (síť).");
+      setErr("Odebrání se nepodařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setRemovingId(null);
     }
@@ -160,7 +161,7 @@ export default function AdminUsersPage() {
       await load();
       window.alert(`Heslo pro „${email}“ bylo nastaveno.`);
     } catch {
-      setErr("Reset hesla selhal (síť).");
+      setErr("Změna hesla se nepodařila (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setResettingId(null);
     }
