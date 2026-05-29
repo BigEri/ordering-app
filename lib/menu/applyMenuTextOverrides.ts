@@ -23,8 +23,8 @@ export function applyMenuTextOverrides(
       const o = overrides.items[item.id];
       if (!o) return item;
       const next = { ...item };
-      if (o.name) next.name = o.name;
-      if (o.description !== undefined) next.description = o.description;
+      if (o.name?.trim()) next.name = o.name.trim();
+      if (o.description?.trim()) next.description = o.description.trim();
       return next;
     });
 

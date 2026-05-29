@@ -270,9 +270,9 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       const cur = prev[locale] ?? emptyLocale();
       const nextItems = { ...cur.items };
       const existing = (nextItems[itemId] ?? {}) as { name?: string; description?: string };
-      if (description === "") {
+      if (description.trim() === "") {
         const { name } = existing;
-        if (typeof name === "string" && name !== "") nextItems[itemId] = { name };
+        if (typeof name === "string" && name.trim() !== "") nextItems[itemId] = { name };
         else delete nextItems[itemId];
       } else {
         nextItems[itemId] = { ...existing, description };

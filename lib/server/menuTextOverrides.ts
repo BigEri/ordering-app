@@ -6,7 +6,7 @@ export const MENU_TEXT_MAX_DESCRIPTION = 4000;
 
 export type MenuTextOverrideItemPayload = {
   name?: string;
-  /** `undefined` = neukládat přepsání popisu; řetězec včetně `""` = uložit. */
+  /** `undefined` = neukládat přepsání popisu; prázdný/whitespace řetězec = bez přepsání (Dotykačka). */
   description?: string;
 };
 
@@ -48,8 +48,8 @@ export function readMenuTextOverridesForRestaurantLocale(
     for (const r of rows) {
       if (r.entityType === "item") {
         const o: { name?: string; description?: string } = {};
-        if (r.name != null && r.name !== "") o.name = r.name;
-        if (r.description !== null) o.description = r.description;
+        if (r.name != null && r.name.trim() !== "") o.name = r.name;
+        if (r.description != null && r.description.trim() !== "") o.description = r.description;
         if (Object.keys(o).length > 0) items[r.entityId] = o;
       } else if (r.entityType === "category") {
         if (r.name != null && r.name !== "") categories[r.entityId] = { name: r.name };
@@ -80,8 +80,8 @@ export async function readAllMenuTextOverridesForRestaurant(
     const bucket = out[lc]!;
     if (r.entityType === "item") {
       const o: { name?: string; description?: string } = {};
-      if (r.name != null && r.name !== "") o.name = r.name;
-      if (r.description !== null) o.description = r.description;
+      if (r.name != null && r.name.trim() !== "") o.name = r.name;
+      if (r.description != null && r.description.trim() !== "") o.description = r.description;
       if (Object.keys(o).length > 0) bucket.items[r.entityId] = o;
     } else if (r.entityType === "category") {
       if (r.name != null && r.name !== "") bucket.categories[r.entityId] = { name: r.name };
@@ -121,18 +121,16 @@ export function replaceMenuTextOverridesForLocale(
       const o = v as MenuTextOverrideItemPayload;
       const name =
         typeof o.name === "string" && o.name.trim() ? o.name.trim().slice(0, MENU_TEXT_MAX_NAME) : null;
-      const hasDescKey = "description" in o;
-      const descColumn = hasDescKey
-        ? typeof o.description === "string"
-          ? o.description.slice(0, MENU_TEXT_MAX_DESCRIPTION)
-          : null
-        : null;
-      if (name == null && !hasDescKey) continue;
+      const descTrimmed =
+        "description" in o && typeof o.description === "string" && o.description.trim()
+          ? o.description.trim().slice(0, MENU_TEXT_MAX_DESCRIPTION)
+          : null;
+      if (name == null && descTrimmed == null) continue;
       rows.push({
         entityType: "item",
         entityId: id,
         name,
-        description: hasDescKey ? descColumn : null,
+        description: descTrimmed,
       });
     }
 
