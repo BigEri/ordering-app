@@ -34,13 +34,6 @@ function formatCzk(value: number) {
   return `${value} Kč`;
 }
 
-function itemNeedsOrderModal(item: MenuItemData): boolean {
-  const hasExcludable = item.ingredients?.some((i) => i.allowExclude !== false) ?? false;
-  const hasDotykacka = (item.dotykackaCustomizationGroups?.length ?? 0) > 0;
-  const hasNote = Boolean((item.description && item.description.trim()) || (item.portionNote && item.portionNote.trim()));
-  return hasExcludable || hasDotykacka || hasNote;
-}
-
 function sectionHeading(sec: DotykackaMenuSection, t: (key: string) => string): string {
   if (sec.labelKey) {
     if (sec.name.trim()) return sec.name;
@@ -707,15 +700,11 @@ export function MenuBrowseClient({
 
   const openMenuItem = React.useCallback(
     (item: MenuItemData) => {
-      if (itemNeedsOrderModal(item)) {
-        setCustomizeItem(
-          applyDotykackaLabelOverridesToItem(item, dotykackaLabelOverrides, dotykackaCustomizationAliasIndex),
-        );
-        return;
-      }
-      addToCartDirect(item);
+      setCustomizeItem(
+        applyDotykackaLabelOverridesToItem(item, dotykackaLabelOverrides, dotykackaCustomizationAliasIndex),
+      );
     },
-    [addToCartDirect, dotykackaCustomizationAliasIndex, dotykackaLabelOverrides],
+    [dotykackaCustomizationAliasIndex, dotykackaLabelOverrides],
   );
 
   const confirmOrder = React.useCallback(async () => {

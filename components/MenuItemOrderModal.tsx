@@ -61,8 +61,6 @@ export function MenuItemOrderModal({ item, open, onClose, onConfirm, t, locale =
     () => item.ingredients?.filter((i) => i.allowExclude !== false) ?? [],
     [item.ingredients],
   );
-  const hasInfo = Boolean((item.description && item.description.trim()) || (item.portionNote && item.portionNote.trim()));
-
   const [picks, setPicks] = React.useState<Record<string, string[]>>({});
   const [excludedNames, setExcludedNames] = React.useState<Set<string>>(() => new Set());
   const [err, setErr] = React.useState<string | null>(null);
@@ -73,23 +71,6 @@ export function MenuItemOrderModal({ item, open, onClose, onConfirm, t, locale =
     setExcludedNames(new Set());
     setErr(null);
   }, [open, item]);
-
-  if (!open) return null;
-  if (excludable.length === 0 && groups.length === 0 && !hasInfo) return null;
-
-  const unitExtra = dotykackaExtraUnitPriceCzk(item, picks);
-  const totalUnit = item.priceCzk + unitExtra;
-
-  const handleConfirm = () => {
-    const v = validateDotykackaPicks(item, picks);
-    if (v) {
-      setErr(v);
-      return;
-    }
-    const excludedIngredients = excludable.filter((ing) => excludedNames.has(ing.name)).map((ing) => ing.name);
-    onConfirm({ excludedIngredients, dotykackaPicks: picks });
-    onClose();
-  };
 
   const allergens = React.useMemo(() => {
     const codes = item.allergenCodes ?? [];
@@ -105,6 +86,22 @@ export function MenuItemOrderModal({ item, open, onClose, onConfirm, t, locale =
       backgroundImage: `radial-gradient(600px 240px at 30% 20%, hsla(${hue}, 90%, 65%, 0.35), transparent 55%), radial-gradient(500px 220px at 80% 10%, hsla(${(hue + 60) % 360}, 90%, 60%, 0.25), transparent 60%), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(0,0,0,0.10))`,
     };
   }, [item.id, item.imageUrl]);
+
+  if (!open) return null;
+
+  const unitExtra = dotykackaExtraUnitPriceCzk(item, picks);
+  const totalUnit = item.priceCzk + unitExtra;
+
+  const handleConfirm = () => {
+    const v = validateDotykackaPicks(item, picks);
+    if (v) {
+      setErr(v);
+      return;
+    }
+    const excludedIngredients = excludable.filter((ing) => excludedNames.has(ing.name)).map((ing) => ing.name);
+    onConfirm({ excludedIngredients, dotykackaPicks: picks });
+    onClose();
+  };
 
   return (
     <div
