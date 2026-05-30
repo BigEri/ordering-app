@@ -276,7 +276,7 @@ async function listOpenDotykackaOrdersForTable(
 }
 
 /**
- * Zápis "žádost o účet" do Dotyky: aktualizuje poznámku u otevřeného účtu a pošle ping přes `order/issue`.
+ * Zápis "žádost o účet" do Dotykačky: aktualizuje poznámku u otevřeného účtu a pošle ping přes `order/issue`.
  * Notifikace přes POS Action musí být povolená Dotypos podporou (viz docs k `order/issue`).
  */
 export async function syncBillRequestToDotykacka(payload: unknown, cfg: DotykackaConfig): Promise<DotykackaSyncResult> {
@@ -386,7 +386,7 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
 }
 
 /**
- * Přivolání personálu: pošle "ping" do Dotyky přes `order/issue` (bez tisku).
+ * Přivolání personálu: pošle "ping" do Dotykačky přes `order/issue` (bez tisku).
  * Vyžaduje existující otevřený účet na stole (stejně jako bill request).
  *
  * Pozn.: notifikace na POS přes `order/issue` musí být povolená Dotypos podporou (viz docs).
@@ -491,7 +491,7 @@ export async function syncOrderConfirmedToDotykacka(
     if (productId === undefined) {
       return {
         ok: false,
-        error: `Pro položku "${menuKey}" chybí mapování v DOTYKACKA_PRODUCT_MAP_JSON nebo platné číselné product id (jako v API Dotyky, včetně záporných).`,
+        error: `Pro položku "${menuKey}" chybí mapování v DOTYKACKA_PRODUCT_MAP_JSON nebo platné číselné product id (jako v API Dotykačky, včetně záporných).`,
         meta: { tableId, sessionExternalId },
       };
     }
@@ -523,7 +523,7 @@ export async function syncOrderConfirmedToDotykacka(
   }
 
   if (items.length === 0) {
-    return { ok: false, error: "Nepodařilo se sestavit položky pro Dotyku", meta: { tableId, sessionExternalId } };
+    return { ok: false, error: "Nepodařilo se sestavit položky pro Dotykačku", meta: { tableId, sessionExternalId } };
   }
 
   const accessToken = await getDotykackaAccessTokenForCloud(cfg);

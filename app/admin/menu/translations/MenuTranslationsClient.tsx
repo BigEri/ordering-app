@@ -389,7 +389,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         const currentList = cur.items[itemId] ?? (baseList ?? []);
         const nextList = currentList.filter((_, i) => i !== idx);
         const nextItems = { ...cur.items };
-        // Prázdný seznam je autoritativní (tzn. nevracet fallback z Dotyky / lokálních defaultů).
+        // Prázdný seznam je autoritativní (tzn. nevracet fallback z Dotykačky / lokálních defaultů).
         nextItems[itemId] = nextList;
         out[code] = { items: nextItems };
       }
@@ -814,7 +814,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
             Překlady menu
           </h1>
           <p className="textMuted2" style={{ margin: "4px 0 0" }}>
-            {restaurantName} — ruční názvy sekcí a položek podle jazyka. Hostům se sloučí s daty z Dotyky podle zvoleného jazyka.
+            {restaurantName} — ruční názvy sekcí a položek podle jazyka. Hostům se sloučí s daty z Dotykačky podle zvoleného jazyka.
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -843,7 +843,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           <li>
             <strong>Výběr přílohy / úpravy u jídla</strong> — až dole (Dotykačka, detail objednávky).
           </li>
-          <li>Ingredience — ruční text „odebrat z jídla“ (bez ID z Dotyky).</li>
+          <li>Ingredience — ruční text „odebrat z jídla“ (bez ID z Dotykačky).</li>
         </ul>
         <p className="textMuted2" style={{ margin: "10px 0 0", lineHeight: 1.55 }}>
           Tip: v <strong>češtině</strong> většinou nemusíte nic vyplňovat. Když necháte pole prázdné, použije se původní český
@@ -1051,7 +1051,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                         Ingredience / „odebrat z jídla“ ({activeLocale}) — volitelné
                       </div>
                       <div className="textMuted2" style={{ fontSize: 13, lineHeight: 1.45 }}>
-                        Ruční texty bez ID z Dotyky — <strong>ne</strong> placené přílohy (ty jsou výše u skupin customizace).
+                        Ruční texty bez ID z Dotykačky — <strong>ne</strong> placené přílohy (ty jsou výše u skupin customizace).
                         <strong> Interní název</strong> = stabilní klíč; v menu host vidí <strong>Zobrazení v menu</strong>.
                       </div>
                       <div style={{ display: "grid", gap: 8 }}>
@@ -1127,7 +1127,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
             <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Doplňky — výběr přílohy a úprav u jídla (Dotykačka)</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
               Nadpis sekce a názvy voleb v <strong>detailu objednávky</strong> (burger, řízek…) pro jazyk{" "}
-              <strong>{activeLocale}</strong>. Stejné skupiny z Dotyky jsou <strong>sloučeny</strong> — stačí jeden překlad.
+              <strong>{activeLocale}</strong>. Stejné skupiny z Dotykačky jsou <strong>sloučeny</strong> — stačí jeden překlad.
               {activeLocale === "cs" ? (
                 <> Prázdné pole = původní český text z Dotykačky.</>
               ) : null}

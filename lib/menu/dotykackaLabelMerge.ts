@@ -72,7 +72,7 @@ export function buildRawDotykackaGroupsFromSections(sections: readonly Dotykacka
   return [...byId.values()].sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
 }
 
-/** Sloučí skupiny se stejným fingerprintem (např. dvě „Přílohy“ z Dotyky). */
+/** Sloučí skupiny se stejným fingerprintem (např. dvě „Přílohy“ z Dotykačky). */
 export function mergeDotykackaEditorGroups(raw: readonly DotykackaEditorGroupRaw[]): DotykackaEditorGroupMerged[] {
   const clusters = new Map<string, DotykackaEditorGroupRaw[]>();
 

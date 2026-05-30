@@ -577,7 +577,7 @@ export default function AdminDevicesPage() {
             {(dotyTables?.length ?? 0) > 0 ? (
               <label style={{ display: "grid", gap: 4 }}>
                 <span className="textMuted2" style={{ fontSize: 12 }}>
-                  Rychlý výběr ze seznamu Dotyky (volitelné)
+                  Rychlý výběr ze seznamu Dotykačky (volitelné)
                 </span>
                 <select
                   className="chip"
@@ -602,7 +602,7 @@ export default function AdminDevicesPage() {
             ) : null}
             <label style={{ display: "grid", gap: 4 }}>
               <span className="textMuted2" style={{ fontSize: 12 }}>
-                {(dotyTables?.length ?? 0) > 0 ? "Nebo zadejte ručně (povinné, pokud nic nevyberete výše)" : "Povinné — číslo ID stolu z Dotyky"}
+                {(dotyTables?.length ?? 0) > 0 ? "Nebo zadejte ručně (povinné, pokud nic nevyberete výše)" : "Povinné — číslo ID stolu z Dotykačky"}
               </span>
               <input
                 className="chip"
@@ -687,7 +687,7 @@ export default function AdminDevicesPage() {
               {(dotyTables?.length ?? 0) > 0 ? (
                 <label style={{ display: "grid", gap: 4 }}>
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Rychlý výběr ze seznamu Dotyky
+                    Rychlý výběr ze seznamu Dotykačky
                   </span>
                   <select
                     className="chip"

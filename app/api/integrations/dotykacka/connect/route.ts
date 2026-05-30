@@ -6,7 +6,7 @@ import { userHasRestaurantAccess } from "../../../../../lib/server/auth";
 import { createDotykackaOAuthState } from "../../../../../lib/server/dotykackaOAuthState";
 
 /**
- * Přesměrování na grant stránku Dotyky (refresh token).
+ * Přesměrování na grant stránku Dotykačky (refresh token).
  * Volitelně `?restaurantId=` — po návratu se token uloží pro tuto provozovnu (přihlášený admin).
  * Při chybách HTML stránka (ne holý JSON), aby po kliknutí v adminu nebyla „bílá obrazovka“.
  */
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
         message:
           "OAuth musíte spustit z přihlášené administrace — session cookie po přihlášení chybí nebo vypršela.",
         hintHtml:
-          'Otevřete znovu <a href="/admin">přihlášení do adminu</a>, přihlaste se, vraťte se do detailu restaurace a klikněte znovu na „Připojit Dotyku“.',
+          'Otevřete znovu <a href="/admin">přihlášení do adminu</a>, přihlaste se, vraťte se do detailu restaurace a klikněte znovu na „Připojit Dotykačku“.',
         backHref: "/admin",
       });
     }

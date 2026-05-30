@@ -35,7 +35,7 @@ export type MenuMultiPickGroup = {
   options: MenuSideChoiceOption[];
 };
 
-/** Možnost u skupiny přizpůsobení z Dotyky (produkt v kategorii volby). */
+/** Možnost u skupiny přizpůsobení z Dotykačky (produkt v kategorii volby). */
 export type DotykackaCustomizationOption = {
   id: string;
   productId: number;
@@ -83,7 +83,7 @@ export type MenuItemData = {
   /** Značka rostlinného / vegan friendly jídla (list u názvu) */
   veganFriendly?: boolean;
   priceCzk: number;
-  /** Načteno z Dotyky (`include=customizations` + produkty v `_categoryId`). */
+  /** Načteno z Dotykačky (`include=customizations` + produkty v `_categoryId`). */
   dotykackaCustomizationGroups?: DotykackaCustomizationGroup[];
 };
 

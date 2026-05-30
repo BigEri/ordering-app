@@ -120,7 +120,7 @@ export function Topbar() {
   const openBillRequest = React.useCallback(async () => {
     setTopbarError(null);
     if (orders.length === 0) return;
-    // Jen otevře dialog – do Dotyky se pošle až po volbě spropitného a kliknutí na "Zaplatit".
+    // Jen otevře dialog – do Dotykačky se pošle až po volbě spropitného a kliknutí na "Zaplatit".
     setBillPayErrorKey(null);
     setBillPayErrorDetail(null);
     setBillPayLoading(false);

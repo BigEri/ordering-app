@@ -1,5 +1,5 @@
 /**
- * Skrýt z kioskového menu produkty z interních kategorií Dotyky (ne samostatné jídlo na tabletu):
+ * Skrýt z kioskového menu produkty z interních kategorií Dotykačky (ne samostatné jídlo na tabletu):
  * ingredience, přílohy jako pool pro customizace u hlavních jídel, atd.
  */
 

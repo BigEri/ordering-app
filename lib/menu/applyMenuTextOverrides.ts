@@ -5,7 +5,7 @@ import type { MenuTextOverridesForLocale } from "./menuTextOverridesTypes";
 
 /**
  * Sloučí ruční překlady názvů/popisů položek a názvů sekcí pro daný `locale`.
- * Základ zůstává z Dotyky; přepsání z DB má přednost.
+ * Základ zůstává z Dotykačky; přepsání z DB má přednost.
  */
 export function applyMenuTextOverrides(
   sections: DotykackaMenuSection[],

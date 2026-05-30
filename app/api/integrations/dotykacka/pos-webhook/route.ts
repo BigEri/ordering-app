@@ -5,7 +5,7 @@ import { resolvePosActionWebhook } from "../../../../../lib/server/posActionWebh
 export const dynamic = "force-dynamic";
 
 /**
- * Callback z Dotyky po pos-actions (tělo požadavku obsahuje `webhook` s touto URL).
+ * Callback z Dotykačky po pos-actions (tělo požadavku obsahuje `webhook` s touto URL).
  * Musí být veřejné HTTPS — viz getDotykackaPosWebhookPublicBaseUrl.
  */
 export async function POST(req: Request) {

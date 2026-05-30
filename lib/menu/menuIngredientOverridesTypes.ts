@@ -1,5 +1,5 @@
 export type MenuIngredientOverrideLine = {
-  /** Stabilní klíč — původní název ingredience (z Dotyky / cs), nebo vlastní. */
+  /** Stabilní klíč — původní název ingredience (z Dotykačky / cs), nebo vlastní. */
   sourceName: string;
   /** Text zobrazený hostovi v daném jazyce. */
   label: string;

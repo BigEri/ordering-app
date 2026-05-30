@@ -42,7 +42,7 @@ function sectionHeading(sec: DotykackaMenuSection, t: (key: string) => string): 
   return sec.name;
 }
 
-/** Bezpečné `id` pro kotvu a scroll-spy (klíč kategorie z Dotyky). */
+/** Bezpečné `id` pro kotvu a scroll-spy (klíč kategorie z Dotykačky). */
 function menuSectionDomId(catKey: string): string {
   const safe = catKey.replace(/[^a-zA-Z0-9_-]/g, "_");
   return `menu-section-${safe}`;
@@ -113,7 +113,7 @@ export function MenuBrowseClient({
   const [cartOpen, setCartOpen] = React.useState(true);
   const [orderConfirmedOpen, setOrderConfirmedOpen] = React.useState(false);
   const [orderPosErrorKey, setOrderPosErrorKey] = React.useState<string | null>(null);
-  /** Doplňující text ze serveru (např. chyba Dotyky), zobrazí se pod překladem `orderPosErrorKey`. */
+  /** Doplňující text ze serveru (např. chyba Dotykačky), zobrazí se pod překladem `orderPosErrorKey`. */
   const [orderPosErrorDetail, setOrderPosErrorDetail] = React.useState<string | null>(null);
   const [orderConfirmLoading, setOrderConfirmLoading] = React.useState(false);
   const [cartPendingModal, setCartPendingModal] = React.useState<MenuCartState | null>(null);
@@ -1064,7 +1064,7 @@ export function MenuBrowseClient({
             </span>
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
               <KioskAnchor href="/admin/devices/pair-kiosk" style={{ textDecoration: "underline", fontWeight: 600 }}>
-                Pro obsluhu: párování u stolů (výběr z Dotyky) →
+                Pro obsluhu: párování u stolů (výběr z Dotykačky) →
               </KioskAnchor>
             </div>
           </aside>

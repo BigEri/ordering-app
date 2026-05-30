@@ -12,7 +12,7 @@ export type MenuCartLine = {
   selectedSideId?: string;
   multiPickByGroupId?: Record<string, string[]>;
   savoryGlazeId?: string;
-  /** Klíč skupiny Dotyky (`dk-…`) → vybrané option id (`dkp-…`). */
+  /** Klíč skupiny Dotykačky (`dk-…`) → vybrané option id (`dkp-…`). */
   dotykackaPicks?: Record<string, string[]>;
 };
 

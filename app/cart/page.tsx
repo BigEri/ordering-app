@@ -4,7 +4,7 @@ import * as React from "react";
 
 import { Cart, type CartLine } from "../../components/Cart";
 
-/** Demo — pro produkty z Dotyky přejděte na /menu. */
+/** Demo — pro produkty z Dotykačky přejděte na /menu. */
 const DEMO_LINES: CartLine[] = [];
 
 export default function CartPage() {

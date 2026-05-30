@@ -160,7 +160,7 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; branches?: { id: number; name: string }[]; error?: string };
       if (!r.ok || !j.ok) {
-        setBranchesErr(j.error ?? "Nepodařilo se načíst pobočky z Dotyky.");
+        setBranchesErr(j.error ?? "Nepodařilo se načíst pobočky z Dotykačky.");
         setBranchesFromApi(null);
         return;
       }
@@ -738,7 +738,7 @@ function RestaurantDetailInner() {
                   style={{ textDecoration: "none", display: "inline-block", padding: "8px 14px", borderRadius: 10 }}
                   href={`/api/integrations/dotykacka/connect?restaurantId=${encodeURIComponent(id)}`}
                 >
-                  Připojit Dotyku (OAuth)
+                  Připojit Dotykačku (OAuth)
                 </a>
                 {dotyk.hasRow ? (
                   <button
@@ -777,11 +777,11 @@ function RestaurantDetailInner() {
               ) : null}
               <form onSubmit={(e) => void onSaveDotykacka(e)} style={{ display: "grid", gap: 12 }}>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>ID pobočky (branch) — výběr z Dotyky nebo ručně</span>
+                  <span>ID pobočky (branch) — výběr z Dotykačky nebo ručně</span>
                   {branchesFromApi && branchesFromApi.length > 0 ? (
                     <select
                       className="chip"
-                      aria-label="Vyberte pobočku z Dotyky"
+                      aria-label="Vyberte pobočku z Dotykačky"
                       value={
                         branchesFromApi.some((b) => String(b.id) === branchDraft.trim()) ? branchDraft.trim() : ""
                       }

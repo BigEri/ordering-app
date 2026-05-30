@@ -189,7 +189,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.pairKioskRestaurant": "Provozovna",
     "admin.devices.pairKioskRestaurantPlaceholder": "— vyberte provozovnu —",
     "admin.devices.pairKioskCode": "Kód z tabletu",
-    "admin.devices.pairKioskTableFromDoty": "Stůl z Dotyky",
+    "admin.devices.pairKioskTableFromDoty": "Stůl z Dotykačky",
     "admin.devices.pairKioskTablePlaceholder": "— vyberte stůl —",
     "admin.devices.pairKioskTableManualOption": "Zadat ID a název ručně…",
     "admin.devices.pairKioskNoTables": "Z Dotykačky se nepodařilo načíst žádné stoly. Zkontrolujte propojení, nebo zadejte stůl ručně níže.",

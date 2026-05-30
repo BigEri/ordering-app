@@ -94,7 +94,7 @@ export async function GET(req: NextRequest) {
   <h1>Dotykačku se nepodařilo uložit</h1>
   <div class="warn">
     <p style="margin:0 0 8px;"><strong>Proč:</strong> ${extra}</p>
-    <p style="margin:0;">Po opravě klikněte v administraci na „Připojit Dotyku (OAuth)“ znovu.</p>
+    <p style="margin:0;">Po opravě klikněte v administraci na „Připojit Dotykačku (OAuth)“ znovu.</p>
   </div>
   <p style="margin-top:14px;"><a href="/admin">Zpět do administrace</a></p>
 </body>

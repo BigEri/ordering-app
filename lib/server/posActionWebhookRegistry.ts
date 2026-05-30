@@ -44,7 +44,7 @@ function sleep(ms: number) {
 }
 
 /**
- * Čeká na callback z Dotyky — in-memory (stejná instance) + polling DB (multi-instance / serverless).
+ * Čeká na callback z Dotykačky — in-memory (stejná instance) + polling DB (multi-instance / serverless).
  */
 export function waitForPosActionWebhook(callbackId: string, ms: number): Promise<string | null> {
   void createWebhookCallbackRow(callbackId, ms).catch(() => {});

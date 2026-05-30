@@ -269,17 +269,17 @@ export default function AdminHomePage() {
               style={{ textDecoration: "none", display: "inline-block", padding: "8px 14px", borderRadius: 10 }}
               href={`/api/integrations/dotykacka/connect?restaurantId=${encodeURIComponent(activeId)}`}
             >
-              Připojit Dotyku (OAuth)
+              Připojit Dotykačku (OAuth)
             </a>
             <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(activeId)}?tab=dotykacka`}>
-              Nastavení Dotyky (pobočka + mapa) →
+              Nastavení Dotykačky (pobočka + mapa) →
             </AdminChipLink>
           </div>
         </section>
       ) : me && me.ok && !activeId ? (
         <section style={{ marginTop: 18 }}>
           <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
-            Pro připojení Dotyky nejdřív vyberte aktivní restauraci výše.
+            Pro připojení Dotykačky nejdřív vyberte aktivní restauraci výše.
           </p>
         </section>
       ) : null}

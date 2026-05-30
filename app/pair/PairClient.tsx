@@ -122,7 +122,7 @@ export function PairClient() {
       <p style={{ lineHeight: 1.55, opacity: 0.9, marginBottom: 12 }}>
         Doporučujeme{" "}
         <AdminChipLink href="/admin/devices/pair-kiosk">Párování u stolů</AdminChipLink>{" "}
-        — výběr stolu přímo z Dotyky. Tato stránka slouží pro ruční zadání ID stolu.
+        — výběr stolu přímo z Dotykačky. Tato stránka slouží pro ruční zadání ID stolu.
       </p>
       <p style={{ lineHeight: 1.55, opacity: 0.9, marginBottom: 20 }}>
         Na tabletu otevřete <KioskAnchor href="/menu">/menu</KioskAnchor> — zobrazí se šestimístný kód. Zadejte ho níže spolu se stolem.

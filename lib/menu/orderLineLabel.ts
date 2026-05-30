@@ -149,7 +149,7 @@ export function buildOrderLineName(l: OrderLineSnapshotInput, textLocale: string
   return parts.join(" ");
 }
 
-/** Jednotková cena včetně příplatků za úpravy Dotyky. */
+/** Jednotková cena včetně příplatků za úpravy Dotykačky. */
 export function orderLineUnitPriceCzk(l: OrderLineSnapshotInput): number {
   const base = l.item.priceCzk;
   return base + dotykackaExtraUnitPriceCzk(l.item, l.dotykackaPicks);

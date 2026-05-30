@@ -392,8 +392,8 @@ function mapApiProductToMenuItem(
 }
 
 /**
- * Stáhne produkty z Dotyky seřazené do sekcí podle kategorií (název a pořadí jako v administraci).
- * `item.id` = product id z Dotyky (řetězec) — pro POS sync stačí i bez DOTYKACKA_PRODUCT_MAP_JSON.
+ * Stáhne produkty z Dotykačky seřazené do sekcí podle kategorií (název a pořadí jako v administraci).
+ * `item.id` = product id z Dotykačky (řetězec) — pro POS sync stačí i bez DOTYKACKA_PRODUCT_MAP_JSON.
  */
 export async function fetchDotykackaProductsForMenu(
   restaurantId?: string | null,
@@ -405,7 +405,7 @@ export async function fetchDotykackaProductsForMenu(
       ok: false,
       error: rid
         ? "Pro tuto provozovnu není v aplikaci připojená vlastní Dotykačka — v administraci otevřete detail restaurace, záložka Dotykačka, a dokončete OAuth (cloud z jiné restaurace se už nepoužívá)."
-        : "Nastavte DOTYKACKA_REFRESH_TOKEN a DOTYKACKA_CLOUD_ID v .env, nebo u více provozoven připojte Dotyku pro každou restauraci zvlášť.",
+        : "Nastavte DOTYKACKA_REFRESH_TOKEN a DOTYKACKA_CLOUD_ID v .env, nebo u více provozoven připojte Dotykačku pro každou restauraci zvlášť.",
     };
   }
 
@@ -478,7 +478,7 @@ export async function fetchDotykackaProductsForMenu(
   } catch (e) {
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Nepodařilo se načíst produkty z Dotyky.",
+      error: e instanceof Error ? e.message : "Nepodařilo se načíst produkty z Dotykačky.",
     };
   }
 }

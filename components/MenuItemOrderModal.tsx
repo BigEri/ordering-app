@@ -25,7 +25,7 @@ type MenuItemOrderModalProps = {
   locale?: Locale;
 };
 
-/** Názvy skupin z Dotyky (sectionLabel) — např. „Sladké přísady · Přílohy“. */
+/** Názvy skupin z Dotykačky (sectionLabel) — např. „Sladké přísady · Přílohy“. */
 function dotykackaGroupLabels(
   groups: NonNullable<MenuItemData["dotykackaCustomizationGroups"]>,
 ): string {

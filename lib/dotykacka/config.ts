@@ -60,7 +60,7 @@ function configFromEnv(): DotykackaConfig | null {
 }
 
 /**
- * Jedna provozovna shodná s .env / jediná v DB — bezpečný fallback na globální Dotyku v .env,
+ * Jedna provozovna shodná s .env / jediná v DB — bezpečný fallback na globální Dotykačku v .env,
  * když ještě neexistuje řádek `restaurant_dotykacka` (migrace z jednoho tenanta).
  */
 function shouldUseEnvDotykackaFallbackForRestaurant(restaurantId: string): boolean {

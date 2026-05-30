@@ -15,7 +15,7 @@ export type DotykackaMenuSectionLabelKey = "other" | "all";
 
 export type DotykackaMenuSection = {
   categoryId: number | null;
-  /** Název z Dotyky; u syntetických sekcí prázdné + labelKey. */
+  /** Název z Dotykačky; u syntetických sekcí prázdné + labelKey. */
   name: string;
   labelKey?: DotykackaMenuSectionLabelKey;
   sortOrder: number;

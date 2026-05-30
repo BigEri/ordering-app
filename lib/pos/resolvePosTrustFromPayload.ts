@@ -4,7 +4,7 @@ import { prisma } from "../server/prisma";
 import { resolvePosRestaurantForOrder } from "./resolvePosRestaurantTrust";
 
 /**
- * Stejná logika jako u forwardPos: provozovna pro Dotyku / POS podle vazby zařízení,
+ * Stejná logika jako u forwardPos: provozovna pro Dotykačku / POS podle vazby zařízení,
  * ne podle nedůvěryhodného `restaurantId` z klienta.
  */
 export async function resolvePosTrustFromPayload(
