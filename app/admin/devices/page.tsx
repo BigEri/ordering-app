@@ -18,9 +18,18 @@ type DeviceRow = {
 type HealthPayload = {
   ok?: boolean;
   ts?: string;
-  pos?: { externalUrlConfigured?: boolean };
+  imageStorageConfigured?: boolean;
+  pos?: { configured?: boolean };
   sentry?: { configured?: boolean };
-  dotykacka?: { syncConfigured?: boolean };
+  dotykacka?: { syncConfigured?: boolean; hint?: string | null };
+};
+
+type IntegrationsStatusPayload = {
+  ok?: boolean;
+  ts?: string;
+  pos?: { configured?: boolean };
+  sentry?: { configured?: boolean };
+  dotykacka?: { syncConfigured?: boolean; hint?: string | null };
 };
 
 type DotyTable = { id: number; name: string };
@@ -81,18 +90,44 @@ export default function AdminDevicesPage() {
     }
   }, []);
 
-  const loadHealth = React.useCallback(async () => {
+  const loadHealth = React.useCallback(async (restaurantId: string | null) => {
     setHealthErr(false);
     setHealthLoading(true);
     try {
-      const r = await fetch("/api/health", { cache: "no-store" });
-      const data = (await r.json()) as HealthPayload;
-      if (!r.ok || !data.ok) {
+      const intQs =
+        restaurantId != null && restaurantId !== ""
+          ? `?restaurantId=${encodeURIComponent(restaurantId)}`
+          : "";
+      const [healthRes, intRes] = await Promise.all([
+        fetch("/api/health", { cache: "no-store" }),
+        fetch(`/api/admin/integrations-status${intQs}`, {
+          cache: "no-store",
+          credentials: "same-origin",
+        }),
+      ]);
+      const data = (await healthRes.json()) as HealthPayload;
+      if (!healthRes.ok || !data.ok) {
         setHealthErr(true);
         setHealth(null);
         return;
       }
-      setHealth(data);
+      let merged: HealthPayload = { ...data };
+      if (intRes.ok) {
+        const intData = (await intRes.json()) as IntegrationsStatusPayload;
+        if (intData.ok !== false) {
+          merged = {
+            ...merged,
+            ts: intData.ts ?? merged.ts,
+            pos: { configured: intData.pos?.configured },
+            sentry: { configured: intData.sentry?.configured },
+            dotykacka: {
+              syncConfigured: intData.dotykacka?.syncConfigured,
+              hint: intData.dotykacka?.hint ?? null,
+            },
+          };
+        }
+      }
+      setHealth(merged);
     } catch {
       setHealthErr(true);
       setHealth(null);
@@ -128,8 +163,8 @@ export default function AdminDevicesPage() {
   }, []);
 
   React.useEffect(() => {
-    void loadHealth();
-  }, [loadHealth]);
+    void loadHealth(activeRestaurantId);
+  }, [loadHealth, activeRestaurantId]);
 
   React.useEffect(() => {
     if (!tableEditDevice) return;
@@ -341,7 +376,7 @@ export default function AdminDevicesPage() {
           className="chip"
           onClick={() => {
             void load();
-            void loadHealth();
+            void loadHealth(activeRestaurantId);
           }}
           style={{ cursor: "pointer" }}
           title={tStaff("admin.devices.refreshAllHint")}
@@ -366,6 +401,11 @@ export default function AdminDevicesPage() {
         }}
       >
         <h2 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>{tStaff("admin.devices.healthTitle")}</h2>
+        {activeRestaurantName ? (
+          <p className="textMuted2" style={{ margin: "0 0 8px", fontSize: 13 }}>
+            Kontrola Dotykačky pro: <strong>{activeRestaurantName}</strong>
+          </p>
+        ) : null}
         {healthLoading ? (
           <p className="textMuted" style={{ margin: 0 }}>
             {tStaff("admin.devices.healthLoading")}
@@ -384,18 +424,35 @@ export default function AdminDevicesPage() {
                 {health.ts}
               </li>
             ) : null}
-            <li className="textMuted">
-              {health.pos?.externalUrlConfigured
+            <li className="textMuted2" style={{ fontSize: 13 }}>
+              {health.imageStorageConfigured
+                ? tStaff("admin.devices.healthImageYes")
+                : tStaff("admin.devices.healthImageNo")}
+            </li>
+            <li className="textMuted2" style={{ fontSize: 13 }}>
+              {health.pos?.configured
                 ? tStaff("admin.devices.healthPosYes")
                 : tStaff("admin.devices.healthPosNo")}
             </li>
-            <li className="textMuted">
-              {health.sentry?.configured ? tStaff("admin.devices.healthSentryYes") : tStaff("admin.devices.healthSentryNo")}
+            <li className="textMuted2" style={{ fontSize: 13 }}>
+              {health.sentry?.configured
+                ? tStaff("admin.devices.healthSentryYes")
+                : tStaff("admin.devices.healthSentryNo")}
             </li>
-            <li className="textMuted">
+            <li
+              style={{
+                color: health.dotykacka?.syncConfigured ? "var(--success)" : "#fcd34d",
+                fontSize: 13,
+              }}
+            >
               {health.dotykacka?.syncConfigured
                 ? tStaff("admin.devices.healthDotykackaYes")
                 : tStaff("admin.devices.healthDotykackaNo")}
+              {health.dotykacka?.syncConfigured === false && health.dotykacka?.hint ? (
+                <span className="textMuted2" style={{ display: "block", marginTop: 4, color: "var(--muted)" }}>
+                  {health.dotykacka.hint}
+                </span>
+              ) : null}
             </li>
           </ul>
         ) : null}

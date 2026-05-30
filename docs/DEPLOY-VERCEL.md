@@ -39,6 +39,21 @@ V projektu: **Settings → Environment Variables** (Production + Preview):
 
 Volitelně doplňte z `.env.example` (Dotykačka, `BOOTSTRAP_TOKEN`, …).
 
+### Sentry — sledování chyb (volitelné, free plán)
+
+Aplikace už má `@sentry/nextjs` — stačí DSN na Vercelu:
+
+| Proměnná | Hodnota |
+|----------|---------|
+| `NEXT_PUBLIC_SENTRY_DSN` | DSN z projektu na [sentry.io](https://sentry.io) (Next.js) |
+| `NEXT_PUBLIC_SENTRY_ENVIRONMENT` | `production` |
+| `SENTRY_DSN` | stejné DSN (volitelně, pro server) |
+
+Po **Redeploy** ověřte v adminu **Zařízení → Stav API** („Sledování chyb je zapnuté“).  
+Testovací událost: `POST /api/admin/sentry-test` (přihlášený admin) — v Sentry uvidíte zprávu „test ze administrace“.
+
+Bez DSN se Sentry nespustí — provoz kiosku tím není ovlivněn.
+
 ### Obrázky (Cloudflare R2 — stručně)
 
 1. R2 → Create bucket → zapněte **Public access** (nebo custom domain).
