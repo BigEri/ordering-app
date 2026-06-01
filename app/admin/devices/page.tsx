@@ -318,9 +318,6 @@ export default function AdminDevicesPage() {
         >
           {tStaff("admin.devices.refresh")}
         </button>
-        <a href="/menu" className="chip" style={{ textDecoration: "none" }}>
-          {tStaff("admin.devices.backMenu")}
-        </a>
         <a href="/admin/devices/pair-kiosk" className="chip" style={{ textDecoration: "none" }}>
           Párování u stolů (Dotykačka)
         </a>
