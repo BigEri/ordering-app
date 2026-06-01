@@ -280,7 +280,6 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         <AdminChipLink href="/admin/devices">← {tStaff("admin.devices.title")}</AdminChipLink>
-        <AdminChipLink href="/pair">{tStaff("admin.devices.pairKioskLegacyLink")}</AdminChipLink>
         {pairedDeviceId ? (
           <AdminChipLink href={`/menu?deviceId=${encodeURIComponent(pairedDeviceId)}`}>Otevřít kiosk menu →</AdminChipLink>
         ) : null}

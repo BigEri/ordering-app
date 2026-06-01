@@ -1,11 +1,6 @@
-import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
-import { PairClient } from "./PairClient";
-
+/** Dříve „jednoduché párování“ — sjednoceno na párování u stolů s Dotykačkou. */
 export default function PairPage() {
-  return (
-    <Suspense fallback={<main style={{ padding: 48, textAlign: "center" }}>Načítání…</main>}>
-      <PairClient />
-    </Suspense>
-  );
+  redirect("/admin/devices/pair-kiosk");
 }

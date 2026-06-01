@@ -204,7 +204,6 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.pairKioskSuccess": "Spárováno. Tablet si může obnovit /menu.",
     "admin.devices.pairKioskTablesErr": "Nepodařilo se načíst stoly z Dotykačky. Zkuste to prosím znovu.",
     "admin.devices.pairKioskSelectRestaurantErr": "Nepodařilo se načíst vaši restauraci.",
-    "admin.devices.pairKioskLegacyLink": "Jednoduché párování (bez výběru z Doty)",
     "admin.devices.pairKioskFromQrHint":
       "Odkaz pochází z QR na úvodní stránce tabletu — po přihlášení se kód doplní sám (nebo chvíli počkejte, až tablet vygeneruje párování).",
     "admin.devices.pairKioskDeviceLinked": "Zařízení z QR",
@@ -405,7 +404,6 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.pairKioskSuccess": "Paired. The tablet can refresh /menu.",
     "admin.devices.pairKioskTablesErr": "Could not load tables from Dotykacka.",
     "admin.devices.pairKioskSelectRestaurantErr": "Could not switch active restaurant.",
-    "admin.devices.pairKioskLegacyLink": "Simple pairing (no Doty picker)",
     "admin.devices.pairKioskFromQrHint":
       "This link came from the tablet welcome QR — after sign-in the code fills in automatically (or wait until the tablet has generated pairing).",
     "admin.devices.pairKioskDeviceLinked": "Device from QR",
@@ -606,7 +604,6 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.pairKioskSuccess": "연결됨. 태블릿에서 /menu를 새로 고칠 수 있습니다.",
     "admin.devices.pairKioskTablesErr": "Dotykacka 테이블을 불러오지 못했습니다.",
     "admin.devices.pairKioskSelectRestaurantErr": "활성 매장을 바꾸지 못했습니다.",
-    "admin.devices.pairKioskLegacyLink": "간단 연결(Doty 선택 없음)",
     "admin.devices.pairKioskFromQrHint":
       "태블릿 환영 화면 QR에서 온 링크입니다. 로그인 후 코드가 자동으로 채워지거나, 태블릿이 페어링을 생성할 때까지 잠시 기다리세요.",
     "admin.devices.pairKioskDeviceLinked": "QR의 기기",
