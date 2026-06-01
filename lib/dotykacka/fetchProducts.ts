@@ -404,8 +404,8 @@ export async function fetchDotykackaProductsForMenu(
     return {
       ok: false,
       error: rid
-        ? "Pro tuto provozovnu není v aplikaci připojená vlastní Dotykačka — v administraci otevřete detail restaurace, záložka Dotykačka, a dokončete OAuth (cloud z jiné restaurace se už nepoužívá)."
-        : "Nastavte DOTYKACKA_REFRESH_TOKEN a DOTYKACKA_CLOUD_ID v .env, nebo u více provozoven připojte Dotykačku pro každou restauraci zvlášť.",
+        ? "Pro vaši restauraci není připojená Dotykačka — v administraci otevřete sekci Dotykačka a dokončete OAuth."
+        : "Nastavte DOTYKACKA_REFRESH_TOKEN a DOTYKACKA_CLOUD_ID v .env, nebo připojte Dotykačku v administraci.",
     };
   }
 

@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
           return htmlErrorPage({
             status: 403,
             title: "Přístup zamítnut",
-            message: "K této provozovně nemáte v aplikaci přístup (členství v restauraci).",
+            message: "K vaší restauraci nemáte v aplikaci přístup.",
             backHref,
           });
         }
@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
         message:
           "OAuth musíte spustit z přihlášené administrace — session cookie po přihlášení chybí nebo vypršela.",
         hintHtml:
-          'Otevřete znovu <a href="/admin">přihlášení do adminu</a>, přihlaste se, vraťte se do detailu restaurace a klikněte znovu na „Připojit Dotykačku“.',
+          'Otevřete znovu <a href="/admin">přihlášení do adminu</a>, přihlaste se, vraťte se do nastavení Dotykačky a klikněte znovu na „Připojit Dotykačku“.',
         backHref: "/admin",
       });
     }

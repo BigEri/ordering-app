@@ -965,28 +965,29 @@ export function MenuBrowseClient({
 
           {menuVariant === "editor" && !restaurantId ? (
             <p className="menuEditorHint menuEditorHint--muted" role="status">
-              Veřejné menu pro hosty neví, kterou provozovnu zobrazit — použijte <code>PUBLIC_RESTAURANT_ID</code>, odkaz{" "}
-              <code>?rid=…</code>, nebo párování tabletu v <KioskAnchor href="/admin/devices">Zařízení</KioskAnchor> /{" "}
-              <KioskAnchor href="/admin/devices/pair-kiosk">párování u stolů</KioskAnchor> (cookie <code>oa_menu_rid</code>).
+              Veřejné menu pro hosty zatím není správně nastavené — dokončete nastavení v{" "}
+              <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor>, nebo párujte tablet v{" "}
+              <KioskAnchor href="/admin/devices">Zařízení</KioskAnchor> /{" "}
+              <KioskAnchor href="/admin/devices/pair-kiosk">párování u stolů</KioskAnchor>.
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "active_mismatch" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
-              <strong>Aktivní restaurace</strong> nesedí s tímto menu. V{" "}
-              <KioskAnchor href="/admin">Admin → Přehled</KioskAnchor> vyberte stejnou provozovnu.
+              <strong>Vaše restaurace</strong> nesedí s tímto menu. V{" "}
+              <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor> zkontrolujte nastavení.
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "no_active" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
-              Vyberte v <KioskAnchor href="/admin">Admin → Přehled</KioskAnchor> aktivní restauraci (stejná jako toto veřejné menu).
+              Dokončete nastavení v <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor>, aby odpovídalo tomuto menu.
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "no_membership" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
-              K úpravám potřebujete roli u této restaurace (vedoucí nebo personál).
+              K úpravám potřebujete roli vedoucího nebo personálu ve vaší restauraci.
             </p>
           ) : null}
 

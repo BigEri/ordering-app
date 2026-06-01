@@ -334,24 +334,24 @@ function RestaurantDetailInner() {
     <main className="adminPage">
       {contextSync === "syncing" ? (
         <div className="adminRestaurantContextBar" role="status">
-          <span className="textMuted2">Nastavuji aktivní restauraci pro tuto stránku…</span>
+          <span className="textMuted2">Načítám nastavení vaší restaurace…</span>
         </div>
       ) : null}
       {contextSync === "done" ? (
         <div className="adminRestaurantContextBar">
-          <strong>Kontext úprav:</strong> pracujete s provozovnou <strong>{name}</strong>. Sekce Uživatelé a Zařízení v levém menu se vztahují k této restauraci (shodné s pill „Aktivní“ nahoře).
+          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Sekce Uživatelé a Zařízení v levém menu se vztahují k vaší restauraci (shodné s názvem nahoře).
         </div>
       ) : null}
       {contextSync === "err" ? (
         <div className="adminRestaurantContextBar adminRestaurantContextBar--warn" role="alert">
-          Nepodařilo se nastavit aktivní restauraci v prohlížeči. Zkuste obnovit stránku nebo vybrat restauraci v Přehledu.
+          Nepodařilo se načíst nastavení vaší restaurace. Zkuste obnovit stránku nebo přejít do Přehledu.
         </div>
       ) : null}
 
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <p className="textMuted2" style={{ margin: "0 0 4px", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Detail restaurace
+            Nastavení restaurace
           </p>
           <h1 style={{ margin: "0 0 6px", fontSize: "1.5rem" }}>{name}</h1>
           <p className="textMuted2" style={{ margin: 0, fontSize: 12, fontFamily: "ui-monospace, monospace", wordBreak: "break-all" }}>
@@ -476,7 +476,7 @@ function RestaurantDetailInner() {
                 }}
                 style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
               >
-                Uživatelé této restaurace
+                Uživatelé vaší restaurace
               </button>
               <button
                 type="button"
@@ -487,12 +487,12 @@ function RestaurantDetailInner() {
                 }}
                 style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
               >
-                Zařízení této restaurace
+                Zařízení vaší restaurace
               </button>
               <AdminChipLink href="/admin/restaurants">← Seznam restaurací</AdminChipLink>
             </div>
             <p className="textMuted2" style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.5 }}>
-              Aktivní restaurace se při otevření tohoto detailu nastaví automaticky, aby bylo jasné, co upravujete.
+              Při otevření nastavení se automaticky načte vaše restaurace, abyste věděli, co právě upravujete.
             </p>
           </section>
 
@@ -516,7 +516,7 @@ function RestaurantDetailInner() {
           >
             <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Jazyky pro hosty</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
-              Nastavení je pro tuto provozovnu zvlášť. Ovlivňuje přepínač jazyka v menu. Překlady menu upravíte v{" "}
+              Nastavení platí pro vaši restauraci. Ovlivňuje přepínač jazyka v menu. Překlady menu upravíte v{" "}
               <a href="/admin/menu/translations" className="adminBreadcrumb__link">
                 Admin → Menu → Překlady
               </a>
@@ -596,7 +596,7 @@ function RestaurantDetailInner() {
 
                 <p className="textMuted2" style={{ margin: 0, fontSize: 12 }}>
                   {localesHasConfig
-                    ? "Tato restaurace má vlastní sadu jazyků (lišší se od výchozí)."
+                    ? "Vaše restaurace má vlastní sadu jazyků (liší se od výchozí)."
                     : "Zatím není uložené vlastní nastavení — aktuálně platí výchozí globální jazyky."}
                 </p>
 
@@ -651,7 +651,7 @@ function RestaurantDetailInner() {
             <a href="/admin/users" className="adminBreadcrumb__link">
               Uživatelé
             </a>{" "}
-            (v kontextu aktivní restaurace).
+            (pro vaši restauraci).
           </p>
         </section>
       ) : null}
@@ -668,7 +668,7 @@ function RestaurantDetailInner() {
         >
           <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>Menu</h2>
           <p className="textMuted" style={{ margin: 0, lineHeight: 1.55 }}>
-            Úpravy jídelníčku z adminu budou doplněny později. Veřejné menu zákazníků najdete na stránce{" "}
+            Úpravy jídelníčku z adminu budou doplněny později. Veřejné menu pro hosty najdete na stránce{" "}
             <a href="/menu" className="adminBreadcrumb__link">
               Veřejné menu
             </a>
@@ -687,10 +687,10 @@ function RestaurantDetailInner() {
             background: "var(--panel)",
           }}
         >
-          <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Dotykačka pro tuto provozovnu</h2>
+          <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Dotykačka</h2>
           <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
             <strong>Cloud ID</strong> identifikuje váš účet v Dotypos (číslo z OAuth). <strong>ID pobočky (branch)</strong> je
-            jiné číslo — konkrétní provozovna v tom cloudu, kde běží pokladna. Nejprve OAuth, pak vyberte pobočku ze seznamu
+            jiné číslo — konkrétní pobočka v tom cloudu, kde běží vaše pokladna. Nejprve OAuth, pak vyberte pobočku ze seznamu
             nebo zadejte číslo ručně, a mapu produktů (jako dříve v <code style={{ fontSize: 12 }}>.env</code>).
           </p>
           {dotykLoading ? <p className="textMuted">Načítání…</p> : null}

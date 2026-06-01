@@ -38,7 +38,7 @@ export async function GET(req: Request) {
         {
           ok: false,
           error:
-            "Dotykačka: chybí refresh token a cloud (OAuth nebo .env pro tuto provozovnu). Nejprve připojte Dotykačku.",
+            "Dotykačka: chybí refresh token a cloud (OAuth). Nejprve připojte Dotykačku v administraci.",
         },
         { status: 400 },
       );

@@ -14,14 +14,14 @@ export async function GET(req: Request) {
     const rid = await requireActiveRestaurantId(session, req.headers.get("cookie"));
     if (!rid) {
       return NextResponse.json(
-        { ok: false, error: "Vyberte aktivní restauraci (cookie nebo detail provozovny)." },
+        { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
         { status: 400 },
       );
     }
     const cfg = await getDotykackaConfig(rid);
     if (!cfg) {
       return NextResponse.json(
-        { ok: false, error: "Dotykačka není pro tuto provozovnu nakonfigurovaná (OAuth + pobočka + mapa)." },
+        { ok: false, error: "Dotykačka není pro vaši restauraci nakonfigurovaná (OAuth + pobočka + mapa)." },
         { status: 400 },
       );
     }

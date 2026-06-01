@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   const rid = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
   if (!rid) {
     return NextResponse.json(
-      { ok: false, error: "Vyberte aktivní provozovnu (cookie oa_rid)." },
+      { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
       { status: 400 },
     );
   }
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   }
   if (rid !== binding.restaurantId) {
     return NextResponse.json(
-      { ok: false, error: "Zařízení nepatří do aktivní provozovny." },
+      { ok: false, error: "Zařízení nepatří k vaší restauraci." },
       { status: 403 },
     );
   }

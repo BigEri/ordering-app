@@ -43,12 +43,12 @@ export async function POST(req: NextRequest) {
 
   if (!restaurantIdRaw) {
     return NextResponse.json(
-      { ok: false, error: "Vyberte aktivní provozovnu nebo zadejte restaurantId." },
+      { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
       { status: 400 },
     );
   }
   if (binding.restaurantId !== restaurantIdRaw) {
-    return NextResponse.json({ ok: false, error: "Zařízení nepatří do aktivní provozovny." }, { status: 403 });
+    return NextResponse.json({ ok: false, error: "Zařízení nepatří k vaší restauraci." }, { status: 403 });
   }
 
   if (session.globalRole !== "SUPER_ADMIN") {

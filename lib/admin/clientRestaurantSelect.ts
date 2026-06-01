@@ -8,7 +8,7 @@ export async function postSelectActiveRestaurant(restaurantId: string): Promise<
   });
   const j = (await r.json()) as { ok?: boolean; error?: string };
   if (!r.ok || !j.ok) {
-    return { ok: false, error: j.error ?? "Výběr restaurace selhal." };
+    return { ok: false, error: j.error ?? "Nepodařilo se načíst vaši restauraci." };
   }
   return { ok: true };
 }

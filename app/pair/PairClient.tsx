@@ -149,7 +149,7 @@ export function PairClient() {
 
         {!isSuper && !me.activeRestaurantId ? (
           <p role="alert" style={{ color: "#fecaca", margin: 0 }}>
-            Nemáte vybranou aktivní provozovnu. V administraci ji nejdřív vyberte (přepínač provozoven).
+            Nemáte nastavenou vaši restauraci. Dokončete nejdřív nastavení v Přehledu administrace.
           </p>
         ) : null}
 

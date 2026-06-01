@@ -177,7 +177,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       <aside className="adminShell__aside" aria-label="Admin menu">
         <div className="adminShell__brand">
           <span className="adminShell__brandTitle">Admin</span>
-          <span className="adminShell__brandSub">Správa restaurace</span>
+          <span className="adminShell__brandSub">Správa vaší restaurace</span>
         </div>
         <nav className="adminShell__nav">
           <AdminNavLink href="/admin" label="Přehled" active={pathname === "/admin"} />
@@ -220,13 +220,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <button type="button" className="chip adminShell__back" onClick={onBack} aria-label="Zpět">
               ← Zpět
             </button>
-            <div className="adminShell__activePill" title="Aktivní restaurace (kontext pro uživatele a zařízení)">
+            <div className="adminShell__activePill" title="Vaše restaurace (kontext pro uživatele a zařízení)">
               {activeRestaurantLabel ? (
                 <>
-                  <span className="textMuted2">Aktivní:</span> <strong>{activeRestaurantLabel}</strong>
+                  <span className="textMuted2">Vaše restaurace:</span> <strong>{activeRestaurantLabel}</strong>
                 </>
               ) : (
-                <span className="textMuted2">Vyberte restauraci v Přehledu</span>
+                <span className="textMuted2">Dokončete nastavení v Přehledu</span>
               )}
             </div>
           </div>

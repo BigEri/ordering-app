@@ -42,7 +42,7 @@ export async function POST(req: Request) {
 
   if (!restaurantIdRaw) {
     return NextResponse.json(
-      { ok: false, error: "Vyberte aktivní provozovnu nebo zadejte restaurantId." },
+      { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
       { status: 400 },
     );
   }

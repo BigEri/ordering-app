@@ -12,7 +12,6 @@ type DeviceRow = {
   online: boolean;
   userAgent?: string;
   restaurantId?: string | null;
-  pairingLocked?: number;
 };
 
 type HealthPayload = {
@@ -72,7 +71,6 @@ export default function AdminDevicesPage() {
   const [editTableSaving, setEditTableSaving] = React.useState(false);
   const [editTableMsg, setEditTableMsg] = React.useState<"ok" | "err" | null>(null);
 
-  const [lockSavingId, setLockSavingId] = React.useState<string | null>(null);
   const [removingId, setRemovingId] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
@@ -274,27 +272,6 @@ export default function AdminDevicesPage() {
       setReloadErr(true);
     } finally {
       setReloadingId(null);
-    }
-  };
-
-  const onTogglePairingLock = async (d: DeviceRow) => {
-    const rid = (d.restaurantId ?? activeRestaurantId ?? "").trim();
-    if (!rid) return;
-    setLockSavingId(d.deviceId);
-    try {
-      const nextLocked = (d.pairingLocked ?? 0) !== 1;
-      const r = await fetch("/api/admin/devices/pairing-lock", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        credentials: "same-origin",
-        body: JSON.stringify({ deviceId: d.deviceId, locked: nextLocked, restaurantId: rid }),
-      });
-      if (!r.ok) return;
-      await load();
-    } catch {
-      /* ignore */
-    } finally {
-      setLockSavingId(null);
     }
   };
 
@@ -544,19 +521,9 @@ export default function AdminDevicesPage() {
                         disabled={!d.restaurantId && !activeRestaurantId}
                         onClick={() => openTableEdit(d)}
                         style={{ cursor: d.restaurantId || activeRestaurantId ? "pointer" : "not-allowed" }}
-                        title={!d.restaurantId && !activeRestaurantId ? "Chybí provozovna u zařízení" : undefined}
+                        title={!d.restaurantId && !activeRestaurantId ? "Chybí vazba na vaši restauraci" : undefined}
                       >
                         {tStaff("admin.devices.editTable")}
-                      </button>
-                      <button
-                        type="button"
-                        className="chip"
-                        disabled={lockSavingId === d.deviceId || (!d.restaurantId && !activeRestaurantId)}
-                        onClick={() => void onTogglePairingLock(d)}
-                        style={{ cursor: d.restaurantId || activeRestaurantId ? "pointer" : "not-allowed" }}
-                        title={!d.restaurantId && !activeRestaurantId ? "Chybí provozovna u zařízení" : undefined}
-                      >
-                        {(d.pairingLocked ?? 0) === 1 ? "Povolit pairing" : "Zakázat pairing"}
                       </button>
                       <button
                         type="button"
@@ -603,11 +570,11 @@ export default function AdminDevicesPage() {
         </p>
         {activeRestaurantId ? (
           <p className="textMuted" style={{ margin: "0 0 16px", fontSize: 13 }}>
-            Aktivní provozovna: <strong>{activeRestaurantName ?? activeRestaurantId}</strong>
+            Vaše restaurace: <strong>{activeRestaurantName ?? activeRestaurantId}</strong>
           </p>
         ) : (
           <p role="alert" style={{ margin: "0 0 16px", fontSize: 13, color: "#fecaca" }}>
-            Není vybraná aktivní restaurace — v Přehledu nebo u detailu provozovny ji vyberte (pill „Aktivní“), jinak přiřazení nelze uložit.
+            Nejdřív dokončete nastavení v Přehledu administrace, jinak přiřazení nelze uložit.
           </p>
         )}
         <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
@@ -615,7 +582,7 @@ export default function AdminDevicesPage() {
         </p>
         {dotyTablesErr ? (
           <p className="textMuted2" style={{ margin: "0 0 8px", fontSize: 13 }}>
-            Seznam stolů z Dotykačky se nepodařilo načíst. Zkontrolujte propojení Dotykačky u aktivní restaurace, případně zadejte ID stolu ručně níže.
+            Seznam stolů z Dotykačky se nepodařilo načíst. Zkontrolujte propojení Dotykačky u vaší restaurace, případně zadejte ID stolu ručně níže.
           </p>
         ) : null}
         <form onSubmit={onBind} style={{ display: "grid", gap: 12, maxWidth: 420 }}>

@@ -12,8 +12,7 @@ export default async function AdminMenuPage() {
       <main style={{ padding: "2rem", maxWidth: 560 }}>
         <h1 style={{ fontSize: "1.25rem", marginBottom: "0.75rem" }}>Editor menu</h1>
         <p style={{ lineHeight: 1.5 }}>
-          Není zvolená provozovna. Na úvodní stránce administrace (/admin) vyberte restauraci, u které chcete menu
-          upravovat.
+          Není nastavená vaše restaurace. Otevřete Přehled v administraci (/admin) a dokončete nastavení, pak můžete menu upravovat.
         </p>
       </main>
     );

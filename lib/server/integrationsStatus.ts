@@ -22,7 +22,7 @@ export async function getDotykackaIntegrationStatus(
   if (!rid) {
     return {
       syncConfigured: false,
-      hint: "Vyberte aktivní restauraci v administraci.",
+      hint: "Nejdřív dokončete nastavení v Přehledu administrace.",
     };
   }
 
@@ -35,28 +35,28 @@ export async function getDotykackaIntegrationStatus(
   if (!row) {
     return {
       syncConfigured: false,
-      hint: "Připojte Dotykačku přes OAuth v detailu restaurace (záložka Dotykačka).",
+      hint: "Připojte Dotykačku přes OAuth v administraci (sekce Dotykačka).",
     };
   }
   if (row.disabled === 1) {
-    return { syncConfigured: false, hint: "Dotykačka je pro tuto provozovnu vypnutá." };
+    return { syncConfigured: false, hint: "Dotykačka je pro vaši restauraci vypnutá." };
   }
   if (row.revokedAtIso) {
     return { syncConfigured: false, hint: "Připojení Dotykačky bylo zrušeno — znovu OAuth." };
   }
   if (!row.refreshToken?.trim()) {
-    return { syncConfigured: false, hint: "Chybí refresh token — dokončete OAuth v detailu restaurace." };
+    return { syncConfigured: false, hint: "Chybí refresh token — dokončete OAuth v administraci." };
   }
   if (!row.branchId || row.branchId <= 0) {
     return {
       syncConfigured: false,
-      hint: "Vyberte ID pobočky (branch) v detailu restaurace.",
+      hint: "Vyberte ID pobočky (branch) v administraci v sekci Dotykačka.",
     };
   }
 
   return {
     syncConfigured: false,
-    hint: "Doplňte mapu produktů v detailu restaurace (nebo DOTYKACKA_PRODUCT_MAP_JSON v .env).",
+    hint: "Doplňte mapu produktů v administraci (nebo DOTYKACKA_PRODUCT_MAP_JSON v .env).",
   };
 }
 

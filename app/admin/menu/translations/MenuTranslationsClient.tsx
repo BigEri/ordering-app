@@ -797,7 +797,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           Překlady menu
         </h1>
         <p className="textMuted2">
-          Nejdřív vyberte provozovnu (aktivní restauraci). Potom tu můžete upravovat překlady položek a kategorií.
+          Nejdřív dokončete nastavení v Přehledu administrace. Potom tu můžete upravovat překlady položek a kategorií.
         </p>
         <AdminChipLink href="/admin">
           Zpět do adminu

@@ -116,7 +116,7 @@ export async function GET(req: NextRequest) {
       "Nejste přihlášeni v administraci (session cookie chybí nebo vypršela). Připojení se proto nemohlo uložit do databáze.";
   } else if (!state.trim()) {
     reason =
-      "Chybí parametr state. Připojení se nemohlo bezpečně uložit do databáze. Spusťte OAuth z detailu restaurace v administraci.";
+      "Chybí parametr state. Připojení se nemohlo bezpečně uložit. Spusťte OAuth znovu z administrace v sekci Dotykačka.";
   } else if (stateErr === "EXPIRED") {
     reason = "Přihlašovací požadavek (state) vypršel. Spusťte OAuth znovu.";
   } else if (stateErr === "USED") {
@@ -129,7 +129,7 @@ export async function GET(req: NextRequest) {
       "Neznámý nebo neplatný state. Připojení se nemohlo bezpečně uložit do databáze. Spusťte OAuth znovu z administrace.";
   } else {
     reason =
-      "Připojení se nepodařilo uložit do databáze. Spusťte OAuth znovu z administrace restaurace (musíte být přihlášeni).";
+      "Připojení se nepodařilo uložit. Spusťte OAuth znovu z administrace (musíte být přihlášeni).";
   }
 
   const html = `<!DOCTYPE html>
@@ -152,7 +152,7 @@ export async function GET(req: NextRequest) {
   <h1>Připojení Dotykačky není dokončeno</h1>
   <div class="warn">
     <p style="margin: 0 0 8px;"><strong>Proč:</strong> ${escapeHtml(reason)}</p>
-    <p style="margin: 0;">Nejjednodušší řešení je spustit OAuth znovu přímo z administrace pro konkrétní restauraci.</p>
+    <p style="margin: 0;">Nejjednodušší řešení je spustit OAuth znovu z administrace v sekci Dotykačka.</p>
   </div>
 
   <div class="actions">
@@ -192,7 +192,7 @@ function htmlSaved(restaurantId: string) {
   </style>
 </head>
 <body>
-  <h1>Dotykačka uložena pro provozovnu</h1>
+  <h1>Dotykačka uložena pro vaši restauraci</h1>
   <p>Refresh token a cloud ID jsou v databázi. Doplňte ještě <strong>ID pobočky</strong> a mapu produktů v administraci.</p>
   <p><a href="${escapeHtml(adminUrl)}">Zpět do administrace — záložka Dotykačka</a></p>
 </body>

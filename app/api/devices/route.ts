@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     const rid = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
     if (!rid) {
       return NextResponse.json(
-        { ok: false, error: "Vyberte aktivní provozovnu (cookie oa_rid)." },
+        { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
         { status: 400 },
       );
     }

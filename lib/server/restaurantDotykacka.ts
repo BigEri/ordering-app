@@ -143,7 +143,7 @@ export async function updateRestaurantDotykackaSettings(input: {
   apiBase: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const row = await getRestaurantDotykackaRow(input.restaurantId);
-  if (!row) return { ok: false, error: "Nejdřív připojte Dotykačku přes OAuth (chybí záznam pro tuto restauraci)." };
+  if (!row) return { ok: false, error: "Nejdřív připojte Dotykačku přes OAuth v administraci." };
   if (!Number.isFinite(input.branchId) || input.branchId <= 0) {
     return { ok: false, error: "Zadejte platné ID pobočky (kladné číslo)." };
   }
@@ -165,7 +165,7 @@ export async function setRestaurantDotykackaDisabled(input: {
   actorUserId: string | null;
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const row = await getRestaurantDotykackaRow(input.restaurantId);
-  if (!row) return { ok: false, error: "Dotykačka není pro tuto restauraci připojena." };
+  if (!row) return { ok: false, error: "Dotykačka není pro vaši restauraci připojena." };
   const ts = nowIso();
   const disabled = input.disabled ? 1 : 0;
   await prisma.restaurantDotykacka.update({

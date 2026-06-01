@@ -16,12 +16,12 @@ function errCs(msg: string | undefined): string {
   if (!msg) return "Operace selhala.";
   const m: Record<string, string> = {
     Error: "Něco se pokazilo. Zkuste to prosím znovu.",
-    "Cannot remove yourself": "Sebe z této restaurace nemůžete odebrat.",
-    "User not in restaurant": "Uživatel v této restauraci není.",
+    "Cannot remove yourself": "Sebe z vaší restaurace nemůžete odebrat.",
+    "User not in restaurant": "Uživatel ve vaší restauraci není.",
     "Only superadmin can remove restaurant admins": "Odebrat vedoucího může jen superadmin.",
     Forbidden: "Nemáte oprávnění.",
     Unauthorized: "Nejste přihlášeni.",
-    "No restaurant selected": "Není vybraná aktivní restaurace.",
+    "No restaurant selected": "Nejdřív dokončete nastavení v Přehledu administrace.",
     "User not found": "Uživatel neexistuje.",
     "Password too short": "Heslo je moc krátké (min. 8 znaků).",
   };
@@ -104,7 +104,7 @@ export default function AdminUsersPage() {
   };
 
   const onRemove = async (userId: string, email: string) => {
-    if (!window.confirm(`Odebrat uživatele „${email}“ z této restaurace? Přístup se zruší, účet v systému může zůstat pro jiné restaurace.`)) {
+    if (!window.confirm(`Odebrat uživatele „${email}“ z vaší restaurace? Ztratí přístup do administrace.`)) {
       return;
     }
     setErr(null);
@@ -171,7 +171,7 @@ export default function AdminUsersPage() {
     <main className="adminPage">
       <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>Uživatelé</h1>
       <p className="textMuted" style={{ margin: "0 0 18px" }}>
-        Správa přístupů pro vedoucího a personál v aktivní restauraci. Odebráním se zruší členství v této restauraci (účet může dál existovat jinde).
+        Správa přístupů pro vedoucího a personál ve vaší restauraci. Odebráním se zruší přístup do administrace.
       </p>
 
       {err ? (

@@ -42,7 +42,7 @@ export default function AdminHomePage() {
         setErr("Nepodařilo se načíst váš profil (možná vypršelo přihlášení).");
       }
       if (!rR.ok || (rJ as { ok?: boolean }).ok !== true) {
-        setErr("Nepodařilo se načíst seznam restaurací.");
+        setErr("Nepodařilo se načíst údaje o vaší restauraci.");
       }
     } catch {
       setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
@@ -195,14 +195,14 @@ export default function AdminHomePage() {
           background: "var(--panel)",
         }}
       >
-        <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Aktivní restaurace</h2>
+        <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Vaše restaurace</h2>
         <p className="textMuted" style={{ margin: "0 0 12px" }}>
           {activeName ? (
             <>
-              Vybraná: <strong>{activeName}</strong>
+              Právě upravujete: <strong>{activeName}</strong>
             </>
           ) : (
-            <>Není vybraná žádná restaurace. Vyberte ji níže.</>
+            <>Zatím není nastavená vaše restaurace. Obnovte stránku nebo se přihlaste znovu.</>
           )}
         </p>
 
@@ -228,7 +228,7 @@ export default function AdminHomePage() {
             })}
           </div>
         ) : (
-          <p className="textMuted">Načítání seznamu restaurací…</p>
+          <p className="textMuted">Načítání…</p>
         )}
       </section>
 
@@ -244,9 +244,11 @@ export default function AdminHomePage() {
           <AdminChipLink href="/admin/users">Uživatelé</AdminChipLink>
           <AdminChipLink href="/admin/account">Můj účet</AdminChipLink>
         </div>
-        <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-          Tip: SUPER_ADMIN může přepínat restauraci. Vedoucí/personál uvidí pouze restaurace, do kterých mají přístup.
-        </p>
+        {me && me.ok && me.session.globalRole === "SUPER_ADMIN" ? (
+          <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+            Tip: jako SUPER_ADMIN můžete přepínat mezi restauracemi v seznamu výše.
+          </p>
+        ) : null}
       </section>
 
       {canManageDotykacka && activeId ? (
@@ -261,7 +263,7 @@ export default function AdminHomePage() {
         >
           <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>Dotykačka (cloud)</h2>
           <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
-            Pokud „vypadne“ přihlášení do Dotypos cloudu, vedoucí může znovu spustit OAuth pro <strong>aktivní restauraci</strong>. Nastavení pobočky a mapy produktů je v detailu restaurace.
+            Pokud „vypadne“ přihlášení do Dotypos cloudu, můžete znovu spustit OAuth pro <strong>vaši restauraci</strong>. Nastavení pobočky a mapy produktů najdete v administraci v sekci Dotykačka.
           </p>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <a
@@ -279,7 +281,7 @@ export default function AdminHomePage() {
       ) : me && me.ok && !activeId ? (
         <section style={{ marginTop: 18 }}>
           <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.55 }}>
-            Pro připojení Dotykačky nejdřív vyberte aktivní restauraci výše.
+            Pro připojení Dotykačky nejdřív dokončete nastavení v Přehledu výše.
           </p>
         </section>
       ) : null}

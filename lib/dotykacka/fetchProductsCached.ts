@@ -25,7 +25,7 @@ export async function fetchDotykackaProductsForMenuCached(
 ): Promise<CachedMenuResult> {
   const rid = restaurantId.trim();
   if (!rid) {
-    return { ok: false, error: "Chybí ID provozovny." };
+    return { ok: false, error: "Chybí nastavení vaší restaurace." };
   }
 
   const revalidate = menuCacheRevalidateSec();

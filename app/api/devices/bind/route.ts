@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
 
   if (!restaurantIdRaw) {
     return NextResponse.json(
-      { ok: false, error: "Chybí restaurantId — vyberte aktivní provozovnu nebo ji zadejte v těle (superadmin)." },
+      { ok: false, error: "Chybí restaurantId — nejdřív dokončete nastavení v Přehledu administrace." },
       { status: 400 },
     );
   }

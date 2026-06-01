@@ -36,7 +36,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
     <main style={{ maxWidth: 520, margin: "0 auto", padding: "40px 16px 64px" }}>
       <h1 style={{ margin: "0 0 8px", fontSize: "1.6rem" }}>Admin</h1>
       <p className="textMuted" style={{ margin: "0 0 20px" }}>
-        Přihlášení pro správu restaurace.
+        Přihlášení pro správu vaší restaurace.
       </p>
 
       <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>

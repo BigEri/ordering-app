@@ -57,7 +57,7 @@ export function WelcomeSettingsClient() {
         setMe(meJ);
         const active = meJ.activeRestaurantId?.trim() ?? "";
         if (!active) {
-          setLoadErr("Vyberte aktivní restauraci v Přehledu.");
+          setLoadErr("Nejdřív dokončete nastavení v Přehledu administrace.");
           setImageUrls(defaultAppUrls());
           setHydrated(true);
           return;
