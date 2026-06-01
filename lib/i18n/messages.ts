@@ -157,7 +157,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.loadErr": "Nepodařilo se načíst seznam.",
     "admin.devices.loading": "Načítání…",
     "admin.devices.emptyList":
-      "Zatím tu není žádné zařízení. Otevřete na tabletu menu a pak v administraci klepněte na Obnovit.",
+      "Zatím tu není žádné zařízení. Nový tablet spárujte přes odkaz Párování u stolů (kód z úvodní obrazovky tabletu).",
     "admin.devices.healthTitle": "Stav API",
     "admin.devices.healthOk": "API odpovídá",
     "admin.devices.healthLoading": "Kontroluji…",

@@ -55,13 +55,7 @@ export default function AdminDevicesPage() {
   const [healthErr, setHealthErr] = React.useState(false);
   const [reloadErr, setReloadErr] = React.useState(false);
   const [reloadingId, setReloadingId] = React.useState<string | null>(null);
-  const [bindDeviceId, setBindDeviceId] = React.useState("");
-  const [bindTableId, setBindTableId] = React.useState("");
-  const [bindTableLabel, setBindTableLabel] = React.useState("");
   const [dotyTables, setDotyTables] = React.useState<DotyTable[] | null>(null);
-  const [dotyTablesErr, setDotyTablesErr] = React.useState(false);
-  const [bindMsg, setBindMsg] = React.useState<"ok" | "err" | null>(null);
-  const [bindLoading, setBindLoading] = React.useState(false);
   const [activeRestaurantId, setActiveRestaurantId] = React.useState<string | null>(null);
   const [activeRestaurantName, setActiveRestaurantName] = React.useState<string | null>(null);
 
@@ -178,23 +172,18 @@ export default function AdminDevicesPage() {
 
   React.useEffect(() => {
     let cancelled = false;
-    setDotyTablesErr(false);
     void (async () => {
       try {
         const r = await fetch("/api/admin/dotykacka/tables", { cache: "no-store" });
         const j = (await r.json()) as { ok?: boolean; tables?: DotyTable[] };
         if (cancelled) return;
         if (!r.ok || !j.ok || !j.tables) {
-          setDotyTablesErr(true);
           setDotyTables(null);
           return;
         }
         setDotyTables(j.tables);
       } catch {
-        if (!cancelled) {
-          setDotyTablesErr(true);
-          setDotyTables(null);
-        }
+        if (!cancelled) setDotyTables(null);
       }
     })();
     return () => {
@@ -292,37 +281,6 @@ export default function AdminDevicesPage() {
       /* ignore */
     } finally {
       setRemovingId(null);
-    }
-  };
-
-  const onBind = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBindMsg(null);
-    setBindLoading(true);
-    try {
-      const r = await fetch("/api/devices/bind", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          deviceId: bindDeviceId.trim(),
-          tableId: bindTableId.trim(),
-          tableLabel: bindTableLabel.trim(),
-          restaurantId: activeRestaurantId ?? "",
-        }),
-      });
-      if (!r.ok) {
-        setBindMsg("err");
-        return;
-      }
-      setBindMsg("ok");
-      setBindDeviceId("");
-      setBindTableId("");
-      setBindTableLabel("");
-      await load();
-    } catch {
-      setBindMsg("err");
-    } finally {
-      setBindLoading(false);
     }
   };
 
@@ -552,119 +510,6 @@ export default function AdminDevicesPage() {
           </table>
         </div>
       ) : null}
-
-      <section
-        style={{
-          border: "1px solid var(--border)",
-          borderRadius: 16,
-          padding: 20,
-          background: "var(--panel)",
-        }}
-      >
-        <h2 style={{ margin: "0 0 12px", fontSize: "1.1rem" }}>{tStaff("admin.devices.bindTitle")}</h2>
-        <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13 }}>
-          {tStaff("admin.devices.bindHint")}
-        </p>
-        <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.55 }}>
-          {tStaff("admin.devices.bindRestaurantHint")}
-        </p>
-        {activeRestaurantId ? (
-          <p className="textMuted" style={{ margin: "0 0 16px", fontSize: 13 }}>
-            Vaše restaurace: <strong>{activeRestaurantName ?? activeRestaurantId}</strong>
-          </p>
-        ) : (
-          <p role="alert" style={{ margin: "0 0 16px", fontSize: 13, color: "#fecaca" }}>
-            Nejdřív dokončete nastavení v Přehledu administrace, jinak přiřazení nelze uložit.
-          </p>
-        )}
-        <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
-          {tStaff("admin.devices.dotykackaHint")}
-        </p>
-        {dotyTablesErr ? (
-          <p className="textMuted2" style={{ margin: "0 0 8px", fontSize: 13 }}>
-            Seznam stolů z Dotykačky se nepodařilo načíst. Zkontrolujte propojení Dotykačky u vaší restaurace, případně zadejte ID stolu ručně níže.
-          </p>
-        ) : null}
-        <form onSubmit={onBind} style={{ display: "grid", gap: 12, maxWidth: 420 }}>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>{tStaff("admin.devices.bindDeviceId")}</span>
-            <input
-              className="chip"
-              style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
-              value={bindDeviceId}
-              onChange={(e) => setBindDeviceId(e.target.value)}
-              autoComplete="off"
-            />
-          </label>
-          <div style={{ display: "grid", gap: 8 }}>
-            <span>{tStaff("admin.devices.bindTableId")}</span>
-            {(dotyTables?.length ?? 0) > 0 ? (
-              <label style={{ display: "grid", gap: 4 }}>
-                <span className="textMuted2" style={{ fontSize: 12 }}>
-                  Rychlý výběr ze seznamu Dotykačky (volitelné)
-                </span>
-                <select
-                  className="chip"
-                  style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
-                  value=""
-                  onChange={(e) => {
-                    const nextId = e.target.value;
-                    if (!nextId) return;
-                    setBindTableId(nextId);
-                    const hit = dotyTables?.find((t) => String(t.id) === nextId);
-                    setBindTableLabel(hit ? hit.name : `Stůl ${nextId}`);
-                  }}
-                >
-                  <option value="">— vyberte stůl ze seznamu —</option>
-                  {dotyTables!.map((t) => (
-                    <option key={t.id} value={String(t.id)}>
-                      {t.name} ({t.id})
-                    </option>
-                  ))}
-                </select>
-              </label>
-            ) : null}
-            <label style={{ display: "grid", gap: 4 }}>
-              <span className="textMuted2" style={{ fontSize: 12 }}>
-                {(dotyTables?.length ?? 0) > 0 ? "Nebo zadejte ručně (povinné, pokud nic nevyberete výše)" : "Povinné — číslo ID stolu z Dotykačky"}
-              </span>
-              <input
-                className="chip"
-                placeholder="např. 374619822"
-                style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
-                value={bindTableId}
-                onChange={(e) => setBindTableId(e.target.value.trim())}
-                autoComplete="off"
-              />
-            </label>
-          </div>
-          <label style={{ display: "grid", gap: 4 }}>
-            <span>{tStaff("admin.devices.bindTableLabel")}</span>
-            <input
-              className="chip"
-              style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
-              value={bindTableLabel}
-              onChange={(e) => setBindTableLabel(e.target.value)}
-            />
-          </label>
-          <button
-            type="submit"
-            className="btnPrimary"
-            disabled={bindLoading || !activeRestaurantId}
-            style={{ cursor: bindLoading || !activeRestaurantId ? "not-allowed" : "pointer", justifySelf: "start" }}
-          >
-            {tStaff("admin.devices.bindSubmit")}
-          </button>
-        </form>
-        {bindMsg === "ok" ? (
-          <p style={{ margin: "12px 0 0", color: "var(--success)" }}>{tStaff("admin.devices.bindOk")}</p>
-        ) : null}
-        {bindMsg === "err" ? (
-          <p role="alert" style={{ margin: "12px 0 0", color: "#fecaca" }}>
-            {tStaff("admin.devices.bindErr")}
-          </p>
-        ) : null}
-      </section>
 
       {tableEditDevice ? (
         <div
