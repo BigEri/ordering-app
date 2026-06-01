@@ -202,7 +202,84 @@ function isDotykackaOrderOpenForMerge(order: Record<string, unknown>): boolean {
   return true;
 }
 
+function orderIdFromPos(order: Record<string, unknown>): number | undefined {
+  const id = order.id;
+  if (typeof id === "number" && Number.isFinite(id)) return id;
+  if (typeof id === "string" && /^\d+$/.test(id.trim())) {
+    const n = Number.parseInt(id.trim(), 10);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
 type ListedOrder = { orderId: number; externalId?: string; note?: unknown };
+
+function parseOpenOrdersFromPosListData(data: unknown): ListedOrder[] | null {
+  if (!data || typeof data !== "object") return null;
+  const code = (data as { code?: unknown }).code;
+  if (typeof code === "number" && code !== 0) return null;
+
+  const orders = (data as { orders?: unknown }).orders;
+  if (!Array.isArray(orders)) return null;
+
+  const out: ListedOrder[] = [];
+  for (const row of orders) {
+    if (!row || typeof row !== "object") continue;
+    const wrap = row as { order?: unknown };
+    const ord = wrap.order;
+    if (!ord || typeof ord !== "object") continue;
+    const o = ord as Record<string, unknown>;
+    if (!isDotykackaOrderOpenForMerge(o)) continue;
+    const id = orderIdFromPos(o);
+    if (id === undefined) continue;
+    out.push({ orderId: id, externalId: orderExternalIdFromPos(o), note: o.note });
+  }
+  return out;
+}
+
+type ListOpenOrdersResult =
+  | { ok: true; orders: ListedOrder[] }
+  | { ok: false; reason: "http" | "code" | "shape"; message: string; httpStatus?: number };
+
+function buildBillRequestNoOpenAccountError(
+  payload: Record<string, unknown>,
+  tableId: number,
+  listFailure: ListOpenOrdersResult & { ok: false } | null,
+): string {
+  const tableLabel =
+    typeof payload.tableLabel === "string" && payload.tableLabel.trim() ? payload.tableLabel.trim() : null;
+  const deviceId = typeof payload.deviceId === "string" && payload.deviceId.trim() ? payload.deviceId.trim() : null;
+
+  const lines = [
+    "Dotykačka nepotvrdila otevřený účet u stolu z tohoto tabletu.",
+    "",
+    "Co tablet poslal:",
+    `• Název stolu: ${tableLabel ? `„${tableLabel}"` : "—"}`,
+    `• ID stolu v Dotyce (číslo pro API): ${tableId}`,
+  ];
+  if (deviceId) {
+    lines.push(`• ID tabletu (Admin → Zařízení, první sloupec): ${deviceId}`);
+  }
+  lines.push(
+    "",
+    "Co udělat:",
+    "1. V Dotypos u otevřeného účtu ověřte ID stolu (v nastavení stolů) — musí sedět s číslem výše, ne jen podobný název.",
+    "2. V administraci → Zařízení najděte tablet podle ID a u stolu musí být „z Dotykačky“. Jinak: Upravit stůl → vyberte stůl ze seznamu Dotykačky.",
+    "3. Na pobočce musí běžet Dotypos; na serveru nastavte veřejnou HTTPS adresu (NEXT_PUBLIC_APP_URL).",
+    "4. Po objednávce z menu musí být stejné položky vidět v Dotyce na tomto stole.",
+  );
+
+  if (listFailure) {
+    lines.push("", "Technický důvod:", listFailure.message);
+  } else {
+    lines.push(
+      "",
+      "Dotykačka na tento stůl vrátila prázdný seznam účtů — účet v pokladně může být na jiném ID stolu než má tablet v párování.",
+    );
+  }
+
+  return lines.join("\n");
+}
 
 /**
  * Najde otevřenou objednávku na stole se stejným external-id (Dotypos 1.235+ `order/list`).
@@ -223,20 +300,12 @@ async function findOpenDotykackaOrderIdForSession(
   const code = (data as { code?: unknown }).code;
   if (typeof code === "number" && code !== 0) return undefined;
 
-  const orders = (data as { orders?: unknown }).orders;
-  if (!Array.isArray(orders)) return undefined;
+  const parsed = parseOpenOrdersFromPosListData(data);
+  if (!parsed) return undefined;
 
-  for (const row of orders) {
-    if (!row || typeof row !== "object") continue;
-    const wrap = row as { order?: unknown };
-    const ord = wrap.order;
-    if (!ord || typeof ord !== "object") continue;
-    const o = ord as Record<string, unknown>;
-    const id = o.id;
-    if (typeof id !== "number" || !Number.isFinite(id)) continue;
-    if (!isDotykackaOrderOpenForMerge(o)) continue;
-    if (orderExternalIdFromPos(o) === sessionExternalId) {
-      return { orderId: id, note: o.note };
+  for (const row of parsed) {
+    if (row.externalId === sessionExternalId) {
+      return { orderId: row.orderId, note: row.note };
     }
   }
   return undefined;
@@ -246,33 +315,45 @@ async function listOpenDotykackaOrdersForTable(
   cfg: DotykackaConfig,
   accessToken: string,
   tableId: number,
-): Promise<ListedOrder[]> {
+): Promise<ListOpenOrdersResult> {
   const posted = await postDotykackaPosAction(cfg, accessToken, {
     action: "order/list",
     "table-id": tableId,
   });
-  if (!posted.ok) return [];
-  const data = posted.data;
-  if (!data || typeof data !== "object") return [];
-  const code = (data as { code?: unknown }).code;
-  if (typeof code === "number" && code !== 0) return [];
-
-  const orders = (data as { orders?: unknown }).orders;
-  if (!Array.isArray(orders)) return [];
-
-  const out: ListedOrder[] = [];
-  for (const row of orders) {
-    if (!row || typeof row !== "object") continue;
-    const wrap = row as { order?: unknown };
-    const ord = wrap.order;
-    if (!ord || typeof ord !== "object") continue;
-    const o = ord as Record<string, unknown>;
-    if (!isDotykackaOrderOpenForMerge(o)) continue;
-    const id = o.id;
-    if (typeof id !== "number" || !Number.isFinite(id)) continue;
-    out.push({ orderId: id, externalId: orderExternalIdFromPos(o), note: o.note });
+  if (!posted.ok) {
+    return {
+      ok: false,
+      reason: "http",
+      httpStatus: posted.status,
+      message: formatPosActionsHttpError(cfg, posted.status, posted.text),
+    };
   }
-  return out;
+  const data = posted.data;
+  if (!data || typeof data !== "object") {
+    return {
+      ok: false,
+      reason: "shape",
+      message: "Dotykačka order/list: prázdná nebo neplatná odpověď.",
+    };
+  }
+  const code = (data as { code?: unknown }).code;
+  if (typeof code === "number" && code !== 0) {
+    return {
+      ok: false,
+      reason: "code",
+      message: `Dotykačka order/list selhal (code ${code}).`,
+    };
+  }
+
+  const parsed = parseOpenOrdersFromPosListData(data);
+  if (!parsed) {
+    return {
+      ok: false,
+      reason: "shape",
+      message: "Dotykačka order/list: v odpovědi chybí seznam účtů (orders).",
+    };
+  }
+  return { ok: true, orders: parsed };
 }
 
 /**
@@ -301,14 +382,27 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
   const pre = await preflightDotykackaPosActions(cfg, accessToken);
   if (!pre.ok) return { ok: false, error: pre.error, meta: { tableId, sessionExternalId, action: "order/hello" } };
 
-  const openOrders = await listOpenDotykackaOrdersForTable(cfg, accessToken, tableId);
-  if (openOrders.length === 0) {
+  const listResult = await listOpenDotykackaOrdersForTable(cfg, accessToken, tableId);
+  if (!listResult.ok) {
     return {
       ok: false,
-      error: "V Dotyce nebyl nalezen otevřený účet pro tento stůl (nejdřív musí proběhnout objednávka).",
+      error: buildBillRequestNoOpenAccountError(o, tableId, listResult),
+      meta: {
+        tableId,
+        sessionExternalId,
+        action: "order/list",
+        httpStatus: listResult.httpStatus,
+      },
+    };
+  }
+  if (listResult.orders.length === 0) {
+    return {
+      ok: false,
+      error: buildBillRequestNoOpenAccountError(o, tableId, null),
       meta: { tableId, sessionExternalId, action: "order/list" },
     };
   }
+  const openOrders = listResult.orders;
 
   const ordersTotal = typeof o.ordersTotal === "number" ? o.ordersTotal : Number(o.ordersTotal);
   const tipPct = typeof o.tipPct === "number" ? o.tipPct : Number(o.tipPct);

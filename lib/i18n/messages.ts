@@ -43,6 +43,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "lang.current": "Vybraný jazyk",
     "pos.error.network": "Nepodařilo se spojit se serverem. Zkontrolujte připojení.",
     "pos.error.http": "Požadavek se nezdařil (pokladna nebo server). Zkuste to znovu.",
+    "pos.error.billDotykacka": "Účet se nepodařilo odeslat do Dotykačky.",
     "pos.error.tableId": "Zařízení nemá platné číslo stolu pro pokladnu. V adminu zkontrolujte přiřazení tabletu ke stolu a zkuste to znovu.",
     "pos.error.queued":
       "Objednávka je uložená v zařízení a odešle se automaticky po obnovení připojení. Můžete zkusit odeslat znovu.",
@@ -243,6 +244,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "lang.current": "Selected language",
     "pos.error.network": "Could not reach the server. Check your connection.",
     "pos.error.http": "The request failed (POS or server). Please try again.",
+    "pos.error.billDotykacka": "Could not send the bill request to Dotykacka.",
     "pos.error.tableId": "This device does not have a valid POS table number. Check the tablet-to-table binding in admin and try again.",
     "pos.error.queued":
       "Your order is saved on this device and will send automatically when you are back online. You can also try again.",
@@ -443,6 +445,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "lang.current": "선택한 언어",
     "pos.error.network": "서버에 연결할 수 없습니다. 연결을 확인하세요.",
     "pos.error.http": "요청이 실패했습니다(POS 또는 서버). 다시 시도하세요.",
+    "pos.error.billDotykacka": "Dotykacka로 계산서 요청을 보내지 못했습니다.",
     "pos.error.tableId": "이 기기에 POS 테이블 번호가 올바르게 설정되어 있지 않습니다. 관리자에서 테이블 연결을 확인한 뒤 다시 시도하세요.",
     "pos.error.queued":
       "주문이 저장되었습니다. 연결이 복구되면 자동으로 전송됩니다. 다시 시도할 수도 있습니다.",

@@ -172,8 +172,15 @@ export function Topbar() {
           return;
         }
         if (billOpenRef.current) {
-          setBillPayErrorKey(r.kind === "network" ? "pos.error.network" : "pos.error.http");
-          setBillPayErrorDetail(r.kind === "http" && r.detail ? r.detail : null);
+          if (r.kind === "network") {
+            setBillPayErrorKey("pos.error.network");
+            setBillPayErrorDetail(null);
+          } else {
+            const detail = r.kind === "http" && r.detail ? r.detail : null;
+            const isBillDotykackaHelp = Boolean(detail?.includes("Co tablet poslal:"));
+            setBillPayErrorKey(isBillDotykackaHelp ? "pos.error.billDotykacka" : "pos.error.http");
+            setBillPayErrorDetail(detail);
+          }
         }
         return;
       }
@@ -378,46 +385,43 @@ export function Topbar() {
 
             {billPayErrorKey ? (
               <div role="alert" className="orderPosErrorRow">
-                <p style={{ margin: 0, fontSize: 14, whiteSpace: "pre-wrap" }}>
-                  {t(billPayErrorKey)}
-                  {billPayErrorDetail ? (
-                    <>
-                      <br />
-                      <span className="textMuted2" style={{ fontSize: 13 }}>
-                        {billPayErrorDetail}
-                      </span>
-                    </>
-                  ) : null}
-                </p>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button
-                    type="button"
-                    className="chip"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (billPayErrorKey === "pos.error.queued") {
-                        void flushPendingPosQueue();
-                        return;
-                      }
-                      void confirmBillPay();
-                    }}
-                    disabled={billPayLoading}
-                    style={{ cursor: "pointer" }}
-                  >
-                    {t("pos.retry")}
-                  </button>
-                  <button
-                    type="button"
-                    className="chip"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setBillPayErrorKey(null);
-                      setBillPayErrorDetail(null);
-                    }}
-                    style={{ cursor: "pointer" }}
-                  >
-                    {t("pos.dismiss")}
-                  </button>
+                <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{t(billPayErrorKey)}</p>
+                {billPayErrorDetail ? (
+                  <p className="textMuted2" style={{ margin: "8px 0 0", fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
+                    {billPayErrorDetail}
+                  </p>
+                ) : null}
+                <div style={{ marginTop: billPayErrorDetail ? 10 : 8 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (billPayErrorKey === "pos.error.queued") {
+                          void flushPendingPosQueue();
+                          return;
+                        }
+                        void confirmBillPay();
+                      }}
+                      disabled={billPayLoading}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {t("pos.retry")}
+                    </button>
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBillPayErrorKey(null);
+                        setBillPayErrorDetail(null);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {t("pos.dismiss")}
+                    </button>
+                  </div>
                 </div>
               </div>
             ) : null}
