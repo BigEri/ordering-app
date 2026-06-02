@@ -555,15 +555,38 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
       },
     };
   }
-  if (listResult.orders.length === 0) {
-    return {
-      ok: false,
-      error: "V Dotyce nebyl nalezen otevřený účet pro tento stůl (nejdřív musí proběhnout objednávka).",
-      meta: { tableId, sessionExternalId, action: "order/list" },
-    };
-  }
-
   const staffLine = [`OA_STAFF: ${hhmmLocalNow()}`, `Stůl ${tableId}`, "CALL"].join(" · ");
+
+  // Pokud účet na stole ještě neexistuje, založíme ho jen kvůli poznámce (bez `issue`).
+  // Pozor: některé konfigurace Dotypos nemusí povolit účet bez položek; v tom případě vracíme chybu z API.
+  if (listResult.orders.length === 0) {
+    const created = await postDotykackaPosAction(cfg, accessToken, {
+      action: "order/create",
+      "table-id": tableId,
+      "external-id": sessionExternalId,
+      note: staffLine,
+      items: [],
+    });
+    if (!created.ok) {
+      return {
+        ok: false,
+        error: formatPosActionsHttpError(cfg, created.status, created.text),
+        meta: { tableId, sessionExternalId, action: "order/create", httpStatus: created.status },
+      };
+    }
+    const createdData = created.data;
+    if (createdData && typeof createdData === "object") {
+      const code = (createdData as { code?: unknown }).code;
+      if (typeof code === "number" && code !== 0) {
+        return {
+          ok: false,
+          error: `Dotykačka order/create selhal (code ${code})`,
+          meta: { tableId, sessionExternalId, action: "order/create" },
+        };
+      }
+    }
+    return { ok: true, meta: { tableId, sessionExternalId, action: "staff_call_create_note" } };
+  }
 
   const ours = listResult.orders.filter((x) => x.externalId === sessionExternalId);
   const targets = ours.length > 0 ? ours : listResult.orders;
