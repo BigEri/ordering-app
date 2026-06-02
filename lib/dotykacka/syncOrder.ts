@@ -58,11 +58,11 @@ function mergeOrderNoteWithOaBillLine(existingNote: unknown, billLine: string): 
     .map((l) => l.trimEnd())
     .filter((l) => l !== "");
 
-  const prefix = "OA_BILL:";
+  const prefixes = ["CHCE ZAPLATIT:", "OA_BILL:"];
   const next: string[] = [];
   let replaced = false;
   for (const l of lines) {
-    if (l.startsWith(prefix)) {
+    if (prefixes.some((p) => l.startsWith(p))) {
       if (!replaced) {
         next.push(billLine);
         replaced = true;
@@ -472,10 +472,12 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
   const tipPct = typeof o.tipPct === "number" ? o.tipPct : Number(o.tipPct);
   const tipAmount = typeof o.tipAmount === "number" ? o.tipAmount : Number(o.tipAmount);
   const billTotal = typeof o.billTotal === "number" ? o.billTotal : Number(o.billTotal);
+
+  const rawLabel = typeof o.tableLabel === "string" ? o.tableLabel.trim() : "";
+  const humanTableNumber = rawLabel ? (rawLabel.match(/\d+/)?.[0] ?? rawLabel) : String(tableId);
   const billLine = [
-    `OA_BILL: ${hhmmLocalNow()}`,
-    `Stůl ${tableId}`,
-    "REQUEST",
+    `CHCE ZAPLATIT: ${hhmmLocalNow()}`,
+    `STŮL - ${humanTableNumber}`,
     `subtotal ${fmtCzk(ordersTotal)}`,
     Number.isFinite(tipPct) ? `tip ${Math.round(tipPct)}% (${fmtCzk(tipAmount)})` : `tip ${fmtCzk(tipAmount)}`,
     `total ${fmtCzk(billTotal)}`,
