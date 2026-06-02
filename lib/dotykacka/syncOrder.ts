@@ -555,7 +555,9 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
       },
     };
   }
-  const staffLine = [`OA_STAFF: ${hhmmLocalNow()}`, `Stůl ${tableId}`, "CALL"].join(" · ");
+  const rawLabel = typeof o.tableLabel === "string" ? o.tableLabel.trim() : "";
+  const humanTableNumber = rawLabel ? (rawLabel.match(/\d+/)?.[0] ?? rawLabel) : String(tableId);
+  const staffLine = [`OA_STAFF: ${hhmmLocalNow()}`, `STŮL - ${humanTableNumber}`, "CALL"].join(" · ");
 
   // Pokud účet na stole ještě neexistuje, založíme ho jen kvůli poznámce (bez `issue`).
   // Pozor: některé konfigurace Dotypos nemusí povolit účet bez položek; v tom případě vracíme chybu z API.
