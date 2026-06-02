@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getDotykackaConfig } from "../dotykacka/config";
 import type { DotykackaSyncResult } from "../dotykacka/syncOrder";
-import { syncBillRequestToDotykacka, syncOrderConfirmedToDotykacka } from "../dotykacka/syncOrder";
+import { syncBillRequestToDotykacka, syncOrderConfirmedToDotykacka, syncStaffCallToDotykacka } from "../dotykacka/syncOrder";
 import { recordPresenceFromPosPayload } from "../server/deviceRegistry";
 import { markRestaurantDotykackaSyncFailed, markRestaurantDotykackaSyncOk } from "../server/restaurantDotykacka";
 import { verifyDeviceSecret } from "../server/deviceSecret";
@@ -51,6 +51,7 @@ async function maybeSyncDotykacka(
   if (!cfg) return undefined;
   if (eventType === "ORDER_CONFIRMED") return syncOrderConfirmedToDotykacka(sanitized, cfg);
   if (eventType === "BILL_REQUEST") return syncBillRequestToDotykacka(sanitized, cfg);
+  if (eventType === "STAFF_CALL") return syncStaffCallToDotykacka(sanitized, cfg);
   return undefined;
 }
 
@@ -196,7 +197,9 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
   // nechceme vracet "ok" a potichu ztratit položky v pokladně.
   // Lze explicitně vypnout přes DOTYKACKA_FAIL_ON_ERROR=0.
   const failOnDotykacka = process.env.DOTYKACKA_FAIL_ON_ERROR !== "0";
-  if (dotykacka && !dotykacka.ok && failOnDotykacka) {
+  // `STAFF_CALL` je best-effort: když sync selže (není účet / zamčeno / POS nestíhá),
+  // nechceme zablokovat hosta chybou.
+  if (dotykacka && !dotykacka.ok && failOnDotykacka && eventType !== "STAFF_CALL") {
     return NextResponse.json(
       {
         ok: false,

@@ -78,6 +78,33 @@ function mergeOrderNoteWithOaBillLine(existingNote: unknown, billLine: string): 
   return next.join("\n");
 }
 
+function mergeOrderNoteWithOaStaffLine(existingNote: unknown, staffLine: string): string {
+  const raw = typeof existingNote === "string" ? existingNote : "";
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trimEnd())
+    .filter((l) => l !== "");
+
+  const prefix = "OA_STAFF:";
+  const next: string[] = [];
+  let replaced = false;
+  for (const l of lines) {
+    if (l.startsWith(prefix)) {
+      if (!replaced) {
+        next.push(staffLine);
+        replaced = true;
+      }
+      continue;
+    }
+    next.push(l);
+  }
+  if (!replaced) {
+    // nahoře kvůli viditelnosti v Dotyce
+    next.unshift(staffLine);
+  }
+  return next.join("\n");
+}
+
 function posActionsUrl(cfg: DotykackaConfig): string {
   return `${cfg.apiBase}/v2/clouds/${cfg.cloudId}/branches/${cfg.branchId}/pos-actions`;
 }
@@ -490,11 +517,87 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
 }
 
 /**
- * Přivolání personálu: pošle "ping" do Dotykačky přes `order/issue` (bez tisku).
- * Vyžaduje existující otevřený účet na stole (stejně jako bill request).
- *
- * Pozn.: notifikace na POS přes `order/issue` musí být povolená Dotypos podporou (viz docs).
+ * Přivolání personálu: doplní poznámku k otevřenému účtu na stole.
+ * Používá jen `order/update` (bez `order/issue`), aby se neměnil stav účtu v Dotypos.
  */
+export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaConfig): Promise<DotykackaSyncResult> {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return { ok: false, error: "Neplatné tělo přivolání personálu", meta: {} };
+  }
+  const o = payload as Record<string, unknown>;
+
+  const tableRaw = o.tableId;
+  const tableId =
+    typeof tableRaw === "string"
+      ? Number.parseInt(tableRaw, 10)
+      : typeof tableRaw === "number"
+        ? tableRaw
+        : NaN;
+  if (!Number.isFinite(tableId)) {
+    return { ok: false, error: "Chybí nebo neplatné tableId (očekává se ID stolu v Dotyce)", meta: {} };
+  }
+
+  const sessionExternalId = buildDotykackaTableSessionExternalId(cfg, o);
+  const accessToken = await getDotykackaAccessTokenForCloud(cfg);
+  const pre = await preflightDotykackaPosActions(cfg, accessToken);
+  if (!pre.ok) return { ok: false, error: pre.error, meta: { tableId, sessionExternalId, action: "order/hello" } };
+
+  const listResult = await listOpenDotykackaOrdersForTable(cfg, accessToken, tableId);
+  if (!listResult.ok) {
+    return {
+      ok: false,
+      error: listResult.message,
+      meta: {
+        tableId,
+        sessionExternalId,
+        action: "order/list",
+        httpStatus: listResult.httpStatus,
+      },
+    };
+  }
+  if (listResult.orders.length === 0) {
+    return {
+      ok: false,
+      error: "V Dotyce nebyl nalezen otevřený účet pro tento stůl (nejdřív musí proběhnout objednávka).",
+      meta: { tableId, sessionExternalId, action: "order/list" },
+    };
+  }
+
+  const staffLine = [`OA_STAFF: ${hhmmLocalNow()}`, `Stůl ${tableId}`, "CALL"].join(" · ");
+
+  const ours = listResult.orders.filter((x) => x.externalId === sessionExternalId);
+  const targets = ours.length > 0 ? ours : listResult.orders;
+
+  for (const ord of targets) {
+    const note = mergeOrderNoteWithOaStaffLine(ord.note, staffLine);
+    const upd = await postDotykackaPosAction(cfg, accessToken, {
+      action: "order/update",
+      "order-id": ord.orderId,
+      note,
+    });
+    if (!upd.ok) {
+      return {
+        ok: false,
+        error: formatPosActionsHttpError(cfg, upd.status, upd.text),
+        meta: { tableId, sessionExternalId, action: "order/update", httpStatus: upd.status },
+      };
+    }
+    const updData = upd.data;
+    if (updData && typeof updData === "object") {
+      const code = (updData as { code?: unknown }).code;
+      if (typeof code === "number" && code !== 0) {
+        return {
+          ok: false,
+          error: `Dotykačka order/update selhal (code ${code})`,
+          meta: { tableId, sessionExternalId, action: "order/update" },
+        };
+      }
+    }
+  }
+
+  return { ok: true, meta: { tableId, sessionExternalId, action: "staff_call_note" } };
+}
+
 /**
  * Vrátí product id pro POS: nejdřív mapa z .env, jinak číslo z řetězce (kladné i záporné, jak vrací API).
  */
