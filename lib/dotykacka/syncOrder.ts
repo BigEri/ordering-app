@@ -139,6 +139,27 @@ function isEmptyDotykacka404Body(text: string): boolean {
   return t === "" || t === "{}";
 }
 
+function sleep(ms: number) {
+  return new Promise<void>((r) => setTimeout(r, ms));
+}
+
+function shouldRetryDotykackaPosActions(body: Record<string, unknown>, status: number, text: string): boolean {
+  if (status !== 400) return false;
+  const t = text.toLowerCase();
+  // Dotypos občas vrací 400 "message parsing error" při paralelních požadavcích – retry po krátké pauze často projde.
+  if (!t.includes("message parsing error")) return false;
+  const action = typeof body.action === "string" ? body.action : "";
+  // Jen akce, které jsou pro nás bezpečné opakovat (idempotentní nebo cílené na konkrétní order).
+  return [
+    "order/list",
+    "order/update",
+    "order/issue",
+    "order/add-item",
+    "order/create",
+    "order/hello",
+  ].includes(action);
+}
+
 /**
  * POST na pos-actions. Volitelně přidá `webhook` na naši veřejnou URL, aby Dotykačka nečekala
  * na výchozí webhook (často končí HTTP 404 a prázdným tělem i při správné pobočce).
@@ -149,45 +170,59 @@ async function postDotykackaPosAction(
   body: Record<string, unknown>,
 ): Promise<{ ok: true; data: unknown } | { ok: false; status: number; text: string }> {
   const webhookBase = getDotykackaPosWebhookPublicBaseUrl();
-  let callbackId: string | null = null;
-  let waitWebhook: Promise<string | null> | null = null;
-  const outgoing: Record<string, unknown> = { ...body };
-  if (webhookBase) {
-    callbackId = randomUUID();
-    waitWebhook = waitForPosActionWebhook(callbackId, dotykackaPosWebhookMaxWaitMs());
-    outgoing.webhook = `${webhookBase}/api/integrations/dotykacka/pos-webhook?cb=${encodeURIComponent(callbackId)}`;
-  }
 
-  try {
-    const res = await fetch(posActionsUrl(cfg), {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify(outgoing),
-    });
-    const text = await res.text();
-    if (res.ok) {
-      if (callbackId) cancelPosActionWebhook(callbackId);
-      return { ok: true, data: parsePosActionJsonBody(text) };
+  const attemptOnce = async (): Promise<{ ok: true; data: unknown } | { ok: false; status: number; text: string }> => {
+    let callbackId: string | null = null;
+    let waitWebhook: Promise<string | null> | null = null;
+    const outgoing: Record<string, unknown> = { ...body };
+    if (webhookBase) {
+      callbackId = randomUUID();
+      waitWebhook = waitForPosActionWebhook(callbackId, dotykackaPosWebhookMaxWaitMs());
+      outgoing.webhook = `${webhookBase}/api/integrations/dotykacka/pos-webhook?cb=${encodeURIComponent(callbackId)}`;
     }
 
-    if (waitWebhook && res.status === 404 && isEmptyDotykacka404Body(text)) {
-      const whText = await waitWebhook;
-      if (whText != null && whText.trim() !== "") {
-        return { ok: true, data: parsePosActionJsonBody(whText) };
+    try {
+      const res = await fetch(posActionsUrl(cfg), {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(outgoing),
+      });
+      const text = await res.text();
+      if (res.ok) {
+        if (callbackId) cancelPosActionWebhook(callbackId);
+        return { ok: true, data: parsePosActionJsonBody(text) };
       }
-    } else if (callbackId) {
-      cancelPosActionWebhook(callbackId);
-    }
 
-    return { ok: false, status: res.status, text };
-  } catch (e) {
-    if (callbackId) cancelPosActionWebhook(callbackId);
-    throw e;
+      if (waitWebhook && res.status === 404 && isEmptyDotykacka404Body(text)) {
+        const whText = await waitWebhook;
+        if (whText != null && whText.trim() !== "") {
+          return { ok: true, data: parsePosActionJsonBody(whText) };
+        }
+      } else if (callbackId) {
+        cancelPosActionWebhook(callbackId);
+      }
+
+      return { ok: false, status: res.status, text };
+    } catch (e) {
+      if (callbackId) cancelPosActionWebhook(callbackId);
+      throw e;
+    }
+  };
+
+  // Retry/backoff: když Dotypos vrátí 400 "message parsing error", často jde o transient při paralelních akcích.
+  const backoffMs = [700, 1500, 2800];
+  let last = await attemptOnce();
+  for (const d of backoffMs) {
+    if (last.ok) return last;
+    if (!shouldRetryDotykackaPosActions(body, last.status, last.text)) return last;
+    await sleep(d);
+    last = await attemptOnce();
   }
+  return last;
 }
 
 function orderExternalIdFromPos(order: Record<string, unknown>): string | undefined {
