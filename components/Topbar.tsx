@@ -17,6 +17,8 @@ function formatCzk(value: number) {
 
 type TopbarPosError = { messageKey: string; kind: "staff" | "bill"; detail?: string } | null;
 
+type BillPaymentMethod = "CARD" | "CASH" | "MIX";
+
 export function Topbar() {
   const { t, locale } = useLanguage();
   const { posTableFields } = usePosTableFields();
@@ -26,6 +28,7 @@ export function Topbar() {
   const [billOpen, setBillOpen] = React.useState(false);
   const [billSentOpen, setBillSentOpen] = React.useState(false);
   const [tipPct, setTipPct] = React.useState<0 | 5 | 10 | 15>(0);
+  const [billPaymentMethod, setBillPaymentMethod] = React.useState<BillPaymentMethod>("CARD");
   const [topbarError, setTopbarError] = React.useState<TopbarPosError>(null);
   const [billPayErrorKey, setBillPayErrorKey] = React.useState<string | null>(null);
   const [billPayErrorDetail, setBillPayErrorDetail] = React.useState<string | null>(null);
@@ -76,6 +79,10 @@ export function Topbar() {
         if (tp === 0 || tp === 5 || tp === 10 || tp === 15) {
           setTipPct(tp);
         }
+        const pm = d.body.paymentMethod;
+        if (pm === "CARD" || pm === "CASH" || pm === "MIX") {
+          setBillPaymentMethod(pm);
+        }
         // Request byl odeslán (i z offline fronty) – ukázat potvrzení.
         setBillOpen(false);
         setBillSentOpen(true);
@@ -125,6 +132,7 @@ export function Topbar() {
     setBillPayErrorDetail(null);
     setBillPayLoading(false);
     setTipPct((prev) => prev); // zachovat poslední volbu na zařízení
+    setBillPaymentMethod((prev) => prev); // zachovat poslední volbu na zařízení
     setBillOpen(true);
   }, [orders.length]);
 
@@ -164,6 +172,7 @@ export function Topbar() {
         tipPct,
         tipAmount,
         billTotal,
+        paymentMethod: billPaymentMethod,
       });
       if (!r.ok) {
         if (r.kind === "queued") {
@@ -190,7 +199,7 @@ export function Topbar() {
     } finally {
       setBillPayLoading(false);
     }
-  }, [ordersTotal, tipPct, tipAmount, billTotal, posTableFields]);
+  }, [ordersTotal, tipPct, tipAmount, billTotal, billPaymentMethod, posTableFields]);
 
   return (
     <>
@@ -368,6 +377,25 @@ export function Topbar() {
                       style={{ cursor: "pointer" }}
                     >
                       {pct} %
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="billTipBlock">
+                <span className="billTipLabel" id="bill-payment-label">
+                  {t("bill.paymentMethod")}
+                </span>
+                <div className="billTipChips" role="group" aria-labelledby="bill-payment-label">
+                  {(["CARD", "CASH", "MIX"] as const).map((m) => (
+                    <button
+                      key={m}
+                      type="button"
+                      className={`chip billTipChip ${billPaymentMethod === m ? "chipActive billTipChip--active" : ""}`}
+                      onClick={() => setBillPaymentMethod(m)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {t(m === "CARD" ? "bill.paymentMethod.card" : m === "CASH" ? "bill.paymentMethod.cash" : "bill.paymentMethod.mix")}
                     </button>
                   ))}
                 </div>

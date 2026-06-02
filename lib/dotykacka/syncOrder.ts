@@ -473,11 +473,22 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
   const tipAmount = typeof o.tipAmount === "number" ? o.tipAmount : Number(o.tipAmount);
   const billTotal = typeof o.billTotal === "number" ? o.billTotal : Number(o.billTotal);
 
+  const paymentMethodRaw = typeof o.paymentMethod === "string" ? o.paymentMethod.trim() : "";
+  const paymentMethodLabel =
+    paymentMethodRaw === "CARD"
+      ? "Karta"
+      : paymentMethodRaw === "CASH"
+        ? "Hotovost"
+        : paymentMethodRaw === "MIX"
+          ? "Mix"
+          : null;
+
   const rawLabel = typeof o.tableLabel === "string" ? o.tableLabel.trim() : "";
   const humanTableNumber = rawLabel ? (rawLabel.match(/\d+/)?.[0] ?? rawLabel) : String(tableId);
   const billLine = [
     `CHCE ZAPLATIT: ${hhmmLocalNow()}`,
     `STŮL - ${humanTableNumber}`,
+    ...(paymentMethodLabel ? [`platba ${paymentMethodLabel}`] : []),
     `subtotal ${fmtCzk(ordersTotal)}`,
     Number.isFinite(tipPct) ? `tip ${Math.round(tipPct)}% (${fmtCzk(tipAmount)})` : `tip ${fmtCzk(tipAmount)}`,
     `total ${fmtCzk(billTotal)}`,
