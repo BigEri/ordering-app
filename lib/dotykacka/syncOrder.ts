@@ -392,8 +392,10 @@ async function listOpenDotykackaOrdersForTable(
 }
 
 /**
- * Zápis "žádost o účet" do Dotykačky: aktualizuje poznámku u otevřeného účtu a pošle ping přes `order/issue`.
- * Notifikace přes POS Action musí být povolená Dotypos podporou (viz docs k `order/issue`).
+ * Zápis "žádost o účet" do Dotykačky: aktualizuje poznámku u otevřeného účtu.
+ *
+ * Pozn.: dříve se posílalo i `order/issue` jako notifikační ping. To ale může změnit stav účtu
+ * a omezit některé funkce obsluhy v Dotypos (např. rozdělení). Proto držíme jen poznámku.
  */
 export async function syncBillRequestToDotykacka(payload: unknown, cfg: DotykackaConfig): Promise<DotykackaSyncResult> {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -484,34 +486,7 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
     }
   }
 
-  // Ping personálu bez tisku (ne do kuchyně) – issue se použije jen jako notifikační trigger.
-  // Pozor: `order/issue` může měnit stav orderu; používáme `print-type: none`.
-  const pingOrderId = targets[targets.length - 1]!.orderId;
-  const issued = await postDotykackaPosAction(cfg, accessToken, {
-    action: "order/issue",
-    "order-id": pingOrderId,
-    "print-type": "none",
-  });
-  if (!issued.ok) {
-    return {
-      ok: false,
-      error: formatPosActionsHttpError(cfg, issued.status, issued.text),
-      meta: { tableId, sessionExternalId, action: "order/issue", httpStatus: issued.status },
-    };
-  }
-  const issuedData = issued.data;
-  if (issuedData && typeof issuedData === "object") {
-    const code = (issuedData as { code?: unknown }).code;
-    if (typeof code === "number" && code !== 0) {
-      return {
-        ok: false,
-        error: `Dotykačka order/issue selhal (code ${code})`,
-        meta: { tableId, sessionExternalId, action: "order/issue" },
-      };
-    }
-  }
-
-  return { ok: true, meta: { tableId, sessionExternalId, action: "bill_request" } };
+  return { ok: true, meta: { tableId, sessionExternalId, action: "bill_request_note" } };
 }
 
 /**
