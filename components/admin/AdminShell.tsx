@@ -104,7 +104,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     if (pathname === "/admin" || pathname === "/admin/login") return items;
 
     if (pathname.startsWith("/admin/restaurants")) {
-      items.push({ label: "Restaurace", href: "/admin/restaurants" });
+      items.push({ label: "Provozovny", href: "/admin/restaurants" });
       const m = /^\/admin\/restaurants\/([^/]+)/.exec(pathname);
       if (m?.[1]) {
         const id = m[1];
@@ -183,7 +183,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <nav className="adminShell__nav">
           <AdminNavLink href="/admin" label="Přehled" active={pathname === "/admin"} />
           {isSuper ? (
-            <AdminNavLink href="/admin/restaurants" label="Restaurace" active={pathname.startsWith("/admin/restaurants")} />
+            <AdminNavLink href="/admin/restaurants" label="Provozovny" active={pathname.startsWith("/admin/restaurants")} />
           ) : null}
           <AdminNavLink
             href="/admin/menu"
