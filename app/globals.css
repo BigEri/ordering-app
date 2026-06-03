@@ -2960,8 +2960,8 @@ html {
 
 .tableflowBrand {
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-start;
+  align-items: center;
+  justify-content: center;
 }
 
 .tableflowBrand__img {
@@ -2975,15 +2975,22 @@ html {
 }
 
 .adminShell__tableflow {
-  margin-top: 6px;
-  padding-top: 12px;
+  width: 100%;
+  margin-top: 4px;
+  padding: 14px 8px 6px;
   border-top: 1px solid var(--border);
+  box-sizing: border-box;
+}
+
+.adminShell__tableflow .tableflowBrand__img {
+  margin-inline: auto;
 }
 
 @media (max-width: 900px) {
   .adminShell__tableflow {
+    width: auto;
     margin-top: 0;
-    padding-top: 0;
+    padding: 0 4px;
     border-top: none;
     order: -1;
     flex: 0 0 auto;

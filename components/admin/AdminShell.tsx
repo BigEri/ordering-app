@@ -213,8 +213,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button type="button" className="chip adminShell__logout" onClick={() => void onLogout()}>
             Odhlásit
           </button>
-          <TableflowBrand className="adminShell__tableflow" />
         </div>
+        <TableflowBrand className="adminShell__tableflow" />
       </aside>
 
       <div className="adminShell__main">
