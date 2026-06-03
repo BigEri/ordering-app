@@ -679,7 +679,6 @@ export function MenuBrowseClient({
       item: MenuItemData,
       opts?: { dotykackaPicks?: Record<string, string[]>; excludedIngredients?: string[] },
     ) => {
-      if (adminPreview) return;
       const picks = opts?.dotykackaPicks;
       const excluded = opts?.excludedIngredients ?? [];
       const key = makeMenuCartLineKey(item.id, picks, excluded);
@@ -702,7 +701,7 @@ export function MenuBrowseClient({
       });
       setCartOpen(true);
     },
-    [adminPreview, applyCart],
+    [applyCart],
   );
 
   const openMenuItem = React.useCallback(
@@ -896,13 +895,7 @@ export function MenuBrowseClient({
   }
 
   const showCategoryNav = categoryKeys.length > 0;
-  const gridClass = adminPreview
-    ? showCategoryNav
-      ? " menuPageGrid--withCategoryNav menuPageGrid--noCart"
-      : ""
-    : showCategoryNav
-      ? " menuPageGrid--withCategoryNav"
-      : " menuPageGrid--twoCol";
+  const gridClass = showCategoryNav ? " menuPageGrid--withCategoryNav" : " menuPageGrid--twoCol";
 
   return (
     <main
@@ -946,7 +939,7 @@ export function MenuBrowseClient({
           ) : null}
           <div className="menuPageTitleRow">
             <h1 className="menuPageTitle">{restaurantName}</h1>
-            {!adminPreview ? <span className="menuPageMetaChip">{tableLabelDisplay}</span> : null}
+            <span className="menuPageMetaChip">{tableLabelDisplay}</span>
           </div>
           <p className="menuPageIntro">{t("menu.intro")}</p>
 
@@ -1211,7 +1204,6 @@ export function MenuBrowseClient({
         </section>
       </div>
 
-      {!adminPreview ? (
       <aside
         aria-label={t("menu.order.aria")}
         ref={(el) => {
@@ -1351,15 +1343,21 @@ export function MenuBrowseClient({
                   ) : null}
                 </p>
               ) : null}
+              {adminPreview ? (
+                <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.45 }}>
+                  Náhled — tlačítko potvrzení je vypnuté, objednávka se neodesílá do Dotykačky.
+                </p>
+              ) : null}
               <button
                 type="button"
                 className="btnPrimary"
-                disabled={cartEntries.length === 0 || orderConfirmLoading}
+                disabled={cartEntries.length === 0 || orderConfirmLoading || adminPreview}
                 onClick={(e) => {
                   e.stopPropagation();
                   void confirmOrder();
                 }}
-                style={{ width: "100%", cursor: "pointer" }}
+                style={{ width: "100%", cursor: adminPreview ? "not-allowed" : "pointer" }}
+                title={adminPreview ? "Náhled z administrace — objednávka se neodesílá" : undefined}
               >
                 {orderConfirmLoading ? "…" : t("menu.order.confirm")}
               </button>
@@ -1367,7 +1365,6 @@ export function MenuBrowseClient({
           </>
         ) : null}
       </aside>
-      ) : null}
 
       {orderConfirmedOpen ? (
         <div
@@ -1402,18 +1399,14 @@ export function MenuBrowseClient({
           open
           onClose={() => setCustomizeItem(null)}
           onConfirm={(result) => {
-            if (adminPreview) {
-              setCustomizeItem(null);
-              return;
-            }
             addToCartDirect(customizeItem, {
               dotykackaPicks: result.dotykackaPicks,
               excludedIngredients: result.excludedIngredients,
             });
+            setCustomizeItem(null);
           }}
           t={t}
           locale={menuLocale}
-          previewMode={adminPreview}
         />
       ) : null}
 

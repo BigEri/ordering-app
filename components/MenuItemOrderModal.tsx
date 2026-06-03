@@ -23,8 +23,6 @@ type MenuItemOrderModalProps = {
   onConfirm: (result: MenuItemOrderConfirm) => void;
   t: (key: string) => string;
   locale?: Locale;
-  /** Náhled z adminu — bez přidání do košíku / POS. */
-  previewMode?: boolean;
 };
 
 /** Názvy skupin z Dotykačky (sectionLabel) — např. „Sladké přísady · Přílohy“. */
@@ -64,7 +62,6 @@ export function MenuItemOrderModal({
   onConfirm,
   t,
   locale = "cs",
-  previewMode = false,
 }: MenuItemOrderModalProps) {
   const groups = item.dotykackaCustomizationGroups ?? [];
   const excludable = React.useMemo(
@@ -259,13 +256,11 @@ export function MenuItemOrderModal({
           </span>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" className="chip" onClick={onClose} style={{ cursor: "pointer" }}>
-              {previewMode ? t("menu.confirmed.close") : t("menu.dotykacka.cancel")}
+              {t("menu.dotykacka.cancel")}
             </button>
-            {previewMode ? null : (
-              <button type="button" className="btnPrimary" onClick={handleConfirm} style={{ cursor: "pointer" }}>
-                {t("menu.dotykacka.add")}
-              </button>
-            )}
+            <button type="button" className="btnPrimary" onClick={handleConfirm} style={{ cursor: "pointer" }}>
+              {t("menu.dotykacka.add")}
+            </button>
           </div>
         </div>
       </div>
