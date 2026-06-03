@@ -27,6 +27,7 @@ import { buildOrderLineName, menuCartLineToSnapshot, orderLineUnitPriceCzk } fro
 import { clearPendingOrderConfirmed, hasPendingOrderConfirmed, POS_QUEUE_ORDER_SENT } from "../../lib/pos/pendingPosQueue";
 import { postPosJsonResilient } from "../../lib/pos/postPosJsonResilient";
 import { buildDotykackaCustomizationAliasIndex, resolveDotykackaGroupLabel } from "../../lib/menu/dotykackaLabelMerge";
+import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import { useMenuIdleRedirect } from "../../hooks/useMenuIdleRedirect";
 import { useBrowserOnline } from "../../components/OnlineBanner";
 
@@ -58,6 +59,8 @@ type MenuBrowseClientProps = {
   menuVariant?: "guest" | "editor";
   /** SSR z `/menu` — skryté položky a pořadí bez čekání na `/api/menu/overrides`. */
   initialMenuOverrides?: MenuOverridesPayload;
+  /** Náhled z administrace (`/menu?from=admin`) — zobrazit návrat do admin sekce. */
+  adminPreview?: boolean;
 };
 
 type EditorStatus = { canEdit: boolean; reason?: string };
@@ -95,6 +98,7 @@ export function MenuBrowseClient({
   restaurantId,
   menuVariant = "guest",
   initialMenuOverrides,
+  adminPreview = false,
 }: MenuBrowseClientProps) {
   useMenuIdleRedirect();
   const online = useBrowserOnline();
@@ -160,6 +164,8 @@ export function MenuBrowseClient({
 
   React.useEffect(() => {
     if (!restaurantId) return;
+    // `/menu` already fetched overrides on the server; avoid a duplicate no-store request on first paint.
+    if (initialMenuOverrides) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -185,7 +191,7 @@ export function MenuBrowseClient({
     return () => {
       cancelled = true;
     };
-  }, [restaurantId]);
+  }, [restaurantId, initialMenuOverrides]);
 
   React.useEffect(() => {
     if (!restaurantId) {
@@ -673,6 +679,7 @@ export function MenuBrowseClient({
       item: MenuItemData,
       opts?: { dotykackaPicks?: Record<string, string[]>; excludedIngredients?: string[] },
     ) => {
+      if (adminPreview) return;
       const picks = opts?.dotykackaPicks;
       const excluded = opts?.excludedIngredients ?? [];
       const key = makeMenuCartLineKey(item.id, picks, excluded);
@@ -695,7 +702,7 @@ export function MenuBrowseClient({
       });
       setCartOpen(true);
     },
-    [applyCart],
+    [adminPreview, applyCart],
   );
 
   const openMenuItem = React.useCallback(
@@ -708,6 +715,7 @@ export function MenuBrowseClient({
   );
 
   const confirmOrder = React.useCallback(async () => {
+    if (adminPreview) return;
     if (cartEntries.length === 0) return;
 
     setOrderPosErrorKey(null);
@@ -795,7 +803,7 @@ export function MenuBrowseClient({
     } finally {
       setOrderConfirmLoading(false);
     }
-  }, [applyCart, cartEntries, addOrder, locale, posTableFields, restaurantId, syncPendingFromIdb]);
+  }, [adminPreview, applyCart, cartEntries, addOrder, locale, posTableFields, restaurantId, syncPendingFromIdb]);
 
   React.useEffect(() => {
     const onQueueSent = (e: Event) => {
@@ -837,7 +845,7 @@ export function MenuBrowseClient({
     return;
   }, [cartOpen]);
 
-  if (menuVariant === "guest" && needsPairing) {
+  if (menuVariant === "guest" && needsPairing && !adminPreview) {
     return (
       <main style={{ maxWidth: 720, margin: "36px auto", padding: "0 20px" }}>
         <h1 style={{ fontSize: "1.35rem", marginBottom: 8 }}>{restaurantName}</h1>
@@ -888,10 +896,17 @@ export function MenuBrowseClient({
   }
 
   const showCategoryNav = categoryKeys.length > 0;
+  const gridClass = adminPreview
+    ? showCategoryNav
+      ? " menuPageGrid--withCategoryNav menuPageGrid--noCart"
+      : ""
+    : showCategoryNav
+      ? " menuPageGrid--withCategoryNav"
+      : " menuPageGrid--twoCol";
 
   return (
     <main
-      className={`menuPage menuPageGrid${showCategoryNav ? " menuPageGrid--withCategoryNav" : " menuPageGrid--twoCol"}${online ? "" : " menuPage--offline"}`}
+      className={`menuPage menuPageGrid${gridClass}${adminPreview ? " menuPageGrid--adminPreview" : ""}${online ? "" : " menuPage--offline"}`}
     >
       {showCategoryNav ? (
         <nav className="menuPageNavCol sideNav" aria-label={t("menu.sideNav.aria")}>
@@ -919,9 +934,19 @@ export function MenuBrowseClient({
       ) : null}
       <div className="menuPageCenterCol">
         <header className="menuPageHero">
+          {menuVariant === "guest" && adminPreview ? (
+            <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+              <KioskAnchor href="/admin/menu" className="chip" style={{ textDecoration: "none", display: "inline-flex" }}>
+                ← Zpět do administrace
+              </KioskAnchor>
+              <span className="menuPageMetaChip" style={{ fontSize: 13 }}>
+                Náhled — objednávky se neodesílají
+              </span>
+            </div>
+          ) : null}
           <div className="menuPageTitleRow">
             <h1 className="menuPageTitle">{restaurantName}</h1>
-            <span className="menuPageMetaChip">{tableLabelDisplay}</span>
+            {!adminPreview ? <span className="menuPageMetaChip">{tableLabelDisplay}</span> : null}
           </div>
           <p className="menuPageIntro">{t("menu.intro")}</p>
 
@@ -1003,7 +1028,7 @@ export function MenuBrowseClient({
                 <input type="checkbox" checked={editMode} onChange={(e) => setEditMode(e.target.checked)} />
                 <span>Zobrazit nástroje úprav (pořadí, fotka)</span>
               </label>
-              <KioskAnchor href="/menu" className="chip" style={{ textDecoration: "none" }}>
+              <KioskAnchor href={publicMenuUrlFromAdmin()} className="chip" style={{ textDecoration: "none" }}>
                 Náhled pro zákazníka ↗
               </KioskAnchor>
               <KioskAnchor href="/admin" className="chip" style={{ textDecoration: "none" }}>
@@ -1028,7 +1053,7 @@ export function MenuBrowseClient({
           </p>
         ) : null}
 
-        {menuVariant === "guest" && needsPairing && pairingCode ? (
+        {menuVariant === "guest" && needsPairing && pairingCode && !adminPreview ? (
           <aside
             role="status"
             className="menuPairingBanner"
@@ -1186,6 +1211,7 @@ export function MenuBrowseClient({
         </section>
       </div>
 
+      {!adminPreview ? (
       <aside
         aria-label={t("menu.order.aria")}
         ref={(el) => {
@@ -1341,6 +1367,7 @@ export function MenuBrowseClient({
           </>
         ) : null}
       </aside>
+      ) : null}
 
       {orderConfirmedOpen ? (
         <div
@@ -1375,6 +1402,10 @@ export function MenuBrowseClient({
           open
           onClose={() => setCustomizeItem(null)}
           onConfirm={(result) => {
+            if (adminPreview) {
+              setCustomizeItem(null);
+              return;
+            }
             addToCartDirect(customizeItem, {
               dotykackaPicks: result.dotykackaPicks,
               excludedIngredients: result.excludedIngredients,
@@ -1382,6 +1413,7 @@ export function MenuBrowseClient({
           }}
           t={t}
           locale={menuLocale}
+          previewMode={adminPreview}
         />
       ) : null}
 

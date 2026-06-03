@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
+import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
 import { kioskNavigate } from "../lib/kiosk/nav";
 
 /** Po této době bez interakce na `/menu` přesměrování na úvodní stránku (2 min 30 s). */
@@ -32,7 +33,7 @@ export function useMenuIdleRedirect() {
   }, [clearTimer]);
 
   React.useEffect(() => {
-    if (pathname.startsWith("/admin")) {
+    if (pathname.startsWith("/admin") || isAdminMenuPreviewOnClient()) {
       clearTimer();
       return;
     }

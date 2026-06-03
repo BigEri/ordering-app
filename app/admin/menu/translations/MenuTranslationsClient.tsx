@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
+import { publicMenuUrlFromAdmin } from "../../../../lib/admin/publicMenuPreviewUrl";
 
 import { usePathname } from "next/navigation";
 import type { DotykackaMenuSection } from "../../../../lib/dotykacka/dotykackaMenuSections";
@@ -819,7 +820,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <AdminChipLink href="/admin/menu">Úpravy menu (pořadí, foto) ↗</AdminChipLink>
-          <AdminChipLink href="/menu">Veřejné menu ↗</AdminChipLink>
+          <AdminChipLink href={publicMenuUrlFromAdmin()}>Veřejné menu ↗</AdminChipLink>
         </div>
       </div>
 

@@ -3,6 +3,7 @@
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
+import { publicMenuUrlFromAdmin } from "../../../../lib/admin/publicMenuPreviewUrl";
 import { Suspense } from "react";
 import * as React from "react";
 
@@ -669,7 +670,7 @@ function RestaurantDetailInner() {
           <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>Menu</h2>
           <p className="textMuted" style={{ margin: 0, lineHeight: 1.55 }}>
             Úpravy jídelníčku z adminu budou doplněny později. Veřejné menu pro hosty najdete na stránce{" "}
-            <a href="/menu" className="adminBreadcrumb__link">
+            <a href={publicMenuUrlFromAdmin({ rid: id })} className="adminBreadcrumb__link">
               Veřejné menu
             </a>
             .

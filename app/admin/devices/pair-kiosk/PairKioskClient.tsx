@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
+import { publicMenuUrlFromAdmin } from "../../../../lib/admin/publicMenuPreviewUrl";
 
 import { tStaff } from "../../../../lib/i18n/tStaff";
 
@@ -281,7 +282,9 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
         <AdminChipLink href="/admin/devices">← {tStaff("admin.devices.title")}</AdminChipLink>
         {pairedDeviceId ? (
-          <AdminChipLink href={`/menu?deviceId=${encodeURIComponent(pairedDeviceId)}`}>Otevřít kiosk menu →</AdminChipLink>
+          <AdminChipLink href={publicMenuUrlFromAdmin({ deviceId: pairedDeviceId })}>
+            Otevřít kiosk menu →
+          </AdminChipLink>
         ) : null}
       </div>
 

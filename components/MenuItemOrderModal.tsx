@@ -23,6 +23,8 @@ type MenuItemOrderModalProps = {
   onConfirm: (result: MenuItemOrderConfirm) => void;
   t: (key: string) => string;
   locale?: Locale;
+  /** Náhled z adminu — bez přidání do košíku / POS. */
+  previewMode?: boolean;
 };
 
 /** Názvy skupin z Dotykačky (sectionLabel) — např. „Sladké přísady · Přílohy“. */
@@ -55,7 +57,15 @@ function togglePick(
   return next;
 }
 
-export function MenuItemOrderModal({ item, open, onClose, onConfirm, t, locale = "cs" }: MenuItemOrderModalProps) {
+export function MenuItemOrderModal({
+  item,
+  open,
+  onClose,
+  onConfirm,
+  t,
+  locale = "cs",
+  previewMode = false,
+}: MenuItemOrderModalProps) {
   const groups = item.dotykackaCustomizationGroups ?? [];
   const excludable = React.useMemo(
     () => item.ingredients?.filter((i) => i.allowExclude !== false) ?? [],
@@ -249,11 +259,13 @@ export function MenuItemOrderModal({ item, open, onClose, onConfirm, t, locale =
           </span>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" className="chip" onClick={onClose} style={{ cursor: "pointer" }}>
-              {t("menu.dotykacka.cancel")}
+              {previewMode ? t("menu.confirmed.close") : t("menu.dotykacka.cancel")}
             </button>
-            <button type="button" className="btnPrimary" onClick={handleConfirm} style={{ cursor: "pointer" }}>
-              {t("menu.dotykacka.add")}
-            </button>
+            {previewMode ? null : (
+              <button type="button" className="btnPrimary" onClick={handleConfirm} style={{ cursor: "pointer" }}>
+                {t("menu.dotykacka.add")}
+              </button>
+            )}
           </div>
         </div>
       </div>

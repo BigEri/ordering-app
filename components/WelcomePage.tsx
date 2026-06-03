@@ -403,23 +403,23 @@ export function WelcomePage({
     [needsPairing, ready, setLocale],
   );
 
-  const actions = ready && !needsPairing ? null : (
-    <div className="welcomeKioskPairingDock" role="region" aria-label="Akce">
-      <div className="welcomeKioskPairingCard">
-        <p className="welcomeKioskPairingTitle">Personál</p>
-        <p className="welcomeKioskPairingText">
-          Přihlaste se do administrace (vedoucí / správce) pro nastavení zařízení a propojení s Dotykačkou.
-        </p>
-        <KioskAnchor href="/admin/login" className="chip" style={{ display: "inline-block", textDecoration: "none" }}>
-          Přihlásit se →
-        </KioskAnchor>
-      </div>
+  // Important: `ready` starts false and flips after client-side init.
+  // If we render the staff/login block before `ready`, it will "flash" briefly on already-paired tablets.
+  const actions =
+    !ready || !needsPairing ? null : (
+      <div className="welcomeKioskPairingDock" role="region" aria-label="Akce">
+        <div className="welcomeKioskPairingCard">
+          <p className="welcomeKioskPairingTitle">Personál</p>
+          <p className="welcomeKioskPairingText">
+            Přihlaste se do administrace (vedoucí / správce) pro nastavení zařízení a propojení s Dotykačkou.
+          </p>
+          <KioskAnchor href="/admin/login" className="chip" style={{ display: "inline-block", textDecoration: "none" }}>
+            Přihlásit se →
+          </KioskAnchor>
+        </div>
 
-      <div className="welcomeKioskPairingCard" style={{ marginTop: 12 }}>
-        <p className="welcomeKioskPairingTitle">Tablet u stolu</p>
-        {!ready ? (
-          <p className="welcomeKioskPairingMuted">Načítám…</p>
-        ) : needsPairing ? (
+        <div className="welcomeKioskPairingCard" style={{ marginTop: 12 }}>
+          <p className="welcomeKioskPairingTitle">Tablet u stolu</p>
           <>
             <p className="welcomeKioskPairingText">
               V administraci otevřete <strong>Zařízení → Párování u stolů</strong> a zadejte tento kód.
@@ -448,10 +448,9 @@ export function WelcomePage({
               Až bude zařízení spárováno, menu se automaticky zpřístupní.
             </p>
           </>
-        ) : null}
+        </div>
       </div>
-    </div>
-  );
+    );
 
   const innerKey = `${layoutPreset}::${showcaseImageUrls.join("::")}`;
 

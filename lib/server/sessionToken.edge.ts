@@ -10,6 +10,24 @@ function authSecret(): string | null {
   return s || null;
 }
 
+let cachedHmacKeySecret: string | null = null;
+let cachedHmacKeyPromise: Promise<CryptoKey> | null = null;
+
+async function getHmacSha256Key(secret: string): Promise<CryptoKey> {
+  // Cache the imported CryptoKey across requests (Edge middleware can call this many times).
+  // If the secret ever changes (rare), refresh the cache.
+  if (cachedHmacKeyPromise && cachedHmacKeySecret === secret) return cachedHmacKeyPromise;
+  cachedHmacKeySecret = secret;
+  cachedHmacKeyPromise = crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  return cachedHmacKeyPromise;
+}
+
 function base64UrlToBytes(input: string): Uint8Array {
   const b64 = input.replaceAll("-", "+").replaceAll("_", "/");
   const padLen = (4 - (b64.length % 4)) % 4;
@@ -61,8 +79,7 @@ function bytesEqualConstantTime(a: Uint8Array, b: Uint8Array): boolean {
 }
 
 async function signHmacSha256(data: string, secret: string): Promise<string> {
-  const keyData = new TextEncoder().encode(secret);
-  const key = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const key = await getHmacSha256Key(secret);
   const sigBuf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(data));
   return bytesToBase64Url(new Uint8Array(sigBuf));
 }

@@ -2315,6 +2315,11 @@ html {
   grid-column: 3;
 }
 
+/* Náhled z adminu (`?from=admin`) — bez sloupce košíku */
+.menuPageGrid--withCategoryNav.menuPageGrid--noCart {
+  grid-template-columns: var(--menu-rail-width) minmax(0, 1fr);
+}
+
 .menuPageNavCol {
   grid-row: 1;
   justify-self: stretch;

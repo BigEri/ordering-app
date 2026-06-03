@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
+import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
 import { setKioskDeviceSecretForPos } from "../lib/pos/kioskDeviceSecretStore";
 import { randomUuid } from "../lib/randomUuid";
 
@@ -29,6 +30,7 @@ function needsKioskDeviceContext(pathname: string | null | undefined): boolean {
   if (pathname.startsWith("/admin")) return false;
   if (pathname === "/setup" || pathname === "/virtual-pos") return false;
   if (pathname === "/pair" || pathname.startsWith("/pair/")) return false;
+  if ((pathname === "/menu" || pathname.startsWith("/menu/")) && isAdminMenuPreviewOnClient()) return false;
   return true;
 }
 

@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
+import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import { AdminNavLink } from "./AdminNavLink";
 import { useAdminRestaurantBootstrap } from "./useAdminRestaurantBootstrap";
 
@@ -193,7 +194,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <AdminNavLink href="/admin/welcome" label="Úvodní stránka" active={pathname.startsWith("/admin/welcome")} />
           <AdminNavLink href="/admin/users" label="Uživatelé" active={pathname.startsWith("/admin/users")} />
           <AdminNavLink href="/admin/devices" label="Zařízení" active={pathname.startsWith("/admin/devices")} />
-          <a className="adminNavLink" href="/menu" style={{ textDecoration: "none" }}>
+          <a className="adminNavLink" href={publicMenuUrlFromAdmin()} style={{ textDecoration: "none" }}>
             Veřejné menu ↗
           </a>
         </nav>

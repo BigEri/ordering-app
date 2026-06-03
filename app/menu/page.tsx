@@ -6,15 +6,17 @@ import { orderMenuSectionsLikeKiosk } from "../../lib/menu/menuSectionsDisplayOr
 import { getKioskDeviceBinding } from "../../lib/server/kioskDeviceBindings";
 import { readMenuOverridesForRestaurant } from "../../lib/server/menuOverridesRead";
 import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
+import { isMenuOpenedFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import { getPublicRestaurantDisplayNameForRestaurantId } from "../../lib/server/publicRestaurantName";
 import { MenuBrowseClient } from "./MenuBrowseClient";
 
 type MenuPageProps = {
-  searchParams?: Promise<{ rid?: string; deviceId?: string }>;
+  searchParams?: Promise<{ rid?: string; deviceId?: string; from?: string }>;
 };
 
 export default async function MenuPage(props: MenuPageProps) {
   const searchParams = props.searchParams ? await props.searchParams : {};
+  const adminPreview = isMenuOpenedFromAdmin(searchParams);
   const rid = typeof searchParams.rid === "string" ? searchParams.rid : undefined;
   const deviceId = typeof searchParams.deviceId === "string" ? searchParams.deviceId.trim() : "";
   const h = await headers();
@@ -44,6 +46,7 @@ export default async function MenuPage(props: MenuPageProps) {
         restaurantName={"Restaurace"}
         restaurantId={""}
         menuVariant="guest"
+        adminPreview={adminPreview}
       />
     );
   }
@@ -61,6 +64,7 @@ export default async function MenuPage(props: MenuPageProps) {
         restaurantName={restaurantName}
         restaurantId={restaurantId}
         menuVariant="guest"
+        adminPreview={adminPreview}
       />
     );
   }
@@ -85,6 +89,7 @@ export default async function MenuPage(props: MenuPageProps) {
       restaurantId={restaurantId}
       menuVariant="guest"
       initialMenuOverrides={menuOverrides}
+      adminPreview={adminPreview}
     />
   );
 }
