@@ -19,7 +19,12 @@ type TopbarPosError = { messageKey: string; kind: "staff" | "bill"; detail?: str
 
 type BillPaymentMethod = "CARD" | "CASH" | "MIX";
 
-export function Topbar() {
+type TopbarProps = {
+  /** Náhled z administrace (`/menu?from=admin`) — stejné UI, bez odeslání do POS. */
+  previewMode?: boolean;
+};
+
+export function Topbar({ previewMode = false }: TopbarProps) {
   const { t, locale } = useLanguage();
   const { posTableFields } = usePosTableFields();
   const { orders } = useOrders();
@@ -108,6 +113,10 @@ export function Topbar() {
 
   const sendStaffCall = React.useCallback(async () => {
     setTopbarError(null);
+    if (previewMode) {
+      setCallStaffOpen(true);
+      return;
+    }
     const r = await postPosJsonResilient("/api/pos/staff-call", { ...posTableFields() });
     if (r.ok) {
       setCallStaffOpen(true);
@@ -122,7 +131,7 @@ export function Topbar() {
       kind: "staff",
       ...(r.kind === "http" && r.detail ? { detail: r.detail } : {}),
     });
-  }, [posTableFields]);
+  }, [posTableFields, previewMode]);
 
   const openBillRequest = React.useCallback(async () => {
     setTopbarError(null);
@@ -137,13 +146,17 @@ export function Topbar() {
   }, [orders.length]);
 
   const retryTopbar = React.useCallback(async () => {
+    if (previewMode) {
+      setTopbarError(null);
+      return;
+    }
     if (topbarError?.messageKey === "pos.error.queued") {
       await flushPendingPosQueue();
       return;
     }
     if (!topbarError) return;
     void (topbarError.kind === "staff" ? sendStaffCall() : openBillRequest());
-  }, [topbarError, sendStaffCall, openBillRequest]);
+  }, [topbarError, sendStaffCall, openBillRequest, previewMode]);
 
   React.useEffect(() => {
     if (!billOpen) {
@@ -163,6 +176,11 @@ export function Topbar() {
   const confirmBillPay = React.useCallback(async () => {
     setBillPayErrorKey(null);
     setBillPayErrorDetail(null);
+    if (previewMode) {
+      setBillOpen(false);
+      setBillSentOpen(true);
+      return;
+    }
     setBillPayLoading(true);
     try {
       // Žádost o účet (s výběrem spropitného) – posílá se až po explicitním kliknutí na "Zaplatit".
@@ -199,10 +217,15 @@ export function Topbar() {
     } finally {
       setBillPayLoading(false);
     }
-  }, [ordersTotal, tipPct, tipAmount, billTotal, billPaymentMethod, posTableFields]);
+  }, [ordersTotal, tipPct, tipAmount, billTotal, billPaymentMethod, posTableFields, previewMode]);
 
   return (
     <>
+      {previewMode ? (
+        <p className="topbarPreviewHint textMuted2" role="note">
+          Náhled — tlačítka personál a účet neodesílají požadavky do Dotykačky.
+        </p>
+      ) : null}
       <header className="topbar">
         <nav className="nav" style={{ width: "100%" }}>
           <div className="topbarNavRow">

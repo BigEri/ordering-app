@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import * as React from "react";
 
+import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
 import { useMenuCart } from "./MenuCartProvider";
 import { useOrders } from "./OrdersProvider";
 import { usePosTableFields } from "./DeviceTableProvider";
@@ -29,6 +30,7 @@ export function PaidResetWatcher() {
   React.useEffect(() => {
     // Na welcome page / adminu nic nedělat.
     if (pathname === "/" || pathname.startsWith("/admin") || pathname === "/virtual-pos") return;
+    if (isAdminMenuPreviewOnClient()) return;
     if (orders.length === 0) return;
     if (handledRef.current) return;
 

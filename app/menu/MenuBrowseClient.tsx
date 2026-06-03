@@ -59,6 +59,13 @@ type MenuBrowseClientProps = {
   menuVariant?: "guest" | "editor";
   /** SSR z `/menu` — skryté položky a pořadí bez čekání na `/api/menu/overrides`. */
   initialMenuOverrides?: MenuOverridesPayload;
+  /** SSR překlady / ingredience / Dotyka labels — bez druhého vykreslení menu. */
+  initialMenuUi?: {
+    locale: string;
+    text: MenuTextOverridesForLocale;
+    ingredients: MenuIngredientOverridesForLocale;
+    dotykacka: DotykackaLabelOverrides | null;
+  };
   /** Náhled z administrace (`/menu?from=admin`) — zobrazit návrat do admin sekce. */
   adminPreview?: boolean;
 };
@@ -98,6 +105,7 @@ export function MenuBrowseClient({
   restaurantId,
   menuVariant = "guest",
   initialMenuOverrides,
+  initialMenuUi,
   adminPreview = false,
 }: MenuBrowseClientProps) {
   useMenuIdleRedirect();
@@ -140,15 +148,23 @@ export function MenuBrowseClient({
     () => new Set<string>(overrides.hiddenCategoryKeys ?? []),
     [overrides.hiddenCategoryKeys],
   );
-  const [textOverrides, setTextOverrides] = React.useState<MenuTextOverridesForLocale>({ items: {}, categories: {} });
-  const [ingredientOverrides, setIngredientOverrides] = React.useState<MenuIngredientOverridesForLocale>({ items: {} });
-  const [dotykackaLabelOverrides, setDotykackaLabelOverrides] = React.useState<DotykackaLabelOverrides | null>(null);
+  const [textOverrides, setTextOverrides] = React.useState<MenuTextOverridesForLocale>(
+    () => initialMenuUi?.text ?? { items: {}, categories: {} },
+  );
+  const [ingredientOverrides, setIngredientOverrides] = React.useState<MenuIngredientOverridesForLocale>(
+    () => initialMenuUi?.ingredients ?? { items: {} },
+  );
+  const [dotykackaLabelOverrides, setDotykackaLabelOverrides] = React.useState<DotykackaLabelOverrides | null>(
+    () => initialMenuUi?.dotykacka ?? null,
+  );
+  const initialMenuUiLocale = initialMenuUi?.locale ?? null;
   const dotykackaCustomizationAliasIndex = React.useMemo(
     () => buildDotykackaCustomizationAliasIndex(sections),
     [sections],
   );
   const [editorStatus, setEditorStatus] = React.useState<EditorStatus | null>(null);
-  const [editMode, setEditMode] = React.useState(menuVariant === "editor");
+  /** Výchozí hostovský náhled — zapnutím „Úpravy“ se zobrazí i skryté položky (bez skoku při načtení oprávnění). */
+  const [editMode, setEditMode] = React.useState(false);
   const [photoModal, setPhotoModal] = React.useState<MenuItemData | null>(null);
   const [photoUrlDraft, setPhotoUrlDraft] = React.useState("");
   const [photoSaving, setPhotoSaving] = React.useState(false);
@@ -194,12 +210,17 @@ export function MenuBrowseClient({
   }, [restaurantId, initialMenuOverrides]);
 
   React.useEffect(() => {
+    if (initialMenuOverrides) setOverrides(initialMenuOverrides);
+  }, [initialMenuOverrides]);
+
+  React.useEffect(() => {
     if (!restaurantId) {
       setTextOverrides({ items: {}, categories: {} });
       setIngredientOverrides({ items: {} });
       setDotykackaLabelOverrides(null);
       return;
     }
+    if (initialMenuUi && menuLocale === initialMenuUiLocale) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -224,7 +245,7 @@ export function MenuBrowseClient({
     return () => {
       cancelled = true;
     };
-  }, [menuLocale, restaurantId]);
+  }, [menuLocale, restaurantId, initialMenuUi, initialMenuUiLocale]);
 
   React.useEffect(() => {
     if (menuVariant !== "editor" || !restaurantId) {
@@ -305,6 +326,14 @@ export function MenuBrowseClient({
     if (!shouldHide) return withIngredients;
     // Host menu: sekce už přišly odfiltrované ze serveru; znovu nefiltrovat (hydratace = stejný DOM).
     if (menuVariant === "guest") return withIngredients;
+    // Editor: dokud se načítá oprávnění, držíme stejný výřez jako host (bez přidání skrytých položek).
+    if (editorStatus === null) {
+      if (hiddenSet.size === 0 && hiddenCategorySet.size === 0) return withIngredients;
+      return withIngredients
+        .filter((sec) => !hiddenCategorySet.has(menuSectionCategoryKey(sec)))
+        .map((sec) => ({ ...sec, items: sec.items.filter((it) => !hiddenSet.has(it.id)) }))
+        .filter((sec) => sec.items.length > 0);
+    }
     // V editoru mimo edit mód skryjeme položky, které admin označil jako hidden.
     if (hiddenSet.size === 0 && hiddenCategorySet.size === 0) return withIngredients;
     return withIngredients
@@ -322,6 +351,7 @@ export function MenuBrowseClient({
     canEditMenu,
     hiddenSet,
     hiddenCategorySet,
+    editorStatus,
   ]);
 
   const setHidden = React.useCallback(
@@ -714,17 +744,10 @@ export function MenuBrowseClient({
   );
 
   const confirmOrder = React.useCallback(async () => {
-    if (adminPreview) return;
     if (cartEntries.length === 0) return;
 
     setOrderPosErrorKey(null);
     setOrderPosErrorDetail(null);
-
-    const fields = posTableFields();
-    if (!/^\d+$/.test(String(fields.tableId ?? "").trim())) {
-      setOrderPosErrorKey("pos.error.tableId");
-      return;
-    }
 
     const linesBase = cartEntries.map(([, l]) => {
       const snap = menuCartLineToSnapshot(l);
@@ -733,6 +756,32 @@ export function MenuBrowseClient({
         unitPriceCzk: orderLineUnitPriceCzk(snap),
       };
     });
+
+    const linesStore = linesBase.map(({ l, unitPriceCzk }) => {
+      const snap = menuCartLineToSnapshot(l);
+      return {
+        name: buildOrderLineName(snap, locale),
+        qty: l.qty,
+        unitPriceCzk,
+        snapshot: snap,
+      };
+    });
+
+    const totalCzk = linesStore.reduce((sum, line) => sum + line.qty * line.unitPriceCzk, 0);
+
+    if (adminPreview) {
+      addOrder({ lines: linesStore, totalCzk });
+      applyCart(() => ({}), { skipPendingGuard: true });
+      setCartOpen(false);
+      setOrderConfirmedOpen(true);
+      return;
+    }
+
+    const fields = posTableFields();
+    if (!/^\d+$/.test(String(fields.tableId ?? "").trim())) {
+      setOrderPosErrorKey("pos.error.tableId");
+      return;
+    }
 
     const linesPos = linesBase.map(({ l, unitPriceCzk }) => {
       const snap = menuCartLineToSnapshot(l);
@@ -752,17 +801,7 @@ export function MenuBrowseClient({
       return;
     }
 
-    const linesStore = linesBase.map(({ l, unitPriceCzk }) => {
-      const snap = menuCartLineToSnapshot(l);
-      return {
-        name: buildOrderLineName(snap, locale),
-        qty: l.qty,
-        unitPriceCzk,
-        snapshot: snap,
-      };
-    });
-
-    const totalCzk = linesPos.reduce((sum, line) => sum + line.qty * line.unitPriceCzk, 0);
+    const totalCzkPos = linesPos.reduce((sum, line) => sum + line.qty * line.unitPriceCzk, 0);
 
     setOrderConfirmLoading(true);
     try {
@@ -772,13 +811,13 @@ export function MenuBrowseClient({
           ...fields,
           ...(restaurantId ? { restaurantId } : {}),
           lines: linesPos,
-          totalCzk,
+          totalCzk: totalCzkPos,
         },
-        { clientOrderSnapshot: { lines: linesStore, totalCzk } },
+        { clientOrderSnapshot: { lines: linesStore, totalCzk: totalCzkPos } },
       );
 
       if (r.ok) {
-        addOrder({ lines: linesStore, totalCzk });
+        addOrder({ lines: linesStore, totalCzk: totalCzkPos });
         hasPendingOrderRef.current = false;
         applyCart(() => ({}), { skipPendingGuard: true });
         syncPendingFromIdb();
@@ -933,7 +972,7 @@ export function MenuBrowseClient({
                 ← Zpět do administrace
               </KioskAnchor>
               <span className="menuPageMetaChip" style={{ fontSize: 13 }}>
-                Náhled — objednávky se neodesílají
+                Náhled — horní lišta a košík bez Dotykačky
               </span>
             </div>
           ) : null}
@@ -1345,19 +1384,19 @@ export function MenuBrowseClient({
               ) : null}
               {adminPreview ? (
                 <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.45 }}>
-                  Náhled — tlačítko potvrzení je vypnuté, objednávka se neodesílá do Dotykačky.
+                  Náhled — objednávka se uloží jen v prohlížeči (pro test lišty Účet / Objednávky), do Dotykačky nejde.
                 </p>
               ) : null}
               <button
                 type="button"
                 className="btnPrimary"
-                disabled={cartEntries.length === 0 || orderConfirmLoading || adminPreview}
+                disabled={cartEntries.length === 0 || orderConfirmLoading}
                 onClick={(e) => {
                   e.stopPropagation();
                   void confirmOrder();
                 }}
-                style={{ width: "100%", cursor: adminPreview ? "not-allowed" : "pointer" }}
-                title={adminPreview ? "Náhled z administrace — objednávka se neodesílá" : undefined}
+                style={{ width: "100%", cursor: "pointer" }}
+                title={adminPreview ? "Náhled — bez odeslání do Dotykačky" : undefined}
               >
                 {orderConfirmLoading ? "…" : t("menu.order.confirm")}
               </button>

@@ -10,13 +10,13 @@ import { Topbar } from "./Topbar";
 function ConditionalTopbarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  if (isMenuOpenedFromAdmin({ from: searchParams.get("from") ?? undefined })) return null;
+  const previewMode = isMenuOpenedFromAdmin({ from: searchParams.get("from") ?? undefined });
   if (pathname === "/" || pathname === "/virtual-pos" || pathname === "/setup" || pathname === "/pair" || pathname?.startsWith("/admin"))
     return null;
   return (
     <>
-      <Topbar />
-      <OnlineBanner />
+      <Topbar previewMode={previewMode} />
+      {!previewMode ? <OnlineBanner /> : null}
     </>
   );
 }

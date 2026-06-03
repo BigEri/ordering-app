@@ -1,12 +1,15 @@
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 import { fetchDotykackaProductsForMenuCached } from "../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../lib/dotykacka/menuItemOverrides";
 import { orderMenuSectionsLikeKiosk } from "../../lib/menu/menuSectionsDisplayOrder";
-import { getKioskDeviceBinding } from "../../lib/server/kioskDeviceBindings";
-import { readMenuOverridesForRestaurant } from "../../lib/server/menuOverridesRead";
-import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
 import { isMenuOpenedFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
+import { getKioskDeviceBinding } from "../../lib/server/kioskDeviceBindings";
+import { readDotykackaLabelsForRestaurantLocale } from "../../lib/server/menuDotykackaLabels";
+import { readMenuIngredientOverridesForRestaurantLocale } from "../../lib/server/menuIngredientOverrides";
+import { readMenuOverridesForRestaurant } from "../../lib/server/menuOverridesRead";
+import { isEnabledLocale, readMenuTextOverridesForRestaurantLocale } from "../../lib/server/menuTextOverrides";
+import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
 import { getPublicRestaurantDisplayNameForRestaurantId } from "../../lib/server/publicRestaurantName";
 import { MenuBrowseClient } from "./MenuBrowseClient";
 
@@ -52,9 +55,16 @@ export default async function MenuPage(props: MenuPageProps) {
   }
   const restaurantName = await getPublicRestaurantDisplayNameForRestaurantId(restaurantId);
 
-  const [result, menuOverrides] = await Promise.all([
+  const cookieStore = await cookies();
+  const localeRaw = cookieStore.get("ordering-locale")?.value?.trim() ?? "cs";
+  const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.toLowerCase() : "cs";
+
+  const [result, menuOverrides, textOverrides, ingredientOverrides, dotykackaLabels] = await Promise.all([
     fetchDotykackaProductsForMenuCached(restaurantId),
     readMenuOverridesForRestaurant(restaurantId),
+    readMenuTextOverridesForRestaurantLocale(restaurantId, locale),
+    readMenuIngredientOverridesForRestaurantLocale(restaurantId, locale),
+    readDotykackaLabelsForRestaurantLocale(restaurantId, locale),
   ]);
   if (!result.ok) {
     return (
@@ -89,6 +99,12 @@ export default async function MenuPage(props: MenuPageProps) {
       restaurantId={restaurantId}
       menuVariant="guest"
       initialMenuOverrides={menuOverrides}
+      initialMenuUi={{
+        locale,
+        text: textOverrides,
+        ingredients: ingredientOverrides,
+        dotykacka: dotykackaLabels,
+      }}
       adminPreview={adminPreview}
     />
   );

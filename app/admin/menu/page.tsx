@@ -1,6 +1,12 @@
+import { cookies } from "next/headers";
+
 import { fetchDotykackaProductsForMenuCached } from "../../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../../lib/dotykacka/menuItemOverrides";
 import { getAdminMenuRestaurantId } from "../../../lib/server/adminMenuRestaurantContext";
+import { readDotykackaLabelsForRestaurantLocale } from "../../../lib/server/menuDotykackaLabels";
+import { readMenuIngredientOverridesForRestaurantLocale } from "../../../lib/server/menuIngredientOverrides";
+import { readMenuOverridesForRestaurant } from "../../../lib/server/menuOverridesRead";
+import { isEnabledLocale, readMenuTextOverridesForRestaurantLocale } from "../../../lib/server/menuTextOverrides";
 import { getPublicRestaurantDisplayName } from "../../../lib/server/publicRestaurantName";
 import { MenuBrowseClient } from "../../menu/MenuBrowseClient";
 
@@ -17,7 +23,18 @@ export default async function AdminMenuPage() {
       </main>
     );
   }
-  const result = await fetchDotykackaProductsForMenuCached(restaurantId);
+  const cookieStore = await cookies();
+  const localeRaw = cookieStore.get("ordering-locale")?.value?.trim() ?? "cs";
+  const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.toLowerCase() : "cs";
+
+  const [result, menuOverrides, textOverrides, ingredientOverrides, dotykackaLabels] = await Promise.all([
+    fetchDotykackaProductsForMenuCached(restaurantId),
+    readMenuOverridesForRestaurant(restaurantId),
+    readMenuTextOverridesForRestaurantLocale(restaurantId, locale),
+    readMenuIngredientOverridesForRestaurantLocale(restaurantId, locale),
+    readDotykackaLabelsForRestaurantLocale(restaurantId, locale),
+  ]);
+
   if (!result.ok) {
     return (
       <MenuBrowseClient
@@ -26,6 +43,13 @@ export default async function AdminMenuPage() {
         restaurantName={restaurantName}
         restaurantId={restaurantId}
         menuVariant="editor"
+        initialMenuOverrides={menuOverrides}
+        initialMenuUi={{
+          locale,
+          text: textOverrides,
+          ingredients: ingredientOverrides,
+          dotykacka: dotykackaLabels,
+        }}
       />
     );
   }
@@ -39,6 +63,13 @@ export default async function AdminMenuPage() {
       restaurantName={restaurantName}
       restaurantId={restaurantId}
       menuVariant="editor"
+      initialMenuOverrides={menuOverrides}
+      initialMenuUi={{
+        locale,
+        text: textOverrides,
+        ingredients: ingredientOverrides,
+        dotykacka: dotykackaLabels,
+      }}
     />
   );
 }

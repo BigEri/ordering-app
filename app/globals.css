@@ -92,6 +92,16 @@ html {
   display: none;
 }
 
+.topbarPreviewHint {
+  margin: 0 0 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  border-radius: 10px;
+  border: 1px dashed rgba(99, 102, 241, 0.45);
+  background: rgba(99, 102, 241, 0.08);
+}
+
 .topbar {
   position: relative;
   /* Nad obsahem stránky (např. sticky „Objednávka“), ale pod modály (50–60) a toasty */
