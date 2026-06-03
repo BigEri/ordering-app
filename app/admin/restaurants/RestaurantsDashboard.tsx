@@ -4,7 +4,8 @@ import * as React from "react";
 
 import { AdminChipLink } from "../../../components/admin/AdminNavLink";
 import { postSelectActiveRestaurant } from "../../../lib/admin/clientRestaurantSelect";
-import type { RestaurantOverviewItem } from "../../../lib/server/restaurantOverview";
+import type { RestaurantsDashboardPageData } from "../../../lib/server/restaurantsDashboardPage";
+import type { RestaurantOverviewItem, RestaurantsOverviewPayload } from "../../../lib/server/restaurantOverview";
 
 type MeResponse =
   | {
@@ -64,10 +65,40 @@ function StatusBadge({ item }: { item: RestaurantOverviewItem }) {
   return <span className="adminRestaurantStatus adminRestaurantStatus--warn">Doplňte nastavení</span>;
 }
 
-export function RestaurantsDashboard() {
-  const [me, setMe] = React.useState<MeResponse | null>(null);
-  const [overview, setOverview] = React.useState<OverviewResponse | null>(null);
+function meFromPageData(data: RestaurantsDashboardPageData): MeResponse | null {
+  if (data.kind === "forbidden") {
+    return {
+      ok: true,
+      session: { userId: "", email: data.email, globalRole: data.globalRole as "USER" },
+      activeRestaurantId: data.activeRestaurantId,
+    };
+  }
+  if (data.kind === "ok") {
+    return {
+      ok: true,
+      session: { userId: "", email: data.email, globalRole: data.globalRole },
+      activeRestaurantId: data.activeRestaurantId,
+    };
+  }
+  return null;
+}
+
+function overviewFromPayload(payload: RestaurantsOverviewPayload): OverviewResponse {
+  return payload;
+}
+
+type RestaurantsDashboardProps = {
+  pageData: RestaurantsDashboardPageData;
+};
+
+export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
+  const hasInitialOverview = pageData.kind === "ok";
+  const [me, setMe] = React.useState<MeResponse | null>(() => meFromPageData(pageData));
+  const [overview, setOverview] = React.useState<OverviewResponse | null>(() =>
+    pageData.kind === "ok" ? overviewFromPayload(pageData.overview) : null,
+  );
   const [err, setErr] = React.useState<string | null>(null);
+  const [refreshing, setRefreshing] = React.useState(false);
   const [selecting, setSelecting] = React.useState<string | null>(null);
   const [creating, setCreating] = React.useState(false);
   const [filterQ, setFilterQ] = React.useState("");
@@ -77,8 +108,9 @@ export function RestaurantsDashboard() {
   const [managerEmail, setManagerEmail] = React.useState("");
   const [managerPassword, setManagerPassword] = React.useState("");
 
-  const load = React.useCallback(async () => {
-    setErr(null);
+  const load = React.useCallback(async (opts?: { background?: boolean }) => {
+    if (!opts?.background) setErr(null);
+    setRefreshing(true);
     try {
       const [meR, oR] = await Promise.all([
         fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" }),
@@ -95,12 +127,15 @@ export function RestaurantsDashboard() {
       }
     } catch {
       setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+    } finally {
+      setRefreshing(false);
     }
   }, []);
 
   React.useEffect(() => {
+    if (hasInitialOverview) return;
     void load();
-  }, [load]);
+  }, [hasInitialOverview, load]);
 
   const onOpen = async (restaurantId: string, next = "/admin") => {
     setSelecting(restaurantId);
@@ -120,7 +155,8 @@ export function RestaurantsDashboard() {
     }
   };
 
-  const forbidden = me && me.ok && me.session.globalRole !== "SUPER_ADMIN";
+  const forbidden = pageData.kind === "forbidden" || (me?.ok && me.session.globalRole !== "SUPER_ADMIN");
+  const listReady = Boolean(overview?.ok);
 
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,8 +212,14 @@ export function RestaurantsDashboard() {
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
-            Obnovit
+          <button
+            type="button"
+            className="chip"
+            onClick={() => void load({ background: true })}
+            disabled={refreshing}
+            style={{ cursor: refreshing ? "wait" : "pointer" }}
+          >
+            {refreshing ? "Obnovuji…" : "Obnovit"}
           </button>
         </div>
       </div>
@@ -276,6 +318,7 @@ export function RestaurantsDashboard() {
               {filtered.map((r) => {
                 const isActive = activeId === r.id;
                 const busy = selecting === r.id;
+                const actionsDisabled = !listReady || busy;
                 return (
                   <div
                     key={r.id}
@@ -316,8 +359,8 @@ export function RestaurantsDashboard() {
                         type="button"
                         className="chip"
                         onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}`)}
-                        disabled={busy}
-                        style={{ cursor: "pointer" }}
+                        disabled={actionsDisabled}
+                        style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                         title="Nastavit aktivní a otevřít Dotykačku / nastavení"
                       >
                         {busy ? "…" : "Dotykačka"}
@@ -326,8 +369,8 @@ export function RestaurantsDashboard() {
                         type="button"
                         className="chip"
                         onClick={() => void onOpen(r.id, "/admin/devices/pair-kiosk")}
-                        disabled={busy}
-                        style={{ cursor: "pointer" }}
+                        disabled={actionsDisabled}
+                        style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                         title="Nastavit aktivní a párovat kiosk"
                       >
                         {busy ? "…" : "Párovat kiosk"}
@@ -336,8 +379,8 @@ export function RestaurantsDashboard() {
                         type="button"
                         className="chip"
                         onClick={() => void onOpen(r.id, "/admin/menu")}
-                        disabled={busy}
-                        style={{ cursor: "pointer" }}
+                        disabled={actionsDisabled}
+                        style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                         title="Nastavit aktivní a otevřít úpravy menu"
                       >
                         {busy ? "…" : "Menu"}
@@ -346,8 +389,8 @@ export function RestaurantsDashboard() {
                         type="button"
                         className="chip"
                         onClick={() => void onOpen(r.id, "/admin/devices")}
-                        disabled={busy}
-                        style={{ cursor: "pointer" }}
+                        disabled={actionsDisabled}
+                        style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                       >
                         {busy ? "…" : "Zařízení"}
                       </button>
@@ -355,8 +398,8 @@ export function RestaurantsDashboard() {
                         type="button"
                         className="chip"
                         onClick={() => void onOpen(r.id, "/admin/users")}
-                        disabled={busy}
-                        style={{ cursor: "pointer" }}
+                        disabled={actionsDisabled}
+                        style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                       >
                         {busy ? "…" : "Uživatelé"}
                       </button>
@@ -367,9 +410,9 @@ export function RestaurantsDashboard() {
             </div>
           )}
         </section>
-      ) : !err ? (
+      ) : !err && !listReady ? (
         <p className="textMuted" style={{ marginTop: 16 }}>
-          Načítání…
+          Načítání provozoven…
         </p>
       ) : null}
 

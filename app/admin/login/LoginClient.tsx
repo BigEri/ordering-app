@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { TableflowBrand } from "../../../components/admin/TableflowBrand";
+
 export function LoginClient({ nextPath }: { nextPath: string }) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
@@ -33,6 +35,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
   };
 
   return (
+    <div className="adminLoginPage">
     <main style={{ maxWidth: 520, margin: "0 auto", padding: "40px 16px 64px" }}>
       <h1 style={{ margin: "0 0 8px", fontSize: "1.6rem" }}>Admin</h1>
       <p className="textMuted" style={{ margin: "0 0 20px" }}>
@@ -85,6 +88,8 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
         </p>
       ) : null}
     </main>
+    <TableflowBrand className="tableflowBrand--loginCorner" />
+    </div>
   );
 }
 

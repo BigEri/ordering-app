@@ -5,6 +5,7 @@ import * as React from "react";
 
 import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import { AdminNavLink } from "./AdminNavLink";
+import { TableflowBrand } from "./TableflowBrand";
 import { useAdminRestaurantBootstrap } from "./useAdminRestaurantBootstrap";
 
 type MeOk = {
@@ -212,6 +213,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button type="button" className="chip adminShell__logout" onClick={() => void onLogout()}>
             Odhlásit
           </button>
+          <TableflowBrand className="adminShell__tableflow" />
         </div>
       </aside>
 
