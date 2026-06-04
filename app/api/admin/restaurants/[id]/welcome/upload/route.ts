@@ -9,6 +9,8 @@ import { writeWelcomeImageUpload } from "../../../../../../../lib/server/welcome
 import { prisma } from "../../../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
+/** Sharp + upload na Vercel může trvat déle u velkých souborů. */
+export const maxDuration = 60;
 
 async function assertWelcomeWrite(session: AdminSession, restaurantId: string) {
   if (session.globalRole === "SUPER_ADMIN") return;

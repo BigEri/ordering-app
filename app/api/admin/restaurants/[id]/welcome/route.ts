@@ -67,7 +67,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       ? urlsRaw.map((x) => (typeof x === "string" ? x.trim() : "")).filter(Boolean)
       : [];
 
-    await upsertRestaurantWelcome({
+    const { savedUrls, rejectedUrls } = await upsertRestaurantWelcome({
       restaurantId: rid,
       layoutPreset,
       imageUrls,
@@ -75,7 +75,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     });
 
     const data = await getRestaurantWelcomeForAdmin(rid);
-    return NextResponse.json({ ok: true, ...data });
+    return NextResponse.json({ ok: true, ...data, rejectedUrls, savedCount: savedUrls.length });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
     if (msg === "UNAUTHORIZED") return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });

@@ -115,13 +115,18 @@ export async function upsertRestaurantWelcome(opts: {
   layoutPreset: WelcomeLayoutPreset;
   imageUrls: string[];
   updatedByUserId: string | null;
-}): Promise<void> {
+}): Promise<{ savedUrls: string[]; rejectedUrls: string[] }> {
   const rid = opts.restaurantId.trim();
-  if (!rid) return;
+  if (!rid) return { savedUrls: [], rejectedUrls: [] };
   const cleaned: string[] = [];
+  const rejectedUrls: string[] = [];
   for (const u of opts.imageUrls) {
     const t = typeof u === "string" ? u.trim() : "";
-    if (!t || !isAllowedWelcomeImageUrl(t, rid)) continue;
+    if (!t) continue;
+    if (!isAllowedWelcomeImageUrl(t, rid)) {
+      rejectedUrls.push(t);
+      continue;
+    }
     cleaned.push(t);
     if (cleaned.length >= MAX_URLS) break;
   }
@@ -139,4 +144,5 @@ export async function upsertRestaurantWelcome(opts: {
   for (const url of removed) {
     await tryDeleteStoredWelcomeImage(url);
   }
+  return { savedUrls: cleaned, rejectedUrls };
 }

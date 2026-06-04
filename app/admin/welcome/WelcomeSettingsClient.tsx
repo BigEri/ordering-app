@@ -13,28 +13,50 @@ type MeOk = {
   memberships: { restaurantId: string; role: string }[];
 };
 
+type WelcomePayload = {
+  ok?: boolean;
+  layoutPreset?: string;
+  imageUrls?: string[];
+  hasCustomRow?: boolean;
+  rejectedUrls?: string[];
+  savedCount?: number;
+  error?: string;
+};
+
 /** V editoru vždy aspoň jeden řádek — po smazání všech jinak zmizí vstupy a nejde nahrát fotku. */
 function editorImageSlots(urls: string[]): string[] {
   return urls.length > 0 ? [...urls] : [""];
+}
+
+function cleanedUrlsFromEditor(urls: string[]): string[] {
+  return urls.map((x) => x.trim()).filter(Boolean);
 }
 
 export function WelcomeSettingsClient() {
   const [me, setMe] = React.useState<MeOk | null>(null);
   const [loadErr, setLoadErr] = React.useState<string | null>(null);
   const [saveErr, setSaveErr] = React.useState<string | null>(null);
+  const [saveOk, setSaveOk] = React.useState<string | null>(null);
   const [healthErr, setHealthErr] = React.useState<string | null>(null);
   const [brokenExternalUrls, setBrokenExternalUrls] = React.useState<Array<{ url: string; status?: number; reason?: string }>>([]);
   const [healthCheckedAtIso, setHealthCheckedAtIso] = React.useState<string | null>(null);
   const [healthCheckedCount, setHealthCheckedCount] = React.useState<number | null>(null);
+  const [healthChecking, setHealthChecking] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
+  const [uploadingIdx, setUploadingIdx] = React.useState<number | null>(null);
   const [layoutPreset, setLayoutPreset] = React.useState<WelcomeLayoutPreset>("mosaic");
-  const [imageUrls, setImageUrls] = React.useState<string[]>([]);
-  const [hydrated, setHydrated] = React.useState(false);
+  const [imageUrls, setImageUrls] = React.useState<string[]>(editorImageSlots([]));
+  const [pageReady, setPageReady] = React.useState(false);
+  const [welcomeLoading, setWelcomeLoading] = React.useState(true);
   const [menuPickerOpen, setMenuPickerOpen] = React.useState(false);
   const [menuPickerLoading, setMenuPickerLoading] = React.useState(false);
   const [menuPickerErr, setMenuPickerErr] = React.useState<string | null>(null);
   const [menuImages, setMenuImages] = React.useState<Array<{ menuItemId: string; imageUrl: string }>>([]);
   const [activeSlotIdx, setActiveSlotIdx] = React.useState<number | null>(null);
+
+  /** Po úpravě uživatele nepřepisovat starým načtením z API (race → „vrací se změny“). */
+  const dirtyRef = React.useRef(false);
+  const welcomeLoadGenRef = React.useRef(0);
 
   const rid = me?.ok ? me.activeRestaurantId : null;
   const canEdit =
@@ -42,92 +64,117 @@ export function WelcomeSettingsClient() {
     (me.session.globalRole === "SUPER_ADMIN" ||
       (rid ? me.memberships.some((m) => m.restaurantId === rid && m.role === "RESTAURANT_ADMIN") : false));
 
+  const markDirty = React.useCallback(() => {
+    dirtyRef.current = true;
+    setSaveOk(null);
+  }, []);
+
+  const applyWelcomePayload = React.useCallback((j: WelcomePayload, force = false) => {
+    if (!force && dirtyRef.current) return;
+    if (typeof j.layoutPreset === "string") setLayoutPreset(parseWelcomeLayoutPreset(j.layoutPreset));
+    if (Array.isArray(j.imageUrls)) {
+      if (j.hasCustomRow) setImageUrls(editorImageSlots(j.imageUrls));
+      else if (j.imageUrls.length > 0) setImageUrls([...j.imageUrls]);
+      else setImageUrls(editorImageSlots([]));
+    }
+  }, []);
+
   React.useEffect(() => {
     void (async () => {
       setLoadErr(null);
       try {
-        const meR = await fetch("/api/admin/me", { cache: "no-store" });
+        const meR = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
         const meJ = (await meR.json()) as MeOk | { ok: false };
         if (!meR.ok || !meJ.ok) {
           setLoadErr("Nejste přihlášeni.");
           setMe(null);
-          setHydrated(true);
+          setPageReady(true);
+          setWelcomeLoading(false);
           return;
         }
         setMe(meJ);
-        const active = meJ.activeRestaurantId?.trim() ?? "";
-        if (!active) {
+        setPageReady(true);
+        if (!meJ.activeRestaurantId?.trim()) {
           setLoadErr("Nejdřív dokončete nastavení v Přehledu administrace.");
-          setImageUrls(editorImageSlots([]));
-          setHydrated(true);
-          return;
+          setWelcomeLoading(false);
         }
-        const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(active)}/welcome`, { cache: "no-store" });
-        const j = (await r.json()) as {
-          ok?: boolean;
-          layoutPreset?: string;
-          imageUrls?: string[];
-          hasCustomRow?: boolean;
-          error?: string;
-        };
-        if (!r.ok || !j.ok) {
-          setLoadErr(j.error ?? "Nelze načíst nastavení.");
-          setImageUrls(editorImageSlots([]));
-          setHydrated(true);
-          return;
-        }
-        setLayoutPreset(parseWelcomeLayoutPreset(j.layoutPreset));
-        if (Array.isArray(j.imageUrls)) {
-          if (j.hasCustomRow) setImageUrls(editorImageSlots(j.imageUrls));
-          else setImageUrls(j.imageUrls.length > 0 ? [...j.imageUrls] : editorImageSlots([]));
-        } else {
-          setImageUrls(editorImageSlots([]));
-        }
-        setHydrated(true);
       } catch {
         setLoadErr("Síťová chyba.");
-        setHydrated(true);
+        setPageReady(true);
+        setWelcomeLoading(false);
       }
     })();
   }, []);
 
   React.useEffect(() => {
-    if (!hydrated || !rid) return;
+    const active = rid?.trim() ?? "";
+    if (!active) return;
+
+    const gen = ++welcomeLoadGenRef.current;
+    setWelcomeLoading(true);
     void (async () => {
-      setHealthErr(null);
       try {
-        const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(rid)}/welcome/health`, { cache: "no-store" });
-        const j = (await r.json()) as {
-          ok?: boolean;
-          broken?: Array<{ url?: string; status?: number; reason?: string }>;
-          checkedCount?: number;
-          error?: string;
-        };
+        const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(active)}/welcome`, {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        const j = (await r.json()) as WelcomePayload;
+        if (gen !== welcomeLoadGenRef.current) return;
         if (!r.ok || !j.ok) {
-          setHealthErr(j.error ?? "Nelze ověřit externí URL obrázků.");
-          setBrokenExternalUrls([]);
-          setHealthCheckedAtIso(new Date().toISOString());
-          setHealthCheckedCount(null);
+          setLoadErr(j.error ?? "Nelze načíst nastavení.");
           return;
         }
-        const broken = Array.isArray(j.broken)
-          ? j.broken
-              .map((x) => ({ url: String(x.url ?? ""), status: x.status, reason: x.reason }))
-              .filter((x) => x.url)
-          : [];
-        setBrokenExternalUrls(broken);
-        setHealthCheckedAtIso(new Date().toISOString());
-        setHealthCheckedCount(typeof j.checkedCount === "number" ? j.checkedCount : null);
+        applyWelcomePayload(j);
       } catch {
-        setHealthErr("Nepodařilo se ověřit externí odkazy na obrázky (zřejmě výpadek připojení).");
+        if (gen === welcomeLoadGenRef.current) setLoadErr("Síťová chyba při načítání welcome.");
+      } finally {
+        if (gen === welcomeLoadGenRef.current) setWelcomeLoading(false);
+      }
+    })();
+  }, [rid, applyWelcomePayload]);
+
+  const runHealthCheck = React.useCallback(async () => {
+    if (!rid) return;
+    setHealthChecking(true);
+    setHealthErr(null);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(rid)}/welcome/health`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        broken?: Array<{ url?: string; status?: number; reason?: string }>;
+        checkedCount?: number;
+        error?: string;
+      };
+      if (!r.ok || !j.ok) {
+        setHealthErr(j.error ?? "Nelze ověřit externí URL obrázků.");
         setBrokenExternalUrls([]);
         setHealthCheckedAtIso(new Date().toISOString());
         setHealthCheckedCount(null);
+        return;
       }
-    })();
-  }, [hydrated, rid]);
+      const broken = Array.isArray(j.broken)
+        ? j.broken
+            .map((x) => ({ url: String(x.url ?? ""), status: x.status, reason: x.reason }))
+            .filter((x) => x.url)
+        : [];
+      setBrokenExternalUrls(broken);
+      setHealthCheckedAtIso(new Date().toISOString());
+      setHealthCheckedCount(typeof j.checkedCount === "number" ? j.checkedCount : null);
+    } catch {
+      setHealthErr("Nepodařilo se ověřit externí odkazy (zřejmě výpadek připojení).");
+      setBrokenExternalUrls([]);
+      setHealthCheckedAtIso(new Date().toISOString());
+      setHealthCheckedCount(null);
+    } finally {
+      setHealthChecking(false);
+    }
+  }, [rid]);
 
   const setUrlAt = (idx: number, val: string) => {
+    markDirty();
     setImageUrls((prev) => {
       const next = [...prev];
       while (next.length <= idx) next.push("");
@@ -141,6 +188,56 @@ export function WelcomeSettingsClient() {
     return i >= 0 ? i : null;
   }, [imageUrls]);
 
+  const persistWelcome = React.useCallback(
+    async (
+      urlsForSave: string[],
+      preset: WelcomeLayoutPreset,
+      opts?: { silent?: boolean },
+    ): Promise<boolean> => {
+      if (!rid || !canEdit) return false;
+      const busy = saving || uploadingIdx != null;
+      if (busy && !opts?.silent) return false;
+
+      if (!opts?.silent) {
+        setSaving(true);
+        setSaveErr(null);
+        setSaveOk(null);
+      }
+      try {
+        const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(rid)}/welcome`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ layoutPreset: preset, imageUrls: urlsForSave }),
+        });
+        const j = (await r.json()) as WelcomePayload;
+        if (!r.ok || !j.ok) {
+          setSaveErr(j.error ?? "Uložení selhalo.");
+          return false;
+        }
+        applyWelcomePayload(j, true);
+        dirtyRef.current = false;
+
+        const rejected = Array.isArray(j.rejectedUrls) ? j.rejectedUrls.filter(Boolean) : [];
+        if (rejected.length > 0) {
+          const preview = rejected.slice(0, 2).join(" · ");
+          setSaveErr(
+            `Server odmítl ${rejected.length} URL (neplatná adresa nebo jiná restaurace). ${preview}${rejected.length > 2 ? "…" : ""}`,
+          );
+          return false;
+        }
+        setSaveOk(opts?.silent ? "Nahráno a uloženo do databáze." : "Uloženo.");
+        return true;
+      } catch {
+        setSaveErr("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+        return false;
+      } finally {
+        if (!opts?.silent) setSaving(false);
+      }
+    },
+    [rid, canEdit, saving, uploadingIdx, applyWelcomePayload],
+  );
+
   const openMenuPicker = React.useCallback(
     async (idx: number | null) => {
       if (!rid || !canEdit) return;
@@ -149,7 +246,10 @@ export function WelcomeSettingsClient() {
       setMenuPickerErr(null);
       setMenuPickerLoading(true);
       try {
-        const r = await fetch(`/api/admin/menu/images?restaurantId=${encodeURIComponent(rid)}`, { cache: "no-store" });
+        const r = await fetch(`/api/admin/menu/images?restaurantId=${encodeURIComponent(rid)}`, {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
         const j = (await r.json()) as {
           ok?: boolean;
           images?: Array<{ menuItemId?: string; imageUrl?: string }>;
@@ -182,17 +282,24 @@ export function WelcomeSettingsClient() {
       const trimmed = url.trim();
       if (!trimmed) return;
       const idx = activeSlotIdx ?? firstEmptySlotIdx ?? 0;
-      setUrlAt(idx, trimmed);
+      const next = [...imageUrls];
+      while (next.length <= idx) next.push("");
+      next[idx] = trimmed;
+      setImageUrls(editorImageSlots(next));
+      markDirty();
       setMenuPickerOpen(false);
+      void persistWelcome(cleanedUrlsFromEditor(next), layoutPreset, { silent: true });
     },
-    [activeSlotIdx, firstEmptySlotIdx],
+    [activeSlotIdx, firstEmptySlotIdx, imageUrls, layoutPreset, markDirty, persistWelcome],
   );
 
   const addSlot = () => {
+    markDirty();
     setImageUrls((prev) => (prev.length >= 6 ? prev : [...prev, ""]));
   };
 
   const removeSlot = (idx: number) => {
+    markDirty();
     setImageUrls((prev) => {
       const next = prev.filter((_, i) => i !== idx);
       return editorImageSlots(next);
@@ -202,11 +309,14 @@ export function WelcomeSettingsClient() {
   const onUpload = async (idx: number, file: File | null) => {
     if (!file || !rid || !canEdit) return;
     setSaveErr(null);
+    setSaveOk(null);
+    setUploadingIdx(idx);
     const fd = new FormData();
     fd.set("file", file);
     try {
       const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(rid)}/welcome/upload`, {
         method: "POST",
+        credentials: "same-origin",
         body: fd,
       });
       const j = (await r.json()) as { ok?: boolean; imageUrl?: string; error?: string };
@@ -214,48 +324,29 @@ export function WelcomeSettingsClient() {
         setSaveErr(j.error ?? "Nahrání selhalo.");
         return;
       }
-      setUrlAt(idx, j.imageUrl);
+      const next = [...imageUrls];
+      while (next.length <= idx) next.push("");
+      next[idx] = j.imageUrl;
+      setImageUrls(editorImageSlots(next));
+      markDirty();
+      await persistWelcome(cleanedUrlsFromEditor(next), layoutPreset, { silent: true });
     } catch {
       setSaveErr("Nahrání se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+    } finally {
+      setUploadingIdx(null);
     }
   };
 
   const onSave = async () => {
-    if (!rid || !canEdit) return;
-    setSaving(true);
-    setSaveErr(null);
-    try {
-      const cleaned = imageUrls.map((x) => x.trim()).filter(Boolean);
-      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(rid)}/welcome`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ layoutPreset, imageUrls: cleaned }),
-      });
-      const j = (await r.json()) as {
-        ok?: boolean;
-        error?: string;
-        imageUrls?: string[];
-        layoutPreset?: string;
-        hasCustomRow?: boolean;
-      };
-      if (!r.ok || !j.ok) {
-        setSaveErr(j.error ?? "Uložení selhalo.");
-        return;
-      }
-      if (typeof j.layoutPreset === "string") setLayoutPreset(parseWelcomeLayoutPreset(j.layoutPreset));
-      if (Array.isArray(j.imageUrls)) {
-        if (j.hasCustomRow) setImageUrls(editorImageSlots(j.imageUrls));
-        else if (j.imageUrls.length > 0) setImageUrls([...j.imageUrls]);
-        else setImageUrls(editorImageSlots([]));
-      }
-    } catch {
-      setSaveErr("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
-    } finally {
-      setSaving(false);
-    }
+    await persistWelcome(cleanedUrlsFromEditor(imageUrls), layoutPreset);
   };
 
-  if (!hydrated) {
+  const onLayoutChange = (preset: WelcomeLayoutPreset) => {
+    markDirty();
+    setLayoutPreset(preset);
+  };
+
+  if (!pageReady) {
     return (
       <main className="adminPage">
         <p className="textMuted2">Načítám…</p>
@@ -263,21 +354,32 @@ export function WelcomeSettingsClient() {
     );
   }
 
+  const formBusy = saving || uploadingIdx != null;
+
   return (
     <main className="adminPage">
       <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>Úvodní stránka (welcome)</h1>
       <p className="textMuted2" style={{ margin: "0 0 12px", maxWidth: 720 }}>
-        Max. velikost pro nahrání: <strong>10 MB</strong> na obrázek.
+        Max. velikost pro nahrání: <strong>10 MB</strong> na obrázek. Po nahrání se změny <strong>ukládají automaticky</strong> — tlačítkem Uložit potvrdíte i ručně zadané URL.
       </p>
       <p className="textMuted2" style={{ margin: "0 0 20px", maxWidth: 720, lineHeight: 1.55 }}>
-        Nastavte fotky, které se zobrazují na úvodní stránce pro hosty. Můžete vložit veřejnou HTTPS adresu, nahrát obrázek z telefonu,
-        nebo vybrat fotku z menu. Maximum je <strong>6 obrázků</strong>, jeden soubor může mít až <strong>10 MB</strong>.
+        Nastavte fotky pro hosty na úvodní stránce. Maximum <strong>6 obrázků</strong>. Externí HTTPS odkazy lze zkontrolovat tlačítkem níže (nepřidává se při každém otevření stránky).
       </p>
+
+      <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+        <button type="button" className="chip" disabled={!rid || healthChecking} onClick={() => void runHealthCheck()}>
+          {healthChecking ? "Kontroluji URL…" : "Zkontrolovat externí URL"}
+        </button>
+        {healthCheckedAtIso ? (
+          <span className="textMuted2" style={{ fontSize: 12 }}>
+            Poslední kontrola {new Date(healthCheckedAtIso).toLocaleString("cs-CZ")}
+          </span>
+        ) : null}
+      </div>
 
       {brokenExternalUrls.length > 0 ? (
         <p role="alert" style={{ color: "#fde68a", marginBottom: 16, maxWidth: 720, lineHeight: 1.55 }}>
-          Některé externí URL obrázků se nepodařilo ověřit ({brokenExternalUrls.length}). Na welcome stránce se mohou
-          nezobrazit. Doporučujeme obrázky nahrát nebo použít import do úložiště.{" "}
+          Některé externí URL se nepodařilo ověřit ({brokenExternalUrls.length}). Nahrajte je raději přes „Nahrát“.{" "}
           <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
             {brokenExternalUrls
               .slice(0, 3)
@@ -290,22 +392,23 @@ export function WelcomeSettingsClient() {
         <p role="alert" style={{ color: "#fecaca", marginBottom: 16, maxWidth: 720 }}>
           {healthErr}
         </p>
-      ) : (
-        <p style={{ color: "#86efac", marginBottom: 16, maxWidth: 720 }}>
+      ) : healthCheckedCount != null && healthCheckedAtIso ? (
+        <p style={{ color: "#86efac", marginBottom: 16, maxWidth: 720, fontSize: 14 }}>
           {healthCheckedCount === 0
-            ? "Žádné externí URL obrázků k ověření."
-            : `Externí URL obrázků ověřeny${typeof healthCheckedCount === "number" ? ` (${healthCheckedCount})` : ""}: vše v pořádku.`}
-          {healthCheckedAtIso ? (
-            <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
-              Zkontrolováno {new Date(healthCheckedAtIso).toLocaleString("cs-CZ")}
-            </span>
-          ) : null}
+            ? "Žádné externí HTTPS URL k ověření."
+            : `Externí URL (${healthCheckedCount}): v pořádku.`}
         </p>
-      )}
+      ) : null}
 
       {loadErr ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 16 }}>
           {loadErr}
+        </p>
+      ) : null}
+
+      {welcomeLoading ? (
+        <p className="textMuted2" style={{ marginBottom: 16 }}>
+          Načítám uložené fotky…
         </p>
       ) : null}
 
@@ -315,7 +418,7 @@ export function WelcomeSettingsClient() {
         </p>
       ) : null}
 
-      <section style={{ display: "grid", gap: 20, maxWidth: 720 }}>
+      <section style={{ display: "grid", gap: 20, maxWidth: 720, opacity: welcomeLoading ? 0.65 : 1 }}>
         <div>
           <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>Rozložení</span>
           <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: canEdit ? "pointer" : "not-allowed" }}>
@@ -323,8 +426,8 @@ export function WelcomeSettingsClient() {
               type="radio"
               name="wl"
               checked={layoutPreset === "mosaic"}
-              disabled={!canEdit}
-              onChange={() => setLayoutPreset("mosaic")}
+              disabled={!canEdit || formBusy}
+              onChange={() => onLayoutChange("mosaic")}
             />
             Mozaika — velký vlevo, dva menší vpravo
           </label>
@@ -335,8 +438,8 @@ export function WelcomeSettingsClient() {
               type="radio"
               name="wl"
               checked={layoutPreset === "split_half"}
-              disabled={!canEdit}
-              onChange={() => setLayoutPreset("split_half")}
+              disabled={!canEdit || formBusy}
+              onChange={() => onLayoutChange("split_half")}
             />
             Dvě poloviny — 50 % / 50 % (ideálně 2+ obrázků v rotaci)
           </label>
@@ -347,8 +450,8 @@ export function WelcomeSettingsClient() {
               type="radio"
               name="wl"
               checked={layoutPreset === "grid_four"}
-              disabled={!canEdit}
-              onChange={() => setLayoutPreset("grid_four")}
+              disabled={!canEdit || formBusy}
+              onChange={() => onLayoutChange("grid_four")}
             />
             Čtyři čtvrtiny — mřížka 2×2 přes celou obrazovku (4 sloty + rotace)
           </label>
@@ -359,8 +462,8 @@ export function WelcomeSettingsClient() {
               type="radio"
               name="wl"
               checked={layoutPreset === "fade"}
-              disabled={!canEdit}
-              onChange={() => setLayoutPreset("fade")}
+              disabled={!canEdit || formBusy}
+              onChange={() => onLayoutChange("fade")}
             />
             Jedna plocha — celá obrazovka, střídání fotek
           </label>
@@ -370,13 +473,13 @@ export function WelcomeSettingsClient() {
           <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>Obrázky (pořadí = rotace na welcome)</span>
           {imageUrls.every((u) => !String(u ?? "").trim()) ? (
             <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.45 }}>
-              Zatím nemáte vlastní fotky — vyplňte URL, nahrajte soubor, nebo vyberte z menu. Prázdný seznam po uložení na hostech zobrazí výchozí fotky aplikace.
+              Zatím nemáte vlastní fotky — vyplňte URL, nahrajte soubor, nebo vyberte z menu.
             </p>
           ) : null}
           <div style={{ display: "grid", gap: 10 }}>
             {imageUrls.map((url, idx) => (
               <div
-                key={idx}
+                key={`slot-${idx}`}
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
@@ -392,45 +495,60 @@ export function WelcomeSettingsClient() {
                   className="chip"
                   style={{ padding: "8px 10px", flex: "1 1 200px", minWidth: 0, boxSizing: "border-box" }}
                   value={url}
-                  disabled={!canEdit}
+                  disabled={!canEdit || formBusy}
                   placeholder="https://… nebo /uploads/welcome/…"
                   onChange={(e) => setUrlAt(idx, e.target.value)}
                 />
                 <FilePickButton
                   className="chip"
                   accept="image/jpeg,image/png,image/webp"
-                  disabled={!canEdit || !rid}
+                  disabled={!canEdit || !rid || formBusy}
                   onFile={(f) => void onUpload(idx, f)}
                 >
-                  Nahrát
+                  {uploadingIdx === idx ? "Nahrávám…" : "Nahrát"}
                 </FilePickButton>
-                <button type="button" className="chip" disabled={!canEdit || !rid} onClick={() => void openMenuPicker(idx)}>
+                <button
+                  type="button"
+                  className="chip"
+                  disabled={!canEdit || !rid || formBusy}
+                  onClick={() => void openMenuPicker(idx)}
+                >
                   Vybrat z menu…
                 </button>
-                <button type="button" className="chip" disabled={!canEdit} onClick={() => removeSlot(idx)}>
+                <button type="button" className="chip" disabled={!canEdit || formBusy} onClick={() => removeSlot(idx)}>
                   Odstranit řádek
                 </button>
               </div>
             ))}
           </div>
           <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="chip" disabled={!canEdit || imageUrls.length >= 6} onClick={addSlot}>
+            <button type="button" className="chip" disabled={!canEdit || imageUrls.length >= 6 || formBusy} onClick={addSlot}>
               Přidat URL řádek
             </button>
-            <button type="button" className="chip" disabled={!canEdit || !rid} onClick={() => void openMenuPicker(null)}>
+            <button
+              type="button"
+              className="chip"
+              disabled={!canEdit || !rid || formBusy}
+              onClick={() => void openMenuPicker(null)}
+            >
               Vybrat z fotek menu…
             </button>
           </div>
         </div>
 
+        {saveOk ? (
+          <p role="status" style={{ color: "#bbf7d0", margin: 0 }}>
+            {saveOk}
+          </p>
+        ) : null}
         {saveErr ? (
-          <p role="alert" style={{ color: "#fecaca" }}>
+          <p role="alert" style={{ color: "#fecaca", margin: 0 }}>
             {saveErr}
           </p>
         ) : null}
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <button type="button" className="btnPrimary" disabled={!canEdit || !rid || saving} onClick={() => void onSave()}>
+          <button type="button" className="btnPrimary" disabled={!canEdit || !rid || formBusy} onClick={() => void onSave()}>
             {saving ? "Ukládám…" : "Uložit"}
           </button>
           <AdminChipLink href="/">Otevřít welcome ↗</AdminChipLink>
@@ -470,7 +588,7 @@ export function WelcomeSettingsClient() {
               <div>
                 <div style={{ fontWeight: 800, fontSize: 16 }}>Vybrat fotku z menu</div>
                 <div className="textMuted2" style={{ marginTop: 4, fontSize: 13 }}>
-                  Kliknutím vložíte fotku do slotu {activeSlotIdx != null ? `#${activeSlotIdx + 1}` : " (první prázdný)"}.
+                  Kliknutím vložíte fotku do slotu {activeSlotIdx != null ? `#${activeSlotIdx + 1}` : " (první prázdný)"} a uložíte.
                 </div>
               </div>
               <button type="button" className="chip" onClick={() => setMenuPickerOpen(false)}>
