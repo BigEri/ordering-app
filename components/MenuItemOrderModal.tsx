@@ -116,7 +116,13 @@ export function MenuItemOrderModal({
         className="modalCard modalCard--md modalCard--detail"
       >
         <header className="menuDetailHeader">
-          <MenuItemPhoto imageUrl={item.imageUrl} seedId={item.id} visible className="menuDetailMedia" />
+          <MenuItemPhoto
+            imageUrl={item.imageUrl}
+            seedId={item.id}
+            visible
+            presentation="fill"
+            className="menuItemMedia menuDetailMedia"
+          />
           <div className="menuDetailHeaderText">
             <strong className="modalTitle">{item.name}</strong>
             {item.description ? (

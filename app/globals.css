@@ -1644,15 +1644,18 @@ html {
 .menuDetailMedia {
   width: 360px;
   height: 240px;
+  aspect-ratio: unset;
   border-radius: 14px;
   border: 1px solid var(--border);
   background-size: cover;
   background-position: center;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  isolation: isolate;
 }
 
 @media (max-width: 640px) {
