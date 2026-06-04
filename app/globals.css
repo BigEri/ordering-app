@@ -1658,6 +1658,11 @@ html {
   isolation: isolate;
 }
 
+/* V modalu nezesvětlovat spodek fotky přechodem z karty jídla */
+.menuDetailMedia::after {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .menuDetailHeader {
     grid-template-columns: 1fr;

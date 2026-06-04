@@ -120,7 +120,6 @@ export function MenuItemOrderModal({
             imageUrl={item.imageUrl}
             seedId={item.id}
             visible
-            presentation="fill"
             className="menuItemMedia menuDetailMedia"
           />
           <div className="menuDetailHeaderText">
