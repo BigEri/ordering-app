@@ -118,19 +118,19 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
       ]);
       const meJ = (await meR.json()) as MeResponse;
       const oJ = (await oR.json()) as OverviewResponse;
-      setMe(meJ);
-      setOverview(oJ);
+      if (meR.ok && meJ.ok) setMe(meJ);
+      if (oR.ok && oJ.ok) setOverview(oJ);
       if (!meR.ok || !meJ.ok) setErr("Nepodařilo se načíst váš profil.");
       if (!oR.ok || !oJ.ok) {
         const errMsg = "error" in oJ && oJ.error ? oJ.error : "Nepodařilo se načíst přehled provozoven.";
-        setErr(errMsg);
+        if (!opts?.background || !overview?.ok) setErr(errMsg);
       }
     } catch {
       setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [overview]);
 
   React.useEffect(() => {
     if (hasInitialOverview) return;
@@ -410,7 +410,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
             </div>
           )}
         </section>
-      ) : !err && !listReady ? (
+      ) : !err && !listReady && !hasInitialOverview ? (
         <p className="textMuted" style={{ marginTop: 16 }}>
           Načítání provozoven…
         </p>

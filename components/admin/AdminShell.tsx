@@ -6,22 +6,35 @@ import * as React from "react";
 import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import { AdminNavLink } from "./AdminNavLink";
 import { TableflowBrand } from "./TableflowBrand";
+import type { AdminShellBootstrap } from "../../lib/server/adminShellBootstrap";
+import { AdminShellProvider } from "./AdminShellContext";
 import { useAdminRestaurantBootstrap } from "./useAdminRestaurantBootstrap";
 
-type MeOk = {
-  ok: true;
-  session: { email: string; globalRole: "SUPER_ADMIN" | "USER" };
-  activeRestaurantId: string | null;
-  activeRestaurantName?: string | null;
-  memberships: { restaurantId: string; role: string }[];
-};
+type MeOk = AdminShellBootstrap["me"];
 
-export function AdminShell({ children }: { children: React.ReactNode }) {
+function labelFromMe(me: MeOk, map: Record<string, string>): string | null {
+  const rid = me.activeRestaurantId;
+  if (rid && map[rid]) return map[rid];
+  if (me.activeRestaurantName) return me.activeRestaurantName;
+  return rid ? null : null;
+}
+
+export function AdminShell({
+  children,
+  bootstrap,
+}: {
+  children: React.ReactNode;
+  bootstrap: AdminShellBootstrap | null;
+}) {
   const pathname = usePathname() ?? "";
   const router = useRouter();
-  const [me, setMe] = React.useState<MeOk | null>(null);
-  const [restaurantNameById, setRestaurantNameById] = React.useState<Record<string, string>>({});
-  const [activeRestaurantLabel, setActiveRestaurantLabel] = React.useState<string | null>(null);
+  const [me, setMe] = React.useState<MeOk | null>(bootstrap?.me ?? null);
+  const [restaurantNameById, setRestaurantNameById] = React.useState<Record<string, string>>(
+    () => bootstrap?.restaurantMap ?? {},
+  );
+  const [activeRestaurantLabel, setActiveRestaurantLabel] = React.useState<string | null>(
+    () => bootstrap?.activeLabel ?? null,
+  );
   const [clientReady, setClientReady] = React.useState(false);
 
   const isLogin = pathname === "/admin/login";
@@ -32,71 +45,40 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     setClientReady(true);
   }, []);
 
-  React.useEffect(() => {
-    if (isLogin) return;
-    void (async () => {
-      try {
-        const r = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
-        const j = (await r.json()) as MeOk | { ok: false };
-        if (r.ok && j.ok) {
-          setMe(j);
-        } else {
-          setMe(null);
+  const refreshShell = React.useCallback(async () => {
+    try {
+      const [meR, rR] = await Promise.all([
+        fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" }),
+        fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" }),
+      ]);
+      const meJ = (await meR.json()) as MeOk | { ok: false };
+      const rJ = (await rR.json()) as { ok?: boolean; restaurants?: { id: string; name: string }[] };
+      if (!meR.ok || !meJ.ok) return;
+      setMe(meJ);
+      setRestaurantNameById((prev) => {
+        const next = { ...prev };
+        if (rR.ok && rJ.ok && rJ.restaurants) {
+          for (const x of rJ.restaurants) next[x.id] = x.name;
         }
-      } catch {
-        setMe(null);
-      }
-    })();
-  }, [isLogin]);
+        setActiveRestaurantLabel(labelFromMe(meJ, next));
+        return next;
+      });
+    } catch {
+      /* keep SSR / last good state */
+    }
+  }, []);
 
   React.useEffect(() => {
-    if (isLogin || !me?.ok) return;
-    void (async () => {
-      try {
-        const r = await fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" });
-        const j = (await r.json()) as { ok?: boolean; restaurants?: { id: string; name: string }[] };
-        if (!r.ok || !j.ok || !j.restaurants) return;
-        const map: Record<string, string> = {};
-        for (const x of j.restaurants) map[x.id] = x.name;
-        setRestaurantNameById((prev) => ({ ...prev, ...map }));
-        const rid = me.activeRestaurantId;
-        if (rid && map[rid]) setActiveRestaurantLabel(map[rid]);
-        else if (rid && me.activeRestaurantName) setActiveRestaurantLabel(me.activeRestaurantName);
-        else setActiveRestaurantLabel(rid ? "…" : null);
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, [isLogin, me]);
+    if (isLogin || bootstrap) return;
+    void refreshShell();
+  }, [isLogin, bootstrap, refreshShell]);
 
   React.useEffect(() => {
     if (isLogin) return;
-    const onRestaurantUpdated = () => {
-      void (async () => {
-        try {
-          const mr = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
-          const mj = (await mr.json()) as MeOk | { ok: false };
-          if (mr.ok && mj.ok) {
-            setMe(mj);
-            const rid = mj.activeRestaurantId;
-            const r2 = await fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" });
-            const j2 = (await r2.json()) as { ok?: boolean; restaurants?: { id: string; name: string }[] };
-            if (r2.ok && j2.ok && j2.restaurants) {
-              const map: Record<string, string> = {};
-              for (const x of j2.restaurants) map[x.id] = x.name;
-              setRestaurantNameById((prev) => ({ ...prev, ...map }));
-              if (rid && map[rid]) setActiveRestaurantLabel(map[rid]);
-              else if (rid && mj.activeRestaurantName) setActiveRestaurantLabel(mj.activeRestaurantName);
-            }
-          }
-        } catch {
-          /* ignore */
-        }
-      })();
-    };
+    const onRestaurantUpdated = () => void refreshShell();
     window.addEventListener("oa-restaurant-updated", onRestaurantUpdated);
     return () => window.removeEventListener("oa-restaurant-updated", onRestaurantUpdated);
-  }, [isLogin]);
+  }, [isLogin, refreshShell]);
 
   const isSuper = me?.ok && me.session.globalRole === "SUPER_ADMIN";
 
@@ -175,6 +157,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
+    <AdminShellProvider value={bootstrap}>
     <div className={`adminShell${clientReady ? " adminShell--ready" : ""}`}>
       <aside className="adminShell__aside" aria-label="Admin menu">
         <div className="adminShell__brand">
@@ -251,5 +234,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
         <div className="adminShell__content">{children}</div>
       </div>
     </div>
+    </AdminShellProvider>
   );
 }

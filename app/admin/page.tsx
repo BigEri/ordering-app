@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { AdminChipLink } from "../../components/admin/AdminNavLink";
+import { useAdminShellBootstrap } from "../../components/admin/AdminShellContext";
 import { postSelectActiveRestaurant } from "../../lib/admin/clientRestaurantSelect";
 
 type MeResponse =
@@ -20,15 +21,20 @@ type RestaurantsResponse =
   | { ok: false; error: string };
 
 export default function AdminHomePage() {
-  const [me, setMe] = React.useState<MeResponse | null>(null);
-  const [restaurants, setRestaurants] = React.useState<RestaurantsResponse | null>(null);
+  const shellBootstrap = useAdminShellBootstrap();
+  const [me, setMe] = React.useState<MeResponse | null>(() =>
+    shellBootstrap?.me ? (shellBootstrap.me as MeResponse) : null,
+  );
+  const [restaurants, setRestaurants] = React.useState<RestaurantsResponse | null>(() =>
+    shellBootstrap ? { ok: true, restaurants: shellBootstrap.restaurants } : null,
+  );
   const [selecting, setSelecting] = React.useState<string | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [editName, setEditName] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
 
-  const load = React.useCallback(async () => {
-    setErr(null);
+  const load = React.useCallback(async (opts?: { background?: boolean }) => {
+    if (!opts?.background) setErr(null);
     try {
       const [meR, rR] = await Promise.all([
         fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" }),
@@ -50,8 +56,12 @@ export default function AdminHomePage() {
   }, []);
 
   React.useEffect(() => {
+    if (shellBootstrap) {
+      void load({ background: true });
+      return;
+    }
     void load();
-  }, [load]);
+  }, [load, shellBootstrap]);
 
   const activeId = me && me.ok ? me.activeRestaurantId : null;
   const activeName =
@@ -227,9 +237,9 @@ export default function AdminHomePage() {
               );
             })}
           </div>
-        ) : (
+        ) : !shellBootstrap ? (
           <p className="textMuted">Načítání…</p>
-        )}
+        ) : null}
       </section>
 
       <section style={{ marginTop: 18, display: "grid", gap: 10 }}>
