@@ -89,7 +89,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
         </p>
       ) : null}
 
-      <KioskModeSwitch variant="login" />
+      <KioskModeSwitch />
     </main>
     <TableflowBrand className="tableflowBrand--loginCorner" />
     </div>

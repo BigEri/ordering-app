@@ -4,12 +4,8 @@ import * as React from "react";
 
 import { isKioskWebView } from "../../lib/kiosk/isKioskWebView";
 
-type KioskModeSwitchProps = {
-  variant?: "login" | "sidebar";
-};
-
-/** V kiosk APK: přepnutí z omylem zvoleného Admin režimu na Host + párování. */
-export function KioskModeSwitch({ variant = "login" }: KioskModeSwitchProps) {
+/** V kiosk APK na přihlášení: přepnutí z omylem zvoleného Admin režimu na Host + párování. */
+export function KioskModeSwitch() {
   const [kiosk, setKiosk] = React.useState(false);
 
   React.useEffect(() => {
@@ -26,14 +22,6 @@ export function KioskModeSwitch({ variant = "login" }: KioskModeSwitchProps) {
     }
     window.location.href = "/kiosk/reset-mode?to=host";
   };
-
-  if (variant === "sidebar") {
-    return (
-      <button type="button" className="chip adminShell__kioskHost" onClick={() => void onSwitchToHost()}>
-        Režim host (menu)
-      </button>
-    );
-  }
 
   return (
     <section

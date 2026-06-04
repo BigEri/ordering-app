@@ -5,7 +5,6 @@ import * as React from "react";
 
 import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import { AdminNavLink } from "./AdminNavLink";
-import { KioskModeSwitch } from "./KioskModeSwitch";
 import { TableflowBrand } from "./TableflowBrand";
 import { useAdminRestaurantBootstrap } from "./useAdminRestaurantBootstrap";
 
@@ -211,7 +210,6 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
               Načítání…
             </p>
           )}
-          <KioskModeSwitch variant="sidebar" />
           <button type="button" className="chip adminShell__logout" onClick={() => void onLogout()}>
             Odhlásit
           </button>
