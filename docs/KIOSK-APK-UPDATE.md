@@ -38,6 +38,13 @@ adb shell dpm set-device-owner com.example.tableordering/.KioskDeviceAdminReceiv
 
 Tablet musí být **Host (kiosk)**, ne osobní admin telefon vedoucího.
 
+## Stabilní ID tabletu (přežije přeinstalaci APK)
+
+APK používá `android-…` z `Settings.Secure.ANDROID_ID` (stejný podpis app). Párování v DB zůstane po odinstalaci a nové instalaci.
+
+- **Jednou po nasazení této verze:** tablety dříve spárované náhodným UUID je potřeba **jednou znovu spárovat** (nové ID začíná `android-`). Pak už reinstall nevyžaduje párování.
+- **Update APK bez odinstalace:** staré UUID v paměti tabletu zůstane, dokud neodinstalujete.
+
 ## Migrace DB
 
 `20260603120000_kiosk_apk_update_nonce` – sloupec `apkUpdateNonce` v `KioskDeviceBinding`.

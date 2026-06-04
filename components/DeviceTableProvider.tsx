@@ -353,7 +353,17 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     let cancelled = false;
 
     (async () => {
-      const id = await getOrCreateDeviceIdAsync();
+      let id = "";
+      if (typeof window !== "undefined") {
+        const fromUrl = normalizeDeviceId(new URLSearchParams(window.location.search).get("deviceId"));
+        if (fromUrl) {
+          id = fromUrl;
+          await persistDeviceIdEverywhere(fromUrl);
+        }
+      }
+      if (!id) {
+        id = await getOrCreateDeviceIdAsync();
+      }
       if (cancelled) return;
       setDeviceId(id);
 
