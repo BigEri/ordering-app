@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { KioskModeSwitch } from "../../../components/admin/KioskModeSwitch";
 import { TableflowBrand } from "../../../components/admin/TableflowBrand";
 
 export function LoginClient({ nextPath }: { nextPath: string }) {
@@ -87,6 +88,8 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
           {err}
         </p>
       ) : null}
+
+      <KioskModeSwitch variant="login" />
     </main>
     <TableflowBrand className="tableflowBrand--loginCorner" />
     </div>
