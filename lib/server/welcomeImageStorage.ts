@@ -38,11 +38,17 @@ function validateMagicBytes(buf: Buffer, mime: string): boolean {
   return false;
 }
 
+function r2PathAllowsRestaurant(imageUrl: string, restaurantId: string): boolean {
+  const rid = restaurantId.trim();
+  if (!rid) return false;
+  return imageUrl.includes(`/welcome/${rid}/`) || imageUrl.includes(`/menu/${rid}/`);
+}
+
 export function isAllowedWelcomeImageUrl(imageUrl: string, restaurantId: string, maxLen = 2000): boolean {
   if (!imageUrl || imageUrl.length > maxLen) return false;
   if (imageUrl.includes("..")) return false;
   if (isManagedObjectStorageUrl(imageUrl)) {
-    return imageUrl.includes(`/welcome/${restaurantId}/`);
+    return r2PathAllowsRestaurant(imageUrl, restaurantId);
   }
   if (/^https?:\/\//i.test(imageUrl)) return true;
   if (imageUrl.startsWith("/images/")) return true;

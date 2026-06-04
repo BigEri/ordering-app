@@ -258,7 +258,7 @@ export function WelcomeSettingsClient() {
         if (rejected.length > 0) {
           const preview = rejected.slice(0, 2).join(" · ");
           setSaveErr(
-            `Server odmítl ${rejected.length} URL (neplatná adresa nebo jiná restaurace). ${preview}${rejected.length > 2 ? "…" : ""}`,
+            `Server odmítl ${rejected.length} URL (špatný formát, jiná restaurace, nebo neznámá doména). ${preview}${rejected.length > 2 ? "…" : ""}`,
           );
           return false;
         }
