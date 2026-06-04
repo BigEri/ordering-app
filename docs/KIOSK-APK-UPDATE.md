@@ -20,10 +20,13 @@ Když `KIOSK_APK_URL` chybí, použije se `{NEXT_PUBLIC_APP_URL}/releases/tablef
 
 ## Publikace APK
 
-1. V Android Studiu: **Build → Generate Signed APK** (release).
+1. V Android Studiu: **Build → Generate Signed APK** (release) — stejný podpis jako na tabletech.
 2. Zkopírujte APK do `ordering-app/public/releases/tableflow-kiosk.apk` a nasaďte web.
+   - Dočasně může být `app-debug.apk` z `assembleDebug` (debug podpis), pokud tablety instalujete ze Studia.
 3. Nastavte env na Vercelu (`KIOSK_APK_VERSION_CODE` = `versionCode` z `app/build.gradle.kts`).
-4. Spusťte migraci DB: `npx prisma migrate deploy` (sloupec `apkUpdateNonce`).
+4. Spusťte migraci DB: `npx prisma migrate deploy` (sloupec `apkUpdateNonce`) — produkce Neon i lokál.
+
+Hash pro Vercel: `node scripts/publish-kiosk-apk-hashes.mjs` → `KIOSK_APK_SHA256`.
 
 ## Device Owner (jednorázově na tablet)
 
