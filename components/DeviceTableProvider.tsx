@@ -22,7 +22,8 @@ const IDB_KEY_DEVICE = "deviceId";
 const COOKIE_MAX_AGE_SEC = 10 * 365 * 24 * 60 * 60;
 
 const HEARTBEAT_MS = 45_000;
-const CONFIG_POLL_MS = 60_000;
+/** Admin „Vynutit obnovení“ — tablet polluje config a při vyšším reloadNonce obnoví stránku. */
+const CONFIG_POLL_MS = 12_000;
 
 /** Kiosk tablet / host menu — ne admin ani setup. */
 function needsKioskDeviceContext(pathname: string | null | undefined): boolean {
@@ -451,7 +452,14 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
 
     void poll();
     const t = window.setInterval(poll, CONFIG_POLL_MS);
-    return () => window.clearInterval(t);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void poll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [deviceId, ready, pathname, syncPairingWithConfig, applyDeviceSecret]);
 
   React.useEffect(() => {

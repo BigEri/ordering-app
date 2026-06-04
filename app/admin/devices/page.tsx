@@ -62,6 +62,8 @@ export default function AdminDevicesPage() {
   const [healthLoading, setHealthLoading] = React.useState(true);
   const [healthErr, setHealthErr] = React.useState(false);
   const [reloadErr, setReloadErr] = React.useState(false);
+  const [reloadErrDetail, setReloadErrDetail] = React.useState<string | null>(null);
+  const [reloadOk, setReloadOk] = React.useState<string | null>(null);
   const [reloadingId, setReloadingId] = React.useState<string | null>(null);
   const [apkUpdateErr, setApkUpdateErr] = React.useState(false);
   const [apkUpdatingId, setApkUpdatingId] = React.useState<string | null>(null);
@@ -278,17 +280,26 @@ export default function AdminDevicesPage() {
 
   const onForceReload = async (deviceId: string) => {
     setReloadErr(false);
+    setReloadErrDetail(null);
+    setReloadOk(null);
     setReloadingId(deviceId);
     try {
       const r = await fetch("/api/devices/reload", {
         method: "POST",
         headers: { "content-type": "application/json" },
+        credentials: "same-origin",
         body: JSON.stringify({ deviceId }),
       });
-      if (!r.ok) {
+      const data = (await r.json()) as { ok?: boolean; reloadNonce?: number; error?: string };
+      if (!r.ok || !data.ok) {
         setReloadErr(true);
+        setReloadErrDetail(data.error ?? null);
         return;
       }
+      const n = typeof data.reloadNonce === "number" ? data.reloadNonce : "?";
+      setReloadOk(
+        `${deviceId.slice(0, 24)}${deviceId.length > 24 ? "…" : ""} — tablet obnoví menu do ~15 s (musí být online v režimu host). Nonce: ${n}`,
+      );
     } catch {
       setReloadErr(true);
     } finally {
@@ -422,9 +433,14 @@ export default function AdminDevicesPage() {
         ) : null}
       </section>
 
+      {reloadOk ? (
+        <p role="status" style={{ color: "#bbf7d0", marginBottom: 12, fontSize: 14 }}>
+          {reloadOk}
+        </p>
+      ) : null}
       {reloadErr ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
-          {tStaff("admin.devices.reloadErr")}
+          {reloadErrDetail ?? tStaff("admin.devices.reloadErr")}
         </p>
       ) : null}
 
@@ -560,6 +576,7 @@ export default function AdminDevicesPage() {
                         disabled={reloadingId === d.deviceId}
                         onClick={() => void onForceReload(d.deviceId)}
                         style={{ cursor: "pointer" }}
+                        title={tStaff("admin.devices.reloadHint")}
                       >
                         {tStaff("admin.devices.reload")}
                       </button>

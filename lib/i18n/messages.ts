@@ -181,6 +181,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.dotykackaHint": "Tip: pokud vybíráte stůl z Dotykačky, použijte jeho ID, ne jen název na plánku.",
     "admin.devices.col.actions": "Akce",
     "admin.devices.reload": "Vynutit obnovení",
+    "admin.devices.reloadHint": "Tablet v režimu host obnoví menu do ~15 s (musí být online). Tlačítko „Obnovit“ nahoře jen aktualizuje tento seznam.",
     "admin.devices.reloadErr": "Požadavek na obnovení se nezdařil.",
     "admin.devices.apkUpdate": "Aktualizovat APK",
     "admin.devices.apkUpdateErr": "Požadavek na aktualizaci APK se nezdařil.",
@@ -393,6 +394,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "Dotykacka: use the table id from the API (GET …/tables → data[].id) in “Table number / ID”, not only the floor-plan label.",
     "admin.devices.col.actions": "Actions",
     "admin.devices.reload": "Force reload",
+    "admin.devices.reloadHint":
+      "Host-mode tablet reloads the menu within ~15 s (must be online). The top “Refresh” button only updates this list.",
     "admin.devices.reloadErr": "Reload request failed.",
     "admin.devices.apkUpdate": "Update kiosk APK",
     "admin.devices.apkUpdateErr": "APK update request failed.",
@@ -605,6 +608,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "Dotykacka: ‘테이블 번호 / ID’에는 API의 테이블 id(GET …/tables → data[].id)를 입력하세요.",
     "admin.devices.col.actions": "동작",
     "admin.devices.reload": "강제 새로 고침",
+    "admin.devices.reloadHint":
+      "호스트 모드 태블릿은 ~15초 안에 메뉴를 새로 고칩니다(온라인 필요). 상단 ‘새로 고침’은 이 목록만 갱신합니다.",
     "admin.devices.reloadErr": "새로 고침 요청에 실패했습니다.",
     "admin.devices.apkUpdate": "키오스크 APK 업데이트",
     "admin.devices.apkUpdateErr": "APK 업데이트 요청에 실패했습니다.",
