@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import type { MenuItemData } from "./MenuItem";
+import { MenuItemPhoto } from "./MenuItemPhoto";
 import type { Locale } from "../lib/i18n/messages";
 import { allergenLabel } from "../lib/menu/allergens";
 import {
@@ -86,14 +87,6 @@ export function MenuItemOrderModal({
     return uniq;
   }, [item.allergenCodes]);
 
-  const mediaStyle = React.useMemo<React.CSSProperties>(() => {
-    if (item.imageUrl) return { backgroundImage: `url(${item.imageUrl})` };
-    const hue = Math.abs(Array.from(item.id).reduce((acc, ch) => acc + ch.charCodeAt(0) * 17, 0) % 360);
-    return {
-      backgroundImage: `radial-gradient(600px 240px at 30% 20%, hsla(${hue}, 90%, 65%, 0.35), transparent 55%), radial-gradient(500px 220px at 80% 10%, hsla(${(hue + 60) % 360}, 90%, 60%, 0.25), transparent 60%), linear-gradient(180deg, rgba(255,255,255,0.10), rgba(0,0,0,0.10))`,
-    };
-  }, [item.id, item.imageUrl]);
-
   if (!open) return null;
 
   const unitExtra = dotykackaExtraUnitPriceCzk(item, picks);
@@ -123,7 +116,7 @@ export function MenuItemOrderModal({
         className="modalCard modalCard--md modalCard--detail"
       >
         <header className="menuDetailHeader">
-          <div aria-hidden="true" className="menuDetailMedia" style={mediaStyle} />
+          <MenuItemPhoto imageUrl={item.imageUrl} seedId={item.id} visible className="menuDetailMedia" />
           <div className="menuDetailHeaderText">
             <strong className="modalTitle">{item.name}</strong>
             {item.description ? (

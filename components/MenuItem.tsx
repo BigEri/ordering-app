@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import type { Locale } from "../lib/i18n/messages";
+import { MenuItemPhoto } from "./MenuItemPhoto";
 
 export type MenuIngredientLine = {
   name: string;
@@ -169,22 +170,6 @@ export function MenuItem({ item, onOpenDetails, guestTablet, locale = "cs", medi
     return () => io.disconnect();
   }, [mediaVisible]);
 
-  const mediaStyle = React.useMemo<React.CSSProperties>(() => {
-    const hue = Math.abs(
-      Array.from(item.id).reduce((acc, ch) => acc + ch.charCodeAt(0) * 17, 0) % 360,
-    );
-    const fallback =
-      `radial-gradient(600px 240px at 30% 20%, hsla(${hue}, 90%, 65%, 0.35), transparent 55%), ` +
-      `radial-gradient(500px 220px at 80% 10%, hsla(${(hue + 60) % 360}, 90%, 60%, 0.25), transparent 60%), ` +
-      `linear-gradient(180deg, rgba(255,255,255,0.10), rgba(0,0,0,0.10))`;
-
-    // Důležité: dokud karta není blízko viewportu, nenasazujeme `url(...)` => prohlížeč nestahuje obrázek.
-    if (mediaVisible && item.imageUrl) {
-      return { backgroundImage: `url(${item.imageUrl}), ${fallback}` };
-    }
-    return { backgroundImage: fallback };
-  }, [item.id, item.imageUrl, mediaVisible]);
-
   return (
     <article
       className={`menuItemCard${onOpenDetails ? " menuItemCardClickable" : ""}`}
@@ -199,12 +184,15 @@ export function MenuItem({ item, onOpenDetails, guestTablet, locale = "cs", medi
         }
       }}
     >
-      <div ref={mediaRef} className="menuItemMedia" style={mediaStyle} aria-hidden="true">
+      <div ref={mediaRef} className="menuItemMediaHost">
+        <MenuItemPhoto
+          imageUrl={item.imageUrl}
+          seedId={item.id}
+          visible={mediaVisible}
+          priority={mediaPriority}
+        />
         {!guestTablet ? <span className="menuItemBadge">{ILLUSTRATION_BADGE[locale]}</span> : null}
       </div>
-
-      {/* Preload obrázku pro první položky (zrychlí pocitově načtení, neblokuje render). */}
-      {mediaPriority && item.imageUrl ? <link rel="preload" as="image" href={item.imageUrl} /> : null}
 
       <header className="menuItemBody">
         <strong className="menuItemTitle menuItemTitleRow">
