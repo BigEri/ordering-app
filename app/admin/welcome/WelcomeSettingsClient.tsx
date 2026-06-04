@@ -5,6 +5,11 @@ import { FilePickButton } from "../../../components/FilePickButton";
 import { AdminChipLink } from "../../../components/admin/AdminNavLink";
 
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../../../lib/menu/welcomeLayoutPreset";
+import {
+  uniqueWelcomeImageUrls,
+  welcomeLayoutInsufficientMessage,
+  welcomeLayoutVisibleSlotCount,
+} from "../../../lib/menu/welcomeShowcaseSlots";
 
 type MeOk = {
   ok: true;
@@ -187,6 +192,14 @@ export function WelcomeSettingsClient() {
     const i = imageUrls.findIndex((x) => !String(x ?? "").trim());
     return i >= 0 ? i : null;
   }, [imageUrls]);
+
+  const uniqueSavedUrls = React.useMemo(() => uniqueWelcomeImageUrls(cleanedUrlsFromEditor(imageUrls)), [imageUrls]);
+  const layoutNeeds = welcomeLayoutVisibleSlotCount(layoutPreset);
+  const layoutInsufficient =
+    uniqueSavedUrls.length > 0 && uniqueSavedUrls.length < layoutNeeds;
+  const layoutWarnMsg = layoutInsufficient
+    ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueSavedUrls.length)
+    : null;
 
   const persistWelcome = React.useCallback(
     async (
@@ -403,6 +416,12 @@ export function WelcomeSettingsClient() {
       {loadErr ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 16 }}>
           {loadErr}
+        </p>
+      ) : null}
+
+      {layoutWarnMsg ? (
+        <p role="alert" style={{ color: "#fde68a", marginBottom: 16, maxWidth: 720, lineHeight: 1.55 }}>
+          {layoutWarnMsg} Stejný obrázek nelze použít dvakrát — každý slot musí mít jinou fotku.
         </p>
       ) : null}
 

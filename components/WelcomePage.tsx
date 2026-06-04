@@ -7,6 +7,10 @@ import { KioskAnchor } from "./kiosk/KioskAnchor";
 import { buildKioskMenuUrl, kioskNavigate } from "../lib/kiosk/nav";
 
 import type { WelcomeLayoutPreset } from "../lib/menu/welcomeLayoutPreset";
+import {
+  assignWelcomeShowcaseSlots,
+  welcomeLayoutInsufficientMessage,
+} from "../lib/menu/welcomeShowcaseSlots";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { LocaleFlag, type FlagCode } from "./LocaleFlag";
 import { useLanguage } from "./LanguageProvider";
@@ -175,12 +179,49 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
     };
   }, [effectiveGalleryUrls.length]);
 
-  const n = Math.max(effectiveGalleryUrls.length, 1);
-  const src0 = effectiveGalleryUrls[imageIdx % n] ?? effectiveGalleryUrls[0]!;
-  const src1 = effectiveGalleryUrls[(imageIdx + 1) % n] ?? effectiveGalleryUrls[0]!;
-  const src2 = effectiveGalleryUrls[(imageIdx + 2) % n] ?? effectiveGalleryUrls[0]!;
-  const src3 = effectiveGalleryUrls[(imageIdx + 3) % n] ?? effectiveGalleryUrls[0]!;
+  const slotAssignment = assignWelcomeShowcaseSlots(effectiveGalleryUrls, layoutPreset, imageIdx);
+  const { slots, sufficient, uniqueCount } = slotAssignment;
+  const insufficientMsg = !sufficient ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueCount) : null;
+  const src0 = slots[0] ?? "";
+  const src1 = slots[1] ?? "";
+  const src2 = slots[2] ?? "";
+  const src3 = slots[3] ?? "";
   const galleryLabel = t("welcome.slideshow.alt");
+
+  const renderCell = (
+    src: string,
+    opts: {
+      sizes: string;
+      priority?: boolean;
+      animKey: string;
+      className?: string;
+      vignette?: "main" | false;
+    },
+  ) => {
+    const cellClass = ["welcomePhotoCell", opts.className].filter(Boolean).join(" ");
+    if (!src.trim()) {
+      return (
+        <div className={`${cellClass} welcomePhotoCell--empty`} aria-hidden="true">
+          <div className="welcomePhotoEmptyFill" />
+        </div>
+      );
+    }
+    return (
+      <div className={cellClass}>
+        <ShowcaseFillImage
+          src={src}
+          sizes={opts.sizes}
+          priority={opts.priority}
+          reduceMotion={reduceMotion}
+          animKey={opts.animKey}
+          className={`welcomePhotoImg${anim}`}
+          onExternalError={onExternalError}
+        />
+        {opts.vignette === "main" ? <div className="welcomePhotoVignette welcomePhotoVignette--main" aria-hidden="true" /> : null}
+        <div className="welcomePhotoFrameLine" aria-hidden="true" />
+      </div>
+    );
+  };
   const anim = reduceMotion ? "" : " welcomePhotoImg--enter";
   const motionStatic = reduceMotion ? " welcomePhotoMosaic--static" : "";
 
@@ -188,137 +229,45 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   if (layoutPreset === "fade") {
     media = (
       <div className={`welcomePhotoFade${motionStatic}`} role="presentation">
-        <div className="welcomePhotoFadeCell welcomePhotoCell">
-          <ShowcaseFillImage
-            src={src0}
-            sizes="100vw"
-            priority={imageIdx === 0}
-            reduceMotion={reduceMotion}
-            animKey={`${src0}-${imageIdx}-fade`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoVignette welcomePhotoVignette--main" aria-hidden="true" />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
+        <div className="welcomePhotoFadeCell">{renderCell(src0, { sizes: "100vw", priority: imageIdx === 0, animKey: `${src0}-${imageIdx}-fade`, vignette: "main" })}</div>
       </div>
     );
   } else if (layoutPreset === "split_half") {
     media = (
       <div className={`welcomePhotoSplit${motionStatic}`} role="presentation">
-        <div className="welcomePhotoCell">
-          <ShowcaseFillImage
-            src={src0}
-            sizes="50vw"
-            priority={imageIdx === 0}
-            reduceMotion={reduceMotion}
-            animKey={`${src0}-${imageIdx}-sh0`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
-        <div className="welcomePhotoCell">
-          <ShowcaseFillImage
-            src={src1}
-            sizes="50vw"
-            reduceMotion={reduceMotion}
-            animKey={`${src1}-${imageIdx}-sh1`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
+        {renderCell(src0, { sizes: "50vw", priority: imageIdx === 0, animKey: `${src0}-${imageIdx}-sh0` })}
+        {renderCell(src1, { sizes: "50vw", animKey: `${src1}-${imageIdx}-sh1` })}
       </div>
     );
   } else if (layoutPreset === "grid_four") {
     media = (
       <div className={`welcomePhotoGridFour${motionStatic}`} role="presentation">
-        <div className="welcomePhotoCell">
-          <ShowcaseFillImage
-            src={src0}
-            sizes="50vw"
-            priority={imageIdx === 0}
-            reduceMotion={reduceMotion}
-            animKey={`${src0}-${imageIdx}-g0`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
-        <div className="welcomePhotoCell">
-          <ShowcaseFillImage
-            src={src1}
-            sizes="50vw"
-            reduceMotion={reduceMotion}
-            animKey={`${src1}-${imageIdx}-g1`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
-        <div className="welcomePhotoCell">
-          <ShowcaseFillImage
-            src={src2}
-            sizes="50vw"
-            reduceMotion={reduceMotion}
-            animKey={`${src2}-${imageIdx}-g2`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
-        <div className="welcomePhotoCell">
-          <ShowcaseFillImage
-            src={src3}
-            sizes="50vw"
-            reduceMotion={reduceMotion}
-            animKey={`${src3}-${imageIdx}-g3`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
+        {renderCell(src0, { sizes: "50vw", priority: imageIdx === 0, animKey: `${src0}-${imageIdx}-g0` })}
+        {renderCell(src1, { sizes: "50vw", animKey: `${src1}-${imageIdx}-g1` })}
+        {renderCell(src2, { sizes: "50vw", animKey: `${src2}-${imageIdx}-g2` })}
+        {renderCell(src3, { sizes: "50vw", animKey: `${src3}-${imageIdx}-g3` })}
       </div>
     );
   } else {
     media = (
       <div className={`welcomePhotoMosaic${motionStatic}`} role="presentation">
-        <div className="welcomePhotoCell welcomePhotoCell--main">
-          <ShowcaseFillImage
-            src={src0}
-            sizes="100vw"
-            priority={imageIdx === 0}
-            reduceMotion={reduceMotion}
-            animKey={`${src0}-${imageIdx}-0`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoVignette welcomePhotoVignette--main" aria-hidden="true" />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
-        <div className="welcomePhotoCell welcomePhotoCell--side welcomePhotoCell--a">
-          <ShowcaseFillImage
-            src={src1}
-            sizes="50vw"
-            reduceMotion={reduceMotion}
-            animKey={`${src1}-${imageIdx}-1`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
-        <div className="welcomePhotoCell welcomePhotoCell--side welcomePhotoCell--b">
-          <ShowcaseFillImage
-            src={src2}
-            sizes="50vw"
-            reduceMotion={reduceMotion}
-            animKey={`${src2}-${imageIdx}-2`}
-            className={`welcomePhotoImg${anim}`}
-            onExternalError={onExternalError}
-          />
-          <div className="welcomePhotoFrameLine" aria-hidden="true" />
-        </div>
+        {renderCell(src0, {
+          sizes: "100vw",
+          priority: imageIdx === 0,
+          animKey: `${src0}-${imageIdx}-0`,
+          className: "welcomePhotoCell--main",
+          vignette: "main",
+        })}
+        {renderCell(src1, {
+          sizes: "50vw",
+          animKey: `${src1}-${imageIdx}-1`,
+          className: "welcomePhotoCell--side welcomePhotoCell--a",
+        })}
+        {renderCell(src2, {
+          sizes: "50vw",
+          animKey: `${src2}-${imageIdx}-2`,
+          className: "welcomePhotoCell--side welcomePhotoCell--b",
+        })}
       </div>
     );
   }
@@ -331,6 +280,11 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
       </div>
 
       <div className="welcomeOverlayStack">
+        {insufficientMsg ? (
+          <p className="welcomeLayoutWarn" role="alert">
+            {insufficientMsg}
+          </p>
+        ) : null}
         <div className="welcomeCopyCard">
           <div className="welcomeRotatingCopy" role="group" aria-label={galleryLabel} aria-live="polite" aria-atomic="true">
             <p className="welcomeBrand">{brandName}</p>

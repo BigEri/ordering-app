@@ -1,4 +1,5 @@
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../menu/welcomeLayoutPreset";
+import { uniqueWelcomeImageUrls } from "../menu/welcomeShowcaseSlots";
 import { WELCOME_SHOWCASE_IMAGE_URLS } from "../menu/welcomeShowcaseImages";
 import { isAllowedWelcomeImageUrl, tryDeleteStoredWelcomeImage } from "./welcomeImageStorage";
 import { nowIso } from "./db";
@@ -118,16 +119,14 @@ export async function upsertRestaurantWelcome(opts: {
 }): Promise<{ savedUrls: string[]; rejectedUrls: string[] }> {
   const rid = opts.restaurantId.trim();
   if (!rid) return { savedUrls: [], rejectedUrls: [] };
-  const cleaned: string[] = [];
   const rejectedUrls: string[] = [];
-  for (const u of opts.imageUrls) {
-    const t = typeof u === "string" ? u.trim() : "";
-    if (!t) continue;
-    if (!isAllowedWelcomeImageUrl(t, rid)) {
-      rejectedUrls.push(t);
+  const cleaned: string[] = [];
+  for (const u of uniqueWelcomeImageUrls(opts.imageUrls)) {
+    if (!isAllowedWelcomeImageUrl(u, rid)) {
+      rejectedUrls.push(u);
       continue;
     }
-    cleaned.push(t);
+    cleaned.push(u);
     if (cleaned.length >= MAX_URLS) break;
   }
   const prev = await getRestaurantWelcomeRow(rid);

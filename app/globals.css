@@ -265,6 +265,30 @@ html {
   max-height: none;
 }
 
+.welcomePhotoCell--empty {
+  background: rgba(8, 12, 22, 0.92);
+}
+
+.welcomePhotoEmptyFill {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(145deg, rgba(30, 38, 58, 0.95), rgba(12, 16, 28, 0.98));
+}
+
+.welcomeLayoutWarn {
+  margin: 0 auto 12px;
+  max-width: min(520px, 92vw);
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  background: rgba(120, 53, 15, 0.55);
+  color: #fde68a;
+  font-size: 14px;
+  line-height: 1.45;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+
 .welcomePhotoCell {
   position: relative;
   min-height: 0;
