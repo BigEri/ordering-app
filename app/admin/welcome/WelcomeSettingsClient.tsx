@@ -42,6 +42,27 @@ function cleanedUrlsFromEditor(urls: string[]): string[] {
   return urls.map((x) => x.trim()).filter(Boolean);
 }
 
+/** Kam vložit fotku z menu — explicitní řádek nebo první prázdný slot. */
+function resolvePickerTargetIdx(idx: number | null, urls: string[]): number {
+  if (idx != null && Number.isFinite(idx) && idx >= 0) return idx;
+  const empty = urls.findIndex((x) => !String(x ?? "").trim());
+  if (empty >= 0) return empty;
+  return urls.length;
+}
+
+function findDuplicateUrlRows(urls: string[]): string[] {
+  const first = new Map<string, number>();
+  const lines: string[] = [];
+  urls.forEach((raw, i) => {
+    const u = raw.trim();
+    if (!u) return;
+    const prev = first.get(u);
+    if (prev != null) lines.push(`řádky ${prev + 1} a ${i + 1} mají stejnou adresu`);
+    else first.set(u, i);
+  });
+  return lines;
+}
+
 export function WelcomeSettingsClient() {
   const [me, setMe] = React.useState<MeOk | null>(null);
   const [loadErr, setLoadErr] = React.useState<string | null>(null);
@@ -62,7 +83,8 @@ export function WelcomeSettingsClient() {
   const [menuPickerLoading, setMenuPickerLoading] = React.useState(false);
   const [menuPickerErr, setMenuPickerErr] = React.useState<string | null>(null);
   const [menuImages, setMenuImages] = React.useState<Array<{ menuItemId: string; imageUrl: string }>>([]);
-  const [activeSlotIdx, setActiveSlotIdx] = React.useState<number | null>(null);
+  const [pickerTargetIdx, setPickerTargetIdx] = React.useState(0);
+  const pickerTargetIdxRef = React.useRef(0);
 
   /** Po úpravě uživatele nepřepisovat starým načtením z API (race → „vrací se změny“). */
   const dirtyRef = React.useRef(false);
@@ -193,15 +215,11 @@ export function WelcomeSettingsClient() {
     });
   };
 
-  const firstEmptySlotIdx = React.useMemo(() => {
-    const i = imageUrls.findIndex((x) => !String(x ?? "").trim());
-    return i >= 0 ? i : null;
-  }, [imageUrls]);
-
   const uniqueSavedUrls = React.useMemo(() => uniqueWelcomeImageUrls(cleanedUrlsFromEditor(imageUrls)), [imageUrls]);
+  const duplicateRowMsgs = React.useMemo(() => findDuplicateUrlRows(imageUrls), [imageUrls]);
   const layoutNeeds = welcomeLayoutVisibleSlotCount(layoutPreset);
   const layoutInsufficient =
-    uniqueSavedUrls.length > 0 && uniqueSavedUrls.length < layoutNeeds;
+    uniqueSavedUrls.length > 0 && uniqueSavedUrls.length < layoutNeeds && duplicateRowMsgs.length === 0;
   const layoutWarnMsg = layoutInsufficient
     ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueSavedUrls.length)
     : null;
@@ -259,7 +277,9 @@ export function WelcomeSettingsClient() {
   const openMenuPicker = React.useCallback(
     async (idx: number | null) => {
       if (!rid || !canEdit) return;
-      setActiveSlotIdx(idx);
+      const target = resolvePickerTargetIdx(idx, imageUrls);
+      pickerTargetIdxRef.current = target;
+      setPickerTargetIdx(target);
       setMenuPickerOpen(true);
       setMenuPickerErr(null);
       setMenuPickerLoading(true);
@@ -292,23 +312,36 @@ export function WelcomeSettingsClient() {
         setMenuPickerLoading(false);
       }
     },
-    [canEdit, rid],
+    [canEdit, rid, imageUrls],
   );
 
   const applyPickedMenuImage = React.useCallback(
-    (url: string) => {
+    (url: string, menuItemId: string) => {
       const trimmed = url.trim();
       if (!trimmed) return;
-      const idx = activeSlotIdx ?? firstEmptySlotIdx ?? 0;
-      const next = [...imageUrls];
-      while (next.length <= idx) next.push("");
-      next[idx] = trimmed;
-      setImageUrls(editorImageSlots(next));
+      const idx = pickerTargetIdxRef.current;
+
+      setImageUrls((prev) => {
+        const dupAt = prev.findIndex((u, i) => i !== idx && u.trim() === trimmed);
+        if (dupAt >= 0) {
+          setSaveErr(
+            `Fotka „${menuItemId || "menu"}“ má stejnou adresu jako řádek ${dupAt + 1}. Zvolte jinou položku nebo nahrajte nový soubor.`,
+          );
+          return prev;
+        }
+        const next = [...prev];
+        while (next.length <= idx) next.push("");
+        next[idx] = trimmed;
+        const edited = editorImageSlots(next);
+        setSaveErr(null);
+        void persistWelcome(cleanedUrlsFromEditor(edited), layoutPreset, { silent: true });
+        return edited;
+      });
+
       markDirty();
       setMenuPickerOpen(false);
-      void persistWelcome(cleanedUrlsFromEditor(next), layoutPreset, { silent: true });
     },
-    [activeSlotIdx, firstEmptySlotIdx, imageUrls, layoutPreset, markDirty, persistWelcome],
+    [layoutPreset, markDirty, persistWelcome],
   );
 
   const addSlot = () => {
@@ -441,9 +474,14 @@ export function WelcomeSettingsClient() {
         </p>
       ) : null}
 
+      {duplicateRowMsgs.length > 0 ? (
+        <p role="alert" style={{ color: "#fecaca", marginBottom: 16, maxWidth: 720, lineHeight: 1.55 }}>
+          {duplicateRowMsgs.join(". ")}. Upravte nebo odstraňte duplicitní řádek — každý slot musí mít jinou fotku.
+        </p>
+      ) : null}
       {layoutWarnMsg ? (
         <p role="alert" style={{ color: "#fde68a", marginBottom: 16, maxWidth: 720, lineHeight: 1.55 }}>
-          {layoutWarnMsg} Stejný obrázek nelze použít dvakrát — každý slot musí mít jinou fotku.
+          {layoutWarnMsg}
         </p>
       ) : null}
 
@@ -629,7 +667,7 @@ export function WelcomeSettingsClient() {
               <div>
                 <div style={{ fontWeight: 800, fontSize: 16 }}>Vybrat fotku z menu</div>
                 <div className="textMuted2" style={{ marginTop: 4, fontSize: 13 }}>
-                  Kliknutím vložíte fotku do slotu {activeSlotIdx != null ? `#${activeSlotIdx + 1}` : " (první prázdný)"} a uložíte.
+                  Kliknutím vložíte fotku do řádku #{pickerTargetIdx + 1} a uložíte.
                 </div>
               </div>
               <button type="button" className="chip" onClick={() => setMenuPickerOpen(false)}>
@@ -661,7 +699,7 @@ export function WelcomeSettingsClient() {
                 <button
                   key={`${img.menuItemId}-${img.imageUrl}`}
                   type="button"
-                  onClick={() => applyPickedMenuImage(img.imageUrl)}
+                  onClick={() => applyPickedMenuImage(img.imageUrl, img.menuItemId)}
                   className="chip"
                   style={{
                     padding: 0,
