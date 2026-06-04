@@ -10,6 +10,11 @@ import {
   welcomeLayoutInsufficientMessage,
   welcomeLayoutVisibleSlotCount,
 } from "../../../lib/menu/welcomeShowcaseSlots";
+import {
+  isWelcomeUploadTooLarge,
+  messageFromWelcomeUploadFailure,
+  welcomeFileTooLargeMessage,
+} from "../../../lib/upload/welcomeUploadLimits";
 
 type MeOk = {
   ok: true;
@@ -321,6 +326,10 @@ export function WelcomeSettingsClient() {
 
   const onUpload = async (idx: number, file: File | null) => {
     if (!file || !rid || !canEdit) return;
+    if (isWelcomeUploadTooLarge(file.size)) {
+      setSaveErr(welcomeFileTooLargeMessage(file.size));
+      return;
+    }
     setSaveErr(null);
     setSaveOk(null);
     setUploadingIdx(idx);
@@ -332,9 +341,18 @@ export function WelcomeSettingsClient() {
         credentials: "same-origin",
         body: fd,
       });
-      const j = (await r.json()) as { ok?: boolean; imageUrl?: string; error?: string };
+      const raw = await r.text();
+      let j: { ok?: boolean; imageUrl?: string; error?: string } = {};
+      if (raw.trim()) {
+        try {
+          j = JSON.parse(raw) as typeof j;
+        } catch {
+          setSaveErr(messageFromWelcomeUploadFailure(r, raw, file.size));
+          return;
+        }
+      }
       if (!r.ok || !j.ok || !j.imageUrl) {
-        setSaveErr(j.error ?? "Nahrání selhalo.");
+        setSaveErr(j.error ?? messageFromWelcomeUploadFailure(r, raw, file.size));
         return;
       }
       const next = [...imageUrls];
@@ -344,7 +362,11 @@ export function WelcomeSettingsClient() {
       markDirty();
       await persistWelcome(cleanedUrlsFromEditor(next), layoutPreset, { silent: true });
     } catch {
-      setSaveErr("Nahrání se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setSaveErr(
+        isWelcomeUploadTooLarge(file.size)
+          ? welcomeFileTooLargeMessage(file.size)
+          : "Nahrání se nezdařilo (síť nebo timeout). Zkuste menší soubor nebo stabilnější připojení.",
+      );
     } finally {
       setUploadingIdx(null);
     }

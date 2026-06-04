@@ -7,6 +7,10 @@ import { objectStorageMode } from "../../../../../../../lib/server/objectStorage
 import { objectStorageErrorMessage } from "../../../../../../../lib/server/objectStorageError";
 import { writeWelcomeImageUpload } from "../../../../../../../lib/server/welcomeImageStorage";
 import { prisma } from "../../../../../../../lib/server/prisma";
+import {
+  isWelcomeUploadTooLarge,
+  welcomeFileTooLargeMessage,
+} from "../../../../../../../lib/upload/welcomeUploadLimits";
 
 export const dynamic = "force-dynamic";
 /** Sharp + upload na Vercel může trvat déle u velkých souborů. */
@@ -38,6 +42,13 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       return NextResponse.json({ ok: false, error: "Missing file" }, { status: 400 });
     }
 
+    if (isWelcomeUploadTooLarge(file.size)) {
+      return NextResponse.json(
+        { ok: false, error: welcomeFileTooLargeMessage(file.size) },
+        { status: 413 },
+      );
+    }
+
     const exists = await prisma.restaurant.findUnique({ where: { id: restaurantId }, select: { id: true } });
     if (!exists?.id) {
       return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
@@ -56,7 +67,10 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
         return NextResponse.json({ ok: false, error: "Nepodporovaný typ souboru (JPEG, PNG, WebP)." }, { status: 400 });
       }
       if (code === "TOO_LARGE") {
-        return NextResponse.json({ ok: false, error: "Soubor je příliš velký (max. 10 MB)." }, { status: 400 });
+        return NextResponse.json(
+          { ok: false, error: welcomeFileTooLargeMessage(file.size) },
+          { status: 413 },
+        );
       }
       if (code === "INVALID_IMAGE" || code === "INVALID_ID") {
         return NextResponse.json({ ok: false, error: "Neplatný obrázek." }, { status: 400 });

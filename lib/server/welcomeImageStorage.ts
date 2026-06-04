@@ -14,9 +14,11 @@ import {
   writeLocalPublicFile,
 } from "./objectStorage";
 
+import { WELCOME_UPLOAD_MAX_BYTES } from "../upload/welcomeUploadLimits";
+
 export const WELCOME_UPLOAD_PUBLIC_PREFIX = "/uploads/welcome";
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = WELCOME_UPLOAD_MAX_BYTES;
 const MAX_DIMENSION_PX = 2560;
 const WEBP_QUALITY = 80;
 
