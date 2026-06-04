@@ -163,8 +163,6 @@ export function MenuBrowseClient({
     [sections],
   );
   const [editorStatus, setEditorStatus] = React.useState<EditorStatus | null>(null);
-  /** Výchozí hostovský náhled — zapnutím „Úpravy“ se zobrazí i skryté položky (bez skoku při načtení oprávnění). */
-  const [editMode, setEditMode] = React.useState(false);
   const [photoModal, setPhotoModal] = React.useState<MenuItemData | null>(null);
   const [photoUrlDraft, setPhotoUrlDraft] = React.useState("");
   const [photoSaving, setPhotoSaving] = React.useState(false);
@@ -322,7 +320,7 @@ export function MenuBrowseClient({
     if (!restaurantId) return base;
     const withText = applyMenuTextOverrides(base, textOverrides);
     const withIngredients = applyMenuIngredientOverrides(withText, ingredientOverrides);
-    const shouldHide = menuVariant !== "editor" || !editMode || !canEditMenu;
+    const shouldHide = menuVariant !== "editor" || !canEditMenu;
     if (!shouldHide) return withIngredients;
     // Host menu: sekce už přišly odfiltrované ze serveru; znovu nefiltrovat (hydratace = stejný DOM).
     if (menuVariant === "guest") return withIngredients;
@@ -347,7 +345,6 @@ export function MenuBrowseClient({
     textOverrides,
     ingredientOverrides,
     menuVariant,
-    editMode,
     canEditMenu,
     hiddenSet,
     hiddenCategorySet,
@@ -508,7 +505,7 @@ export function MenuBrowseClient({
 
   const moveItem = React.useCallback(
     async (categoryKey: string, itemId: string, dir: -1 | 1) => {
-      if (menuVariant !== "editor" || !canEditMenu || !editMode) return;
+      if (menuVariant !== "editor" || !canEditMenu) return;
       const sec = displaySections.find((s) => menuSectionCategoryKey(s) === categoryKey);
       if (!sec) return;
       const idx = sec.items.findIndex((i) => i.id === itemId);
@@ -547,7 +544,7 @@ export function MenuBrowseClient({
         }
       }
     },
-    [menuVariant, canEditMenu, editMode, displaySections, persistOrder, restaurantId],
+    [menuVariant, canEditMenu, displaySections, persistOrder, restaurantId],
   );
 
   const savePhotoUrl = React.useCallback(async () => {
@@ -1056,10 +1053,6 @@ export function MenuBrowseClient({
 
           {menuVariant === "editor" && canEditMenu ? (
             <div className="menuEditorBar">
-              <label className="menuEditorToggle">
-                <input type="checkbox" checked={editMode} onChange={(e) => setEditMode(e.target.checked)} />
-                <span>Zobrazit nástroje úprav (pořadí, fotka)</span>
-              </label>
               <KioskAnchor href={publicMenuUrlFromAdmin()} className="chip" style={{ textDecoration: "none" }}>
                 Náhled pro zákazníka ↗
               </KioskAnchor>
@@ -1143,13 +1136,13 @@ export function MenuBrowseClient({
                     <h2 className="menuPageCategoryTitle" style={{ margin: 0 }}>
                       {sectionHeading(sec, t)}
                     </h2>
-                    {menuVariant === "editor" && editMode && canEditMenu && catHidden ? (
+                    {menuVariant === "editor" && canEditMenu && catHidden ? (
                       <div style={{ fontSize: 12, color: "rgba(251,191,36,0.95)", fontWeight: 700 }}>
                         Kategorie skrytá pro hosty
                       </div>
                     ) : null}
                   </div>
-                  {menuVariant === "editor" && editMode && canEditMenu ? (
+                  {menuVariant === "editor" && canEditMenu ? (
                     <button
                       type="button"
                       className="chip"
@@ -1163,7 +1156,7 @@ export function MenuBrowseClient({
                 </div>
                 <div className="menuItemGrid menuItemGrid--cols2">
                   {sec.items.map((item, itemIdx) =>
-                    menuVariant === "editor" && editMode && canEditMenu ? (
+                    menuVariant === "editor" && canEditMenu ? (
                       <div key={`${sec.categoryId ?? sec.labelKey ?? "s"}-${item.id}`} className="menuItemAdminWrap">
                         <div
                           className="menuItemAdminTools"
