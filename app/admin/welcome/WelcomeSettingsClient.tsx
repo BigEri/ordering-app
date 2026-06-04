@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { FilePickButton } from "../../../components/FilePickButton";
+import { MenuItemPhoto } from "../../../components/MenuItemPhoto";
 import { AdminChipLink } from "../../../components/admin/AdminNavLink";
 
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../../../lib/menu/welcomeLayoutPreset";
@@ -712,13 +713,11 @@ export function WelcomeSettingsClient() {
                   }}
                   title={img.imageUrl}
                 >
-                  <div
-                    style={{
-                      height: 110,
-                      backgroundImage: `url(${img.imageUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                    }}
+                  <MenuItemPhoto
+                    imageUrl={img.imageUrl}
+                    seedId={img.menuItemId}
+                    visible
+                    className="menuItemMedia menuItemMedia--thumbPicker"
                   />
                   <div className="textMuted2" style={{ padding: "8px 10px", fontSize: 12 }}>
                     {img.menuItemId}

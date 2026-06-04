@@ -1232,7 +1232,21 @@ html {
   overflow: hidden;
 }
 
+.menuItemMediaBackdrop {
+  position: absolute;
+  inset: -12%;
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  filter: blur(28px) saturate(1.2) brightness(0.48);
+  transform: scale(1.12);
+  pointer-events: none;
+}
+
 .menuItemMediaImg {
+  position: relative;
+  z-index: 1;
   width: 100%;
   height: 100%;
   display: block;
@@ -1247,8 +1261,14 @@ html {
   bottom: 0;
   height: min(40%, 80px);
   pointer-events: none;
-  z-index: 0;
+  z-index: 2;
   background: linear-gradient(to bottom, transparent, var(--menu-card-bg));
+}
+
+/* Menší náhledy (např. výběr fotky z menu ve welcome) — stejný styl jako karta jídla */
+.menuItemMedia--thumbPicker {
+  aspect-ratio: unset;
+  height: 110px;
 }
 
 .menuItemMediaHost .menuItemBadge {
