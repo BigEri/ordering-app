@@ -13,9 +13,9 @@ type MeOk = {
   memberships: { restaurantId: string; role: string }[];
 };
 
-function defaultAppUrls(): string[] {
-  // Už nechceme fallback na "demo" fotky z aplikace.
-  return [];
+/** V editoru vždy aspoň jeden řádek — po smazání všech jinak zmizí vstupy a nejde nahrát fotku. */
+function editorImageSlots(urls: string[]): string[] {
+  return urls.length > 0 ? [...urls] : [""];
 }
 
 export function WelcomeSettingsClient() {
@@ -58,7 +58,7 @@ export function WelcomeSettingsClient() {
         const active = meJ.activeRestaurantId?.trim() ?? "";
         if (!active) {
           setLoadErr("Nejdřív dokončete nastavení v Přehledu administrace.");
-          setImageUrls(defaultAppUrls());
+          setImageUrls(editorImageSlots([]));
           setHydrated(true);
           return;
         }
@@ -72,16 +72,16 @@ export function WelcomeSettingsClient() {
         };
         if (!r.ok || !j.ok) {
           setLoadErr(j.error ?? "Nelze načíst nastavení.");
-          setImageUrls(defaultAppUrls());
+          setImageUrls(editorImageSlots([]));
           setHydrated(true);
           return;
         }
         setLayoutPreset(parseWelcomeLayoutPreset(j.layoutPreset));
         if (Array.isArray(j.imageUrls)) {
-          if (j.hasCustomRow) setImageUrls([...j.imageUrls]);
-          else setImageUrls(j.imageUrls.length > 0 ? [...j.imageUrls] : []);
+          if (j.hasCustomRow) setImageUrls(editorImageSlots(j.imageUrls));
+          else setImageUrls(j.imageUrls.length > 0 ? [...j.imageUrls] : editorImageSlots([]));
         } else {
-          setImageUrls([]);
+          setImageUrls(editorImageSlots([]));
         }
         setHydrated(true);
       } catch {
@@ -193,7 +193,10 @@ export function WelcomeSettingsClient() {
   };
 
   const removeSlot = (idx: number) => {
-    setImageUrls((prev) => prev.filter((_, i) => i !== idx));
+    setImageUrls((prev) => {
+      const next = prev.filter((_, i) => i !== idx);
+      return editorImageSlots(next);
+    });
   };
 
   const onUpload = async (idx: number, file: File | null) => {
@@ -241,9 +244,9 @@ export function WelcomeSettingsClient() {
       }
       if (typeof j.layoutPreset === "string") setLayoutPreset(parseWelcomeLayoutPreset(j.layoutPreset));
       if (Array.isArray(j.imageUrls)) {
-        if (j.hasCustomRow) setImageUrls([...j.imageUrls]);
+        if (j.hasCustomRow) setImageUrls(editorImageSlots(j.imageUrls));
         else if (j.imageUrls.length > 0) setImageUrls([...j.imageUrls]);
-        else setImageUrls(defaultAppUrls());
+        else setImageUrls(editorImageSlots([]));
       }
     } catch {
       setSaveErr("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
@@ -365,6 +368,11 @@ export function WelcomeSettingsClient() {
 
         <div>
           <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>Obrázky (pořadí = rotace na welcome)</span>
+          {imageUrls.every((u) => !String(u ?? "").trim()) ? (
+            <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.45 }}>
+              Zatím nemáte vlastní fotky — vyplňte URL, nahrajte soubor, nebo vyberte z menu. Prázdný seznam po uložení na hostech zobrazí výchozí fotky aplikace.
+            </p>
+          ) : null}
           <div style={{ display: "grid", gap: 10 }}>
             {imageUrls.map((url, idx) => (
               <div
