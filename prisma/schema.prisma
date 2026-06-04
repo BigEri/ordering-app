@@ -264,6 +264,8 @@ model KioskDeviceBinding {
   /** Tajný klíč pro POS požadavky z tabletu (header x-device-secret). */
   deviceSecret String?
   reloadNonce  Int    @default(0)
+  /** Zvýšení z adminu = tablet má stáhnout APK z KIOSK_APK_* (kiosk Device Owner). */
+  apkUpdateNonce Int @default(0)
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 }

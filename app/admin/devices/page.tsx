@@ -12,7 +12,15 @@ type DeviceRow = {
   online: boolean;
   userAgent?: string;
   restaurantId?: string | null;
+  kioskApkVersionCode?: number | null;
 };
+
+type KioskRelease = {
+  versionCode: number;
+  versionName: string;
+  apkUrl: string;
+  sha256: string | null;
+} | null;
 
 type HealthPayload = {
   ok?: boolean;
@@ -55,6 +63,9 @@ export default function AdminDevicesPage() {
   const [healthErr, setHealthErr] = React.useState(false);
   const [reloadErr, setReloadErr] = React.useState(false);
   const [reloadingId, setReloadingId] = React.useState<string | null>(null);
+  const [apkUpdateErr, setApkUpdateErr] = React.useState(false);
+  const [apkUpdatingId, setApkUpdatingId] = React.useState<string | null>(null);
+  const [kioskRelease, setKioskRelease] = React.useState<KioskRelease>(null);
   const [dotyTables, setDotyTables] = React.useState<DotyTable[] | null>(null);
   const [activeRestaurantId, setActiveRestaurantId] = React.useState<string | null>(null);
   const [activeRestaurantName, setActiveRestaurantName] = React.useState<string | null>(null);
@@ -71,12 +82,13 @@ export default function AdminDevicesPage() {
     setLoadErr(false);
     try {
       const r = await fetch("/api/devices", { cache: "no-store", credentials: "same-origin" });
-      const data = (await r.json()) as { ok?: boolean; devices?: DeviceRow[] };
+      const data = (await r.json()) as { ok?: boolean; devices?: DeviceRow[]; kioskRelease?: KioskRelease };
       if (!r.ok || !data.ok || !data.devices) {
         setLoadErr(true);
         return;
       }
       setDevices(data.devices);
+      setKioskRelease(data.kioskRelease ?? null);
     } catch {
       setLoadErr(true);
     }
@@ -244,6 +256,26 @@ export default function AdminDevicesPage() {
     }
   };
 
+  const onApkUpdate = async (deviceId: string) => {
+    setApkUpdateErr(false);
+    setApkUpdatingId(deviceId);
+    try {
+      const r = await fetch("/api/devices/apk-update", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ deviceId }),
+      });
+      if (!r.ok) {
+        setApkUpdateErr(true);
+        return;
+      }
+    } catch {
+      setApkUpdateErr(true);
+    } finally {
+      setApkUpdatingId(null);
+    }
+  };
+
   const onForceReload = async (deviceId: string) => {
     setReloadErr(false);
     setReloadingId(deviceId);
@@ -396,6 +428,25 @@ export default function AdminDevicesPage() {
         </p>
       ) : null}
 
+      {apkUpdateErr ? (
+        <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
+          {tStaff("admin.devices.apkUpdateErr")}
+        </p>
+      ) : null}
+
+      <p className="textMuted" style={{ margin: "0 0 12px", maxWidth: 52 * 16, lineHeight: 1.5, fontSize: 13 }}>
+        {tStaff("admin.devices.apkUpdateHint")}
+        {kioskRelease ? (
+          <>
+            {" "}
+            {tStaff("admin.devices.apkRelease")}: <strong>{kioskRelease.versionName}</strong> (code{" "}
+            {kioskRelease.versionCode}).
+          </>
+        ) : (
+          <> {tStaff("admin.devices.apkUpdateNoRelease")}</>
+        )}
+      </p>
+
       {loadErr ? (
         <p role="alert" style={{ color: "#fecaca" }}>
           {tStaff("admin.devices.loadErr")}
@@ -430,6 +481,7 @@ export default function AdminDevicesPage() {
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.device")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.table")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.dotykackaTable")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.apkOnDevice")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.status")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.last")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.actions")}</th>
@@ -460,6 +512,18 @@ export default function AdminDevicesPage() {
                       )}
                     </div>
                   </td>
+                  <td style={{ padding: "10px 12px", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
+                    {d.kioskApkVersionCode != null ? (
+                      <>
+                        v{d.kioskApkVersionCode}
+                        {kioskRelease && d.kioskApkVersionCode < kioskRelease.versionCode ? (
+                          <span style={{ marginLeft: 6, color: "#fbbf24" }}>↑</span>
+                        ) : null}
+                      </>
+                    ) : (
+                      <span className="textMuted2">—</span>
+                    )}
+                  </td>
                   <td style={{ padding: "10px 12px" }}>
                     {d.online ? (
                       <span style={{ color: "var(--success)" }}>{tStaff("admin.devices.online")}</span>
@@ -479,6 +543,16 @@ export default function AdminDevicesPage() {
                         title={!d.restaurantId && !activeRestaurantId ? "Chybí vazba na vaši restauraci" : undefined}
                       >
                         {tStaff("admin.devices.editTable")}
+                      </button>
+                      <button
+                        type="button"
+                        className="chip"
+                        disabled={!kioskRelease || apkUpdatingId === d.deviceId}
+                        onClick={() => void onApkUpdate(d.deviceId)}
+                        style={{ cursor: kioskRelease ? "pointer" : "not-allowed" }}
+                        title={!kioskRelease ? tStaff("admin.devices.apkUpdateNoRelease") : undefined}
+                      >
+                        {tStaff("admin.devices.apkUpdate")}
                       </button>
                       <button
                         type="button"

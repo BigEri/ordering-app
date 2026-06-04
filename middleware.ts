@@ -24,6 +24,7 @@ function isLegacyAdminApi(pathname: string) {
     pathname === "/api/devices" ||
     pathname.startsWith("/api/devices/bind") ||
     pathname.startsWith("/api/devices/reload") ||
+    pathname.startsWith("/api/devices/apk-update") ||
     pathname === "/api/pos/virtual-log" ||
     pathname.startsWith("/api/pos/virtual-log/")
   );
@@ -86,6 +87,7 @@ export const config = {
     "/api/devices",
     "/api/devices/bind",
     "/api/devices/reload",
+    "/api/devices/apk-update",
     "/api/pos/virtual-log",
     "/api/pos/virtual-log/:path*",
   ],

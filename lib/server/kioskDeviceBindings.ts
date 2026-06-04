@@ -11,6 +11,7 @@ export type KioskDeviceBindingRow = {
   updatedAtIso: string;
   deviceSecret: string | null;
   reloadNonce: number;
+  apkUpdateNonce: number;
 };
 
 export async function getKioskDeviceBinding(deviceId: string): Promise<KioskDeviceBindingRow | null> {
@@ -27,6 +28,7 @@ export async function getKioskDeviceBinding(deviceId: string): Promise<KioskDevi
       updatedAtIso: true,
       deviceSecret: true,
       reloadNonce: true,
+      apkUpdateNonce: true,
     },
   });
   return row ?? null;
@@ -45,6 +47,7 @@ export async function listAllKioskDeviceBindings(): Promise<KioskDeviceBindingRo
       updatedAtIso: true,
       deviceSecret: true,
       reloadNonce: true,
+      apkUpdateNonce: true,
     },
   });
   return rows ?? [];
@@ -79,6 +82,7 @@ export async function upsertKioskDeviceBinding(input: {
       updatedAtIso: ts,
       deviceSecret: secret,
       reloadNonce: 0,
+      apkUpdateNonce: 0,
     },
   });
   return { deviceSecret: secret };
@@ -114,6 +118,25 @@ export async function getKioskDeviceReloadNonce(deviceId: string): Promise<numbe
     select: { reloadNonce: true },
   });
   return row?.reloadNonce ?? 0;
+}
+
+export async function bumpKioskDeviceApkUpdateNonce(deviceId: string): Promise<number> {
+  const id = deviceId.trim();
+  if (!id) return 0;
+  const row = await prisma.kioskDeviceBinding.update({
+    where: { deviceId: id },
+    data: { apkUpdateNonce: { increment: 1 }, updatedAtIso: nowIso() },
+    select: { apkUpdateNonce: true },
+  });
+  return row.apkUpdateNonce;
+}
+
+export async function getKioskDeviceApkUpdateNonce(deviceId: string): Promise<number> {
+  const row = await prisma.kioskDeviceBinding.findUnique({
+    where: { deviceId: deviceId.trim() },
+    select: { apkUpdateNonce: true },
+  });
+  return row?.apkUpdateNonce ?? 0;
 }
 
 export async function setKioskDevicePairingLocked(deviceId: string, locked: boolean): Promise<void> {

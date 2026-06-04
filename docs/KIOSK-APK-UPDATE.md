@@ -1,0 +1,40 @@
+# Kiosk APK – tichá aktualizace z administrace
+
+## Princip
+
+1. **Web** (menu, admin) se aktualizuje z Vercelu automaticky.
+2. **Nativní APK** (`Tableordering`) – vedoucí v **Admin → Zařízení** u konkrétního tabletu klikne **„Aktualizovat APK“**.
+3. Tablet v **Host (kiosk)** režimu polluje `GET /api/devices/config` a při zvýšeném `apkUpdateNonce` stáhne APK z `appRelease.apkUrl`.
+4. **Tichá instalace** funguje jen pokud je tablet **Device Owner** (viz níže).
+
+## Vercel – proměnné
+
+| Proměnná | Příklad |
+|----------|---------|
+| `KIOSK_APK_VERSION_CODE` | `3` (musí být > verze na tabletu) |
+| `KIOSK_APK_VERSION_NAME` | `1.2` |
+| `KIOSK_APK_URL` | `https://vase-domena.cz/releases/tableflow-kiosk.apk` |
+| `KIOSK_APK_SHA256` | volitelně hex hash APK |
+
+Když `KIOSK_APK_URL` chybí, použije se `{NEXT_PUBLIC_APP_URL}/releases/tableflow-kiosk.apk`.
+
+## Publikace APK
+
+1. V Android Studiu: **Build → Generate Signed APK** (release).
+2. Zkopírujte APK do `ordering-app/public/releases/tableflow-kiosk.apk` a nasaďte web.
+3. Nastavte env na Vercelu (`KIOSK_APK_VERSION_CODE` = `versionCode` z `app/build.gradle.kts`).
+4. Spusťte migraci DB: `npx prisma migrate deploy` (sloupec `apkUpdateNonce`).
+
+## Device Owner (jednorázově na tablet)
+
+Po factory reset / bez Google účtu:
+
+```bash
+adb shell dpm set-device-owner com.example.tableordering/.KioskDeviceAdminReceiver
+```
+
+Tablet musí být **Host (kiosk)**, ne osobní admin telefon vedoucího.
+
+## Migrace DB
+
+`20260603120000_kiosk_apk_update_nonce` – sloupec `apkUpdateNonce` v `KioskDeviceBinding`.

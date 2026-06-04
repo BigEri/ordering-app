@@ -1,0 +1,1 @@
+ALTER TABLE "KioskDeviceBinding" ADD COLUMN "apkUpdateNonce" INTEGER NOT NULL DEFAULT 0;

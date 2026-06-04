@@ -4,8 +4,10 @@
 
 import { getDefaultPublicMenuRestaurantIdFromEnv } from "./publicRestaurantName";
 import {
+  bumpKioskDeviceApkUpdateNonce,
   bumpKioskDeviceReloadNonce,
   getKioskDeviceBinding,
+  getKioskDeviceApkUpdateNonce,
   getKioskDeviceReloadNonce,
   listAllKioskDeviceBindings,
   upsertKioskDeviceBinding,
@@ -20,6 +22,8 @@ export type DeviceRecord = {
   /** Z DB při párování v adminu; jinak výchozí veřejná provozovna (jedna / env). */
   restaurantId?: string | null;
   pairingLocked?: number;
+  /** Nahlášené z tabletu při poll config (BuildConfig.VERSION_CODE). */
+  kioskApkVersionCode?: number | null;
 };
 
 const ONLINE_THRESHOLD_MS = 120_000;
@@ -33,6 +37,31 @@ export async function bumpDeviceReloadNonce(deviceId: string): Promise<number> {
 
 export async function getDeviceReloadNonce(deviceId: string): Promise<number> {
   return getKioskDeviceReloadNonce(deviceId);
+}
+
+export async function bumpDeviceApkUpdateNonce(deviceId: string): Promise<number> {
+  return bumpKioskDeviceApkUpdateNonce(deviceId);
+}
+
+export async function getDeviceApkUpdateNonce(deviceId: string): Promise<number> {
+  return getKioskDeviceApkUpdateNonce(deviceId);
+}
+
+export function recordKioskApkVersion(deviceId: string, versionCode: number) {
+  const id = deviceId.trim();
+  if (!id || !Number.isFinite(versionCode) || versionCode < 1) return;
+  const prev = presenceByDevice.get(id);
+  if (prev) {
+    presenceByDevice.set(id, { ...prev, kioskApkVersionCode: versionCode, lastSeen: Date.now() });
+  } else {
+    presenceByDevice.set(id, {
+      deviceId: id,
+      tableId: "",
+      tableLabel: "",
+      lastSeen: Date.now(),
+      kioskApkVersionCode: versionCode,
+    });
+  }
 }
 
 export function clearDeviceFromMemory(deviceId: string): void {
@@ -151,6 +180,7 @@ export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online
       userAgent: p?.userAgent,
       restaurantId: kb.restaurantId,
       pairingLocked: kb.pairingLocked,
+      kioskApkVersionCode: p?.kioskApkVersionCode ?? null,
     });
   }
 
@@ -162,6 +192,7 @@ export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online
       ...p,
       restaurantId: kb?.restaurantId ?? fallbackRid ?? undefined,
       pairingLocked: kb?.pairingLocked ?? undefined,
+      kioskApkVersionCode: p.kioskApkVersionCode ?? null,
     });
   }
 
