@@ -2,6 +2,7 @@ import type { DotykackaCustomizationGroup, MenuItemData } from "../../components
 import { getDotykackaAccessTokenForCloud } from "./accessToken";
 import { getDotykackaMenuFetchConfig } from "./config";
 import { omitEmptyStringFields, pickDotykackaLocalizedName } from "./dotykackaLocalizedName";
+import { fetchWithRetry, userFacingDotykackaMenuError } from "./fetchRetry";
 import {
   buildDotykackaMenuSections,
   buildFlatMenuSection,
@@ -60,7 +61,7 @@ async function fetchPagedProducts(
   let lastPage = 1;
   do {
     const url = `${cfg.apiBase}/v2/clouds/${cfg.cloudId}/products?page=${page}&limit=100${querySuffix}`;
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
@@ -101,7 +102,7 @@ async function fetchPagedCategories(
   let lastPage = 1;
   do {
     const url = `${cfg.apiBase}/v2/clouds/${cfg.cloudId}/categories?page=${page}&limit=100`;
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
@@ -152,7 +153,7 @@ async function fetchPagedProductCustomizations(
   do {
     const filter = encodeURIComponent("deleted|eq|false");
     const url = `${cfg.apiBase}/v2/clouds/${cfg.cloudId}/product-customizations?page=${page}&limit=100&filter=${filter}`;
-    const res = await fetch(url, {
+    const res = await fetchWithRetry(url, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
         Accept: "application/json",
@@ -476,9 +477,10 @@ export async function fetchDotykackaProductsForMenu(
 
     return { ok: true, sections };
   } catch (e) {
+    const raw = e instanceof Error ? e.message : "Nepodařilo se načíst produkty z Dotykačky.";
     return {
       ok: false,
-      error: e instanceof Error ? e.message : "Nepodařilo se načíst produkty z Dotykačky.",
+      error: userFacingDotykackaMenuError(raw),
     };
   }
 }

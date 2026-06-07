@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 
 import type { DotykackaMenuSection } from "./dotykackaMenuSections";
 import { fetchDotykackaProductsForMenu } from "./fetchProducts";
+import { userFacingDotykackaMenuError } from "./fetchRetry";
 import { dotykackaMenuCacheTag } from "./menuCache";
 
 const DEFAULT_REVALIDATE_SEC = 120;
@@ -17,10 +18,17 @@ type CachedMenuResult =
   | { ok: true; sections: DotykackaMenuSection[] }
   | { ok: false; error: string };
 
+class DotykackaMenuCacheMiss extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DotykackaMenuCacheMiss";
+  }
+}
+
 /**
  * Dotykačka menu s krátkou server cache — rychlejší opakované načtení /menu na tabletu.
  * Po „Obnovit z Dotykačky“ nebo „Vynutit obnovení“ se cache zruší přes `revalidateTag`.
- * Jinak vyprší podle revalidate (typ. 2 min, env `MENU_CACHE_REVALIDATE_SEC`).
+ * Chyby se necachují — při výpadku sítě se další požadavek znovu pokusí stáhnout menu.
  */
 export async function fetchDotykackaProductsForMenuCached(
   restaurantId: string,
@@ -33,14 +41,27 @@ export async function fetchDotykackaProductsForMenuCached(
   const revalidate = menuCacheRevalidateSec();
 
   const run = unstable_cache(
-    async (): Promise<CachedMenuResult> => {
+    async (): Promise<DotykackaMenuSection[]> => {
       const result = await fetchDotykackaProductsForMenu(rid);
-      if (!result.ok) return { ok: false, error: result.error };
-      return { ok: true, sections: result.sections };
+      if (!result.ok) {
+        throw new DotykackaMenuCacheMiss(result.error);
+      }
+      return result.sections;
     },
-    ["dotykacka-menu-v2", rid],
+    ["dotykacka-menu-v3", rid],
     { revalidate, tags: [dotykackaMenuCacheTag(rid)] },
   );
 
-  return run();
+  try {
+    const sections = await run();
+    return { ok: true, sections };
+  } catch (e) {
+    const raw =
+      e instanceof DotykackaMenuCacheMiss
+        ? e.message
+        : e instanceof Error
+          ? e.message
+          : "Nepodařilo se načíst produkty z Dotykačky.";
+    return { ok: false, error: userFacingDotykackaMenuError(raw) };
+  }
 }

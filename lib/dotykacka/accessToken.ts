@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { Buffer } from "node:buffer";
 
 import type { DotykackaConfig } from "./config";
+import { fetchWithRetry } from "./fetchRetry";
 
 /** Minimální údaje pro signin (používá se jen apiBase, refreshToken, cloudId). */
 export type DotykackaSignInParams = Pick<DotykackaConfig, "apiBase" | "refreshToken" | "cloudId">;
@@ -43,7 +44,7 @@ export async function getDotykackaAccessTokenForCloud(cfg: DotykackaSignInParams
   }
 
   const url = `${cfg.apiBase}/v2/signin/token`;
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: "POST",
     headers: {
       Authorization: `User ${cfg.refreshToken}`,
