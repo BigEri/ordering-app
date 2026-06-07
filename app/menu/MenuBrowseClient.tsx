@@ -982,7 +982,11 @@ export function MenuBrowseClient({
           {menuVariant === "editor" ? (
             <p className="menuEditorHint" role="note">
               <strong>Úprava veřejného menu.</strong> Změny se projeví i na stránce{" "}
-              <KioskAnchor href="/menu">/menu</KioskAnchor> pro zákazníky.
+              <KioskAnchor href="/menu">/menu</KioskAnchor> pro zákazníky.{" "}
+              <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
+                <strong>Tip k fotkám:</strong> pro lepší zobrazení na kartách a v detailu používejte spíš fotky na šířku
+                (např. poměr 16:9), ne čistě na výšku.
+              </span>
             </p>
           ) : null}
 
@@ -1499,6 +1503,10 @@ export function MenuBrowseClient({
             <strong className="modalTitle">Fotka: {photoModal.name}</strong>
             <p className="textMuted2" style={{ margin: "8px 0 12px", fontSize: 13 }}>
               Nahrajte obrázek z počítače nebo z galerie (mobil), nebo vložte veřejnou HTTPS adresu (např. Cloudinary). Hosté ji uvidí na kartě jídla.
+            </p>
+            <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
+              Pro lepší kompatibilitu s rozložením menu doporučujeme fotky <strong>na šířku</strong> (např. 16:9); vysoké
+              snímky se na kartách zmenšují.
             </p>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
               Max. velikost pro nahrání: <strong>5&nbsp;MB</strong>. Podporované typy: <strong>JPEG/PNG/WebP</strong>.
