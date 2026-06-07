@@ -26,6 +26,11 @@ const HEARTBEAT_MS = 45_000;
 const CONFIG_POLL_MS = 12_000;
 
 /** Kiosk tablet / host menu — ne admin ani setup. */
+function needsKioskMenuRestaurantSync(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return pathname === "/" || pathname === "/menu" || pathname.startsWith("/menu/");
+}
+
 function needsKioskDeviceContext(pathname: string | null | undefined): boolean {
   if (!pathname) return false;
   if (pathname.startsWith("/admin")) return false;
@@ -489,11 +494,11 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     kioskMenuCookieSynced.current = false;
   }, [deviceId]);
 
-  /** Párování tabletu v adminu → uloží cookie veřejné provozovny a obnoví SSR `/menu` (fotky, ingredience). */
+  /** Párování tabletu v adminu → cookie veřejné provozovny a obnoví SSR (fotky, ingredience). */
   React.useEffect(() => {
     if (!needsKioskDeviceContext(pathname)) return;
     if (!deviceId || !ready) return;
-    if (pathname !== "/menu" && !pathname?.startsWith("/menu/")) return;
+    if (!needsKioskMenuRestaurantSync(pathname)) return;
     if (kioskMenuCookieSynced.current) return;
     let cancelled = false;
     void (async () => {
@@ -525,7 +530,7 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
 
   React.useEffect(() => {
     if (!needsKioskDeviceContext(pathname)) return;
-    if (pathname !== "/menu" && !pathname?.startsWith("/menu/")) return;
+    if (!needsKioskMenuRestaurantSync(pathname)) return;
     let cancelled = false;
     void (async () => {
       try {

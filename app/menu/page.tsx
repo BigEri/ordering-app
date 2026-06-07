@@ -4,7 +4,6 @@ import { fetchDotykackaProductsForMenuCached } from "../../lib/dotykacka/fetchPr
 import { applyMenuItemOverrides } from "../../lib/dotykacka/menuItemOverrides";
 import { orderMenuSectionsLikeKiosk } from "../../lib/menu/menuSectionsDisplayOrder";
 import { isMenuOpenedFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
-import { getKioskDeviceBinding } from "../../lib/server/kioskDeviceBindings";
 import { readDotykackaLabelsForRestaurantLocale } from "../../lib/server/menuDotykackaLabels";
 import { readMenuIngredientOverridesForRestaurantLocale } from "../../lib/server/menuIngredientOverrides";
 import { readMenuOverridesForRestaurant } from "../../lib/server/menuOverridesRead";
@@ -28,15 +27,12 @@ export default async function MenuPage(props: MenuPageProps) {
   const proto = h.get("x-forwarded-proto") ?? "http";
   const url = new URL(`${proto}://${host}/menu`);
   if (rid) url.searchParams.set("rid", rid);
-  let restaurantId: string | null = null;
-  if (deviceId && deviceId.length <= 200) {
-    const binding = await getKioskDeviceBinding(deviceId);
-    restaurantId = binding?.restaurantId ?? null;
-  } else {
-    restaurantId = await resolvePublicMenuRestaurantIdFromRequestUrl(
-      new Request(url.toString(), { headers: { cookie: cookieHeader } }),
-    );
-  }
+  if (deviceId && deviceId.length <= 200) url.searchParams.set("deviceId", deviceId);
+  if (typeof searchParams.from === "string") url.searchParams.set("from", searchParams.from);
+
+  const restaurantId = await resolvePublicMenuRestaurantIdFromRequestUrl(
+    new Request(url.toString(), { headers: { cookie: cookieHeader } }),
+  );
   if (!restaurantId) {
     return (
       <MenuBrowseClient

@@ -1,8 +1,11 @@
+import { isMenuOpenedFromAdmin } from "../admin/publicMenuPreviewUrl";
 import {
   activeRestaurantCookieName,
   getSessionFromCookieHeader,
   userHasRestaurantAccess,
+  type SessionPayload,
 } from "./auth";
+import { getKioskDeviceBinding } from "./kioskDeviceBindings";
 import { prisma } from "./prisma";
 import { getDefaultPublicMenuRestaurantId } from "./publicRestaurantName";
 import { isPublicMenuRidQueryTrusted } from "./publicMenuRidTrust";
@@ -12,6 +15,30 @@ import { isPublicMenuRidQueryTrusted } from "./publicMenuRidTrust";
  * Nastaví se např. po párování tabletu (viz POST `/api/public/kiosk-menu-cookie`).
  */
 export const PUBLIC_MENU_RESTAURANT_COOKIE = "oa_menu_rid";
+
+/** Stejná cookie jako v DeviceTableProvider — SSR musí znát deviceId tabletu. */
+export const KIOSK_DEVICE_ID_COOKIE = "kiosk_device_id";
+
+export type PublicMenuRestaurantPickInput = {
+  fromAdmin: boolean;
+  deviceBoundRestaurantId: string | null;
+  adminActiveRestaurantId: string | null;
+  /** Přihlášený personál / vedoucí — jen vlastní provozovna (ne SUPER_ADMIN bez náhledu). */
+  staffGuestRestaurantId: string | null;
+  trustedRidQuery: string | null;
+  kioskCookieRestaurantId: string | null;
+  defaultRestaurantId: string | null;
+};
+
+/** Čistá priorita — kiosk vazba vždy první; admin aktivní jen u `?from=admin`. */
+export function pickPublicMenuRestaurantId(input: PublicMenuRestaurantPickInput): string | null {
+  if (input.deviceBoundRestaurantId) return input.deviceBoundRestaurantId;
+  if (input.fromAdmin && input.adminActiveRestaurantId) return input.adminActiveRestaurantId;
+  if (input.staffGuestRestaurantId) return input.staffGuestRestaurantId;
+  if (input.trustedRidQuery) return input.trustedRidQuery;
+  if (input.kioskCookieRestaurantId) return input.kioskCookieRestaurantId;
+  return input.defaultRestaurantId;
+}
 
 export async function restaurantExistsInDb(id: string): Promise<boolean> {
   const t = id.trim();
@@ -36,25 +63,90 @@ export async function resolveAdminActiveRestaurantForPublicMenuAsync(
   return rid;
 }
 
+/** Vazba tabletu podle `deviceId` v URL nebo cookie `kiosk_device_id`. */
+export async function resolveRestaurantIdFromKioskDeviceRequest(req: Request): Promise<string | null> {
+  const url = new URL(req.url);
+  let deviceId = url.searchParams.get("deviceId")?.trim() ?? "";
+  if (!deviceId || deviceId.length > 200) {
+    deviceId = cookieValue(req.headers.get("cookie"), KIOSK_DEVICE_ID_COOKIE)?.trim() ?? "";
+  }
+  if (!deviceId || deviceId.length > 200) return null;
+
+  const binding = await getKioskDeviceBinding(deviceId);
+  const rid = binding?.restaurantId?.trim() ?? "";
+  if (!rid) return null;
+  if (!(await restaurantExistsInDb(rid))) return null;
+  return rid;
+}
+
 /**
- * Pořadí: důvěryhodné `?rid=` (viz níže) → aktivní restaurace admina → cookie `oa_menu_rid` → výchozí provozovna.
- * Neověřené `?rid=` se ignoruje (multi-tenant).
+ * Personál / vedoucí na host stránkách — jen provozovna, ke které patří.
+ * SUPER_ADMIN bez `?from=admin` nevidí cizí menu přes `oa_rid`.
+ */
+export async function resolveStaffRestaurantForGuestViewAsync(
+  session: SessionPayload | null,
+  adminActiveRestaurantId: string | null,
+): Promise<string | null> {
+  if (!session || session.globalRole === "SUPER_ADMIN") return null;
+  return resolveRestaurantForNonSuperAdminUser(session.userId, adminActiveRestaurantId);
+}
+
+/** Admin editor menu — personál nikdy nevidí cizí provozovnu kvůli cizímu `oa_rid`. */
+export async function resolveAdminMenuRestaurantIdForSession(
+  session: SessionPayload | null,
+  activeRestaurantId: string | null,
+): Promise<string | null> {
+  if (!session) return null;
+  if (session.globalRole === "SUPER_ADMIN") {
+    const active = activeRestaurantId?.trim() ?? "";
+    return active || null;
+  }
+  return resolveRestaurantForNonSuperAdminUser(session.userId, activeRestaurantId);
+}
+
+async function resolveRestaurantForNonSuperAdminUser(
+  userId: string,
+  activeRestaurantId: string | null,
+): Promise<string | null> {
+  const memberships = await prisma.membership.findMany({
+    where: { userId },
+    select: { restaurantId: true },
+  });
+  if (memberships.length === 0) return null;
+
+  const active = activeRestaurantId?.trim() ?? "";
+  if (active && memberships.some((m) => m.restaurantId === active)) {
+    return active;
+  }
+  if (memberships.length === 1) {
+    return memberships[0]!.restaurantId;
+  }
+  return null;
+}
+
+/**
+ * Pořadí: vazba tabletu → admin náhled (`?from=admin`) → vlastní provozovna personálu →
+ * důvěryhodné `?rid=` → cookie `oa_menu_rid` → výchozí provozovna.
  */
 export function resolvePublicMenuRestaurantIdSync(opts: {
   ridQuery?: string | null;
-  /** Z `resolveAdminActiveRestaurantForPublicMenu` — jen pokud je platná relace a přístup. */
   adminActiveRestaurantId?: string | null;
   cookieRestaurantId?: string | null;
 }): string | null {
   void opts;
-  throw new Error("Use resolvePublicMenuRestaurantIdAsync (Prisma refactor)");
+  throw new Error("Use resolvePublicMenuRestaurantIdFromRequestUrl (Prisma refactor)");
 }
 
-/** Pro API routy s `Request` — cookie + volitelně ověřené `rid` na stejném requestu. */
+/** Pro API routy a SSR host stránek — cookie + query na stejném requestu. */
 export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request): Promise<string | null> {
   const url = new URL(req.url);
   const cookieHeader = req.headers.get("cookie");
+  const fromAdmin = isMenuOpenedFromAdmin({ from: url.searchParams.get("from") ?? undefined });
+
+  const deviceBound = await resolveRestaurantIdFromKioskDeviceRequest(req);
+  const session = getSessionFromCookieHeader(cookieHeader);
   const adminActive = await resolveAdminActiveRestaurantForPublicMenuAsync(cookieHeader);
+  const staffGuest = await resolveStaffRestaurantForGuestViewAsync(session, adminActive);
   const kioskRid = cookieValue(cookieHeader, PUBLIC_MENU_RESTAURANT_COOKIE)?.trim() ?? "";
   const ridRaw = url.searchParams.get("rid")?.trim() ?? "";
 
@@ -65,7 +157,8 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
       isPublicMenuRidQueryTrusted({
         ridQueryTrimmed: ridRaw,
         kioskRestaurantId: kioskRid,
-        adminRestaurantId: adminActive,
+        adminRestaurantId: fromAdmin ? adminActive : null,
+        deviceBoundRestaurantId: deviceBound,
         defaultSingletonRestaurantId: singleton,
       })
     ) {
@@ -73,11 +166,21 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
     }
   }
 
-  // Priority: trusted ?rid= → aktivní admin restaurace → kiosk cookie → výchozí
-  if (trustedRidQuery) return trustedRidQuery;
-  if (adminActive && (await restaurantExistsInDb(adminActive))) return adminActive;
-  if (kioskRid && (await restaurantExistsInDb(kioskRid))) return kioskRid;
-  return await getDefaultPublicMenuRestaurantId();
+  const defaultRestaurantId = await getDefaultPublicMenuRestaurantId();
+
+  const picked = pickPublicMenuRestaurantId({
+    fromAdmin,
+    deviceBoundRestaurantId: deviceBound,
+    adminActiveRestaurantId: adminActive,
+    staffGuestRestaurantId: staffGuest,
+    trustedRidQuery,
+    kioskCookieRestaurantId: kioskRid || null,
+    defaultRestaurantId,
+  });
+
+  if (!picked) return null;
+  if (await restaurantExistsInDb(picked)) return picked;
+  return null;
 }
 
 /**
@@ -86,7 +189,6 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
 export function resolvePublicMenuApiRestaurantId(req: Request):
   | { ok: true; restaurantId: string }
   | { ok: false; status: number; error: string } {
-  // NOTE: now async in Prisma version; keep sync wrapper for compatibility.
   void req;
   throw new Error("Use resolvePublicMenuApiRestaurantIdAsync (Prisma refactor)");
 }

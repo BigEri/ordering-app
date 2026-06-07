@@ -5,6 +5,6 @@ import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../../../lib/ser
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const restaurantId = resolvePublicMenuRestaurantIdFromRequestUrl(req);
+  const restaurantId = await resolvePublicMenuRestaurantIdFromRequestUrl(req);
   return NextResponse.json({ ok: true, restaurantId });
 }

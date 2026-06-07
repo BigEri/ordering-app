@@ -14,6 +14,18 @@ describe("isPublicMenuRidQueryTrusted", () => {
     ).toBe(true);
   });
 
+  it("allows rid matching device binding", () => {
+    expect(
+      isPublicMenuRidQueryTrusted({
+        ridQueryTrimmed: "r-device",
+        kioskRestaurantId: "",
+        adminRestaurantId: null,
+        deviceBoundRestaurantId: "r-device",
+        defaultSingletonRestaurantId: null,
+      }),
+    ).toBe(true);
+  });
+
   it("allows rid matching admin active restaurant", () => {
     expect(
       isPublicMenuRidQueryTrusted({
