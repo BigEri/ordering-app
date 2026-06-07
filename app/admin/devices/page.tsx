@@ -65,6 +65,10 @@ export default function AdminDevicesPage() {
   const [reloadErrDetail, setReloadErrDetail] = React.useState<string | null>(null);
   const [reloadOk, setReloadOk] = React.useState<string | null>(null);
   const [reloadingId, setReloadingId] = React.useState<string | null>(null);
+  const [menuRefreshLoading, setMenuRefreshLoading] = React.useState(false);
+  const [menuRefreshOk, setMenuRefreshOk] = React.useState<string | null>(null);
+  const [menuRefreshErr, setMenuRefreshErr] = React.useState(false);
+  const [menuRefreshErrDetail, setMenuRefreshErrDetail] = React.useState<string | null>(null);
   const [apkUpdateErr, setApkUpdateErr] = React.useState(false);
   const [apkUpdatingId, setApkUpdatingId] = React.useState<string | null>(null);
   const [kioskRelease, setKioskRelease] = React.useState<KioskRelease>(null);
@@ -297,13 +301,62 @@ export default function AdminDevicesPage() {
         return;
       }
       const n = typeof data.reloadNonce === "number" ? data.reloadNonce : "?";
+      const shortId = `${deviceId.slice(0, 24)}${deviceId.length > 24 ? "…" : ""}`;
       setReloadOk(
-        `${deviceId.slice(0, 24)}${deviceId.length > 24 ? "…" : ""} — tablet obnoví menu do ~15 s (musí být online v režimu host). Nonce: ${n}`,
+        tStaff("admin.devices.reloadOk").replace("{device}", shortId).replace("{nonce}", String(n)),
       );
     } catch {
       setReloadErr(true);
     } finally {
       setReloadingId(null);
+    }
+  };
+
+  const onRefreshMenuFromDotykacka = async () => {
+    setMenuRefreshErr(false);
+    setMenuRefreshErrDetail(null);
+    setMenuRefreshOk(null);
+    setMenuRefreshLoading(true);
+    try {
+      const r = await fetch("/api/admin/menu/refresh-from-dotykacka", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ bumpDevices: true }),
+      });
+      const data = (await r.json()) as {
+        ok?: boolean;
+        error?: string;
+        devicesNotified?: number;
+        sectionCount?: number;
+        menuPrefetchOk?: boolean;
+        menuPrefetchError?: string;
+      };
+      if (!r.ok || !data.ok) {
+        setMenuRefreshErr(true);
+        setMenuRefreshErrDetail(data.error ?? null);
+        return;
+      }
+      if (data.menuPrefetchOk === false) {
+        setMenuRefreshOk(
+          tStaff("admin.devices.refreshMenuFromDotykackaWarn").replace(
+            "{error}",
+            data.menuPrefetchError ?? "?",
+          ),
+        );
+        return;
+      }
+      const sections = typeof data.sectionCount === "number" ? data.sectionCount : "?";
+      const devices = typeof data.devicesNotified === "number" ? data.devicesNotified : 0;
+      setMenuRefreshOk(
+        tStaff("admin.devices.refreshMenuFromDotykackaOk")
+          .replace("{sections}", String(sections))
+          .replace("{devices}", String(devices)),
+      );
+    } catch {
+      setMenuRefreshErr(true);
+    } finally {
+      setMenuRefreshLoading(false);
     }
   };
 
@@ -360,6 +413,16 @@ export default function AdminDevicesPage() {
           title={tStaff("admin.devices.refreshAllHint")}
         >
           {tStaff("admin.devices.refresh")}
+        </button>
+        <button
+          type="button"
+          className="chip"
+          disabled={menuRefreshLoading || !activeRestaurantId}
+          onClick={() => void onRefreshMenuFromDotykacka()}
+          style={{ cursor: menuRefreshLoading || !activeRestaurantId ? "not-allowed" : "pointer" }}
+          title={tStaff("admin.devices.refreshMenuFromDotykackaHint")}
+        >
+          {menuRefreshLoading ? "…" : tStaff("admin.devices.refreshMenuFromDotykacka")}
         </button>
         <a href="/admin/devices/pair-kiosk" className="chip" style={{ textDecoration: "none" }}>
           Párování u stolů (Dotykačka)
@@ -436,6 +499,16 @@ export default function AdminDevicesPage() {
       {reloadOk ? (
         <p role="status" style={{ color: "#bbf7d0", marginBottom: 12, fontSize: 14 }}>
           {reloadOk}
+        </p>
+      ) : null}
+      {menuRefreshOk ? (
+        <p role="status" style={{ color: "#bbf7d0", marginBottom: 12, fontSize: 14 }}>
+          {menuRefreshOk}
+        </p>
+      ) : null}
+      {menuRefreshErr ? (
+        <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
+          {menuRefreshErrDetail ?? tStaff("admin.devices.refreshMenuFromDotykackaErr")}
         </p>
       ) : null}
       {reloadErr ? (

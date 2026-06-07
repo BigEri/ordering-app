@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 
 import { FilePickButton } from "../../components/FilePickButton";
 import { KioskAnchor } from "../../components/kiosk/KioskAnchor";
@@ -109,6 +110,7 @@ export function MenuBrowseClient({
   adminPreview = false,
 }: MenuBrowseClientProps) {
   useMenuIdleRedirect();
+  const router = useRouter();
   const online = useBrowserOnline();
   const {
     posTableFields,
@@ -169,6 +171,8 @@ export function MenuBrowseClient({
   const [photoUploading, setPhotoUploading] = React.useState(false);
   const [photoUploadErr, setPhotoUploadErr] = React.useState<string | null>(null);
   const [menuEditorErr, setMenuEditorErr] = React.useState<string | null>(null);
+  const [dotykackaRefreshLoading, setDotykackaRefreshLoading] = React.useState(false);
+  const [dotykackaRefreshMsg, setDotykackaRefreshMsg] = React.useState<string | null>(null);
   const [menuImagesHealthErr, setMenuImagesHealthErr] = React.useState<string | null>(null);
   const [brokenMenuImageUrls, setBrokenMenuImageUrls] = React.useState<Array<{ url: string; status?: number; reason?: string }>>([]);
   const [menuImagesHealthCheckedAtIso, setMenuImagesHealthCheckedAtIso] = React.useState<string | null>(null);
@@ -271,6 +275,47 @@ export function MenuBrowseClient({
   }, [menuVariant, restaurantId]);
 
   const canEditMenu = menuVariant === "editor" && Boolean(restaurantId && editorStatus?.canEdit);
+
+  const onRefreshDotykackaMenu = React.useCallback(async () => {
+    if (!restaurantId || dotykackaRefreshLoading) return;
+    setDotykackaRefreshMsg(null);
+    setMenuEditorErr(null);
+    setDotykackaRefreshLoading(true);
+    try {
+      const r = await fetch("/api/admin/menu/refresh-from-dotykacka", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ bumpDevices: true }),
+      });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        error?: string;
+        sectionCount?: number;
+        devicesNotified?: number;
+        menuPrefetchOk?: boolean;
+        menuPrefetchError?: string;
+      };
+      if (!r.ok || !j.ok) {
+        setMenuEditorErr(j.error ?? "Obnovení menu z Dotykačky se nezdařilo.");
+        return;
+      }
+      if (j.menuPrefetchOk === false) {
+        setDotykackaRefreshMsg(
+          `Cache zrušena, ale Dotykačka vrátila chybu: ${j.menuPrefetchError ?? "?"}`,
+        );
+      } else {
+        const sec = typeof j.sectionCount === "number" ? j.sectionCount : "?";
+        const dev = typeof j.devicesNotified === "number" ? j.devicesNotified : 0;
+        setDotykackaRefreshMsg(`Menu obnoveno (${sec} sekcí). ${dev} tablet(ů) dostane signál k obnovení.`);
+      }
+      router.refresh();
+    } catch {
+      setMenuEditorErr("Obnovení menu z Dotykačky se nezdařilo.");
+    } finally {
+      setDotykackaRefreshLoading(false);
+    }
+  }, [restaurantId, dotykackaRefreshLoading, router]);
 
   React.useEffect(() => {
     if (menuVariant !== "editor" || !restaurantId || !editorStatus) return;
@@ -1066,7 +1111,22 @@ export function MenuBrowseClient({
               <KioskAnchor href="/admin/menu/translations" className="chip" style={{ textDecoration: "none" }}>
                 Překlady jazyků ↗
               </KioskAnchor>
+              <button
+                type="button"
+                className="chip"
+                disabled={dotykackaRefreshLoading}
+                onClick={() => void onRefreshDotykackaMenu()}
+                title="Stáhne aktuální menu z Dotykačky a obnoví tablety provozovny."
+              >
+                {dotykackaRefreshLoading ? "Obnovuji…" : "Obnovit z Dotykačky"}
+              </button>
             </div>
+          ) : null}
+
+          {menuVariant === "editor" && dotykackaRefreshMsg ? (
+            <p role="status" className="menuEditorHint" style={{ color: "#bbf7d0" }}>
+              {dotykackaRefreshMsg}
+            </p>
           ) : null}
 
           {menuVariant === "editor" && menuEditorErr ? (

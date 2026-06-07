@@ -2,6 +2,7 @@ import { unstable_cache } from "next/cache";
 
 import type { DotykackaMenuSection } from "./dotykackaMenuSections";
 import { fetchDotykackaProductsForMenu } from "./fetchProducts";
+import { dotykackaMenuCacheTag } from "./menuCache";
 
 const DEFAULT_REVALIDATE_SEC = 120;
 
@@ -18,7 +19,8 @@ type CachedMenuResult =
 
 /**
  * Dotykačka menu s krátkou server cache — rychlejší opakované načtení /menu na tabletu.
- * Po sync v adminu cache vyprší podle revalidate (typ. 2 min).
+ * Po „Obnovit z Dotykačky“ nebo „Vynutit obnovení“ se cache zruší přes `revalidateTag`.
+ * Jinak vyprší podle revalidate (typ. 2 min, env `MENU_CACHE_REVALIDATE_SEC`).
  */
 export async function fetchDotykackaProductsForMenuCached(
   restaurantId: string,
@@ -37,7 +39,7 @@ export async function fetchDotykackaProductsForMenuCached(
       return { ok: true, sections: result.sections };
     },
     ["dotykacka-menu-v2", rid],
-    { revalidate, tags: [`menu-products-${rid}`] },
+    { revalidate, tags: [dotykackaMenuCacheTag(rid)] },
   );
 
   return run();

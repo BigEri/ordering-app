@@ -8,6 +8,8 @@ import {
 import { bumpDeviceReloadNonce } from "../../../../lib/server/deviceRegistry";
 import { cookieValueFromHeader } from "../../../../lib/server/httpCookie";
 import { getKioskDeviceBinding } from "../../../../lib/server/kioskDeviceBindings";
+import { invalidateDotykackaMenuCache } from "../../../../lib/dotykacka/menuCache";
+import { fetchDotykackaProductsForMenuCached } from "../../../../lib/dotykacka/fetchProductsCached";
 
 export const dynamic = "force-dynamic";
 
@@ -54,6 +56,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  invalidateDotykackaMenuCache(binding.restaurantId);
+  void fetchDotykackaProductsForMenuCached(binding.restaurantId).catch(() => {});
+
   const reloadNonce = await bumpDeviceReloadNonce(deviceId);
-  return NextResponse.json({ ok: true, deviceId, reloadNonce });
+  return NextResponse.json({ ok: true, deviceId, reloadNonce, menuCacheInvalidated: true });
 }

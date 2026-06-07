@@ -181,8 +181,19 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.dotykackaHint": "Tip: pokud vybíráte stůl z Dotykačky, použijte jeho ID, ne jen název na plánku.",
     "admin.devices.col.actions": "Akce",
     "admin.devices.reload": "Vynutit obnovení",
-    "admin.devices.reloadHint": "Tablet v režimu host obnoví menu do ~15 s (musí být online). Tlačítko „Obnovit“ nahoře jen aktualizuje tento seznam.",
+    "admin.devices.reloadHint":
+      "Tablet v režimu host obnoví stránku do ~15 s (musí být online). Zároveň se zruší cache menu z Dotykačky — další načtení /menu stáhne aktuální data. Tlačítko „Obnovit“ nahoře jen aktualizuje tento seznam.",
+    "admin.devices.reloadOk":
+      "{device} — tablet obnoví menu do ~15 s (musí být online v režimu host). Cache Dotykačky zrušena. Nonce: {nonce}",
     "admin.devices.reloadErr": "Požadavek na obnovení se nezdařil.",
+    "admin.devices.refreshMenuFromDotykacka": "Obnovit menu z Dotykačky",
+    "admin.devices.refreshMenuFromDotykackaHint":
+      "Stáhne aktuální menu z Dotykačky (zruší server cache) a vynutí obnovení všech tabletů vaší provozovny.",
+    "admin.devices.refreshMenuFromDotykackaOk":
+      "Menu z Dotykačky obnoveno ({sections} sekcí). {devices} tablet(ů) dostane signál k obnovení.",
+    "admin.devices.refreshMenuFromDotykackaWarn":
+      "Cache zrušena, ale stažení z Dotykačky selhalo: {error}",
+    "admin.devices.refreshMenuFromDotykackaErr": "Obnovení menu z Dotykačky se nezdařilo.",
     "admin.devices.apkUpdate": "Aktualizovat APK",
     "admin.devices.apkUpdateErr": "Požadavek na aktualizaci APK se nezdařil.",
     "admin.devices.apkUpdateNoRelease": "Na serveru není nastavené kiosk APK (KIOSK_APK_*).",
@@ -395,8 +406,18 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.col.actions": "Actions",
     "admin.devices.reload": "Force reload",
     "admin.devices.reloadHint":
-      "Host-mode tablet reloads the menu within ~15 s (must be online). The top “Refresh” button only updates this list.",
+      "Host-mode tablet reloads within ~15 s (must be online). Also clears Dotykacka menu cache so the next /menu load fetches fresh data. The top “Refresh” button only updates this list.",
+    "admin.devices.reloadOk":
+      "{device} — tablet reloads menu within ~15 s (host mode, online). Dotykacka cache cleared. Nonce: {nonce}",
     "admin.devices.reloadErr": "Reload request failed.",
+    "admin.devices.refreshMenuFromDotykacka": "Refresh menu from Dotykacka",
+    "admin.devices.refreshMenuFromDotykackaHint":
+      "Fetches current Dotykacka menu (clears server cache) and signals all tablets for your venue to reload.",
+    "admin.devices.refreshMenuFromDotykackaOk":
+      "Dotykacka menu refreshed ({sections} sections). {devices} tablet(s) notified to reload.",
+    "admin.devices.refreshMenuFromDotykackaWarn":
+      "Cache cleared but Dotykacka fetch failed: {error}",
+    "admin.devices.refreshMenuFromDotykackaErr": "Could not refresh menu from Dotykacka.",
     "admin.devices.apkUpdate": "Update kiosk APK",
     "admin.devices.apkUpdateErr": "APK update request failed.",
     "admin.devices.apkUpdateNoRelease": "No kiosk APK configured on the server (KIOSK_APK_*).",
@@ -609,8 +630,18 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.col.actions": "동작",
     "admin.devices.reload": "강제 새로 고침",
     "admin.devices.reloadHint":
-      "호스트 모드 태블릿은 ~15초 안에 메뉴를 새로 고칩니다(온라인 필요). 상단 ‘새로 고침’은 이 목록만 갱신합니다.",
+      "호스트 모드 태블릿은 ~15초 안에 새로 고칩니다(온라인 필요). Dotykacka 메뉴 캐시도 지워 다음 /menu 로드 시 최신 데이터를 받습니다. 상단 ‘새로 고침’은 이 목록만 갱신합니다.",
+    "admin.devices.reloadOk":
+      "{device} — 태블릿이 ~15초 안에 메뉴를 새로 고칩니다(호스트 모드, 온라인). Dotykacka 캐시 삭제됨. Nonce: {nonce}",
     "admin.devices.reloadErr": "새로 고침 요청에 실패했습니다.",
+    "admin.devices.refreshMenuFromDotykacka": "Dotykacka에서 메뉴 새로 고침",
+    "admin.devices.refreshMenuFromDotykackaHint":
+      "Dotykacka에서 최신 메뉴를 가져옵니다(서버 캐시 삭제)하고 해당 매장의 모든 태블릿에 새로 고침 신호를 보냅니다.",
+    "admin.devices.refreshMenuFromDotykackaOk":
+      "Dotykacka 메뉴 새로 고침 완료(섹션 {sections}개). {devices}대 태블릿에 알림.",
+    "admin.devices.refreshMenuFromDotykackaWarn":
+      "캐시는 삭제했지만 Dotykacka 가져오기 실패: {error}",
+    "admin.devices.refreshMenuFromDotykackaErr": "Dotykacka 메뉴 새로 고침에 실패했습니다.",
     "admin.devices.apkUpdate": "키오스크 APK 업데이트",
     "admin.devices.apkUpdateErr": "APK 업데이트 요청에 실패했습니다.",
     "admin.devices.apkUpdateNoRelease": "서버에 키오스크 APK가 설정되지 않았습니다 (KIOSK_APK_*).",
