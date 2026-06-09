@@ -124,13 +124,42 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
   const [autoSaveState, setAutoSaveState] = React.useState<"idle" | "dirty" | "saving" | "saved" | "error">("idle");
   const [autoSaveErr, setAutoSaveErr] = React.useState<string | null>(null);
   const lastSavedKeyRef = React.useRef<string | null>(null);
-  const autoSaveTimerRef = React.useRef<number | null>(null);
   const savingRef = React.useRef(false);
   const autoSavePendingRef = React.useRef(false);
+  const byLocaleRef = React.useRef(byLocale);
+  const ingredientsByLocaleRef = React.useRef(ingredientsByLocale);
+  const dotykackaLabelsByLocaleRef = React.useRef(dotykackaLabelsByLocale);
+  const activeLocaleRef = React.useRef(activeLocale);
 
   React.useEffect(() => {
     savingRef.current = saving;
   }, [saving]);
+
+  React.useEffect(() => {
+    byLocaleRef.current = byLocale;
+  }, [byLocale]);
+
+  React.useEffect(() => {
+    ingredientsByLocaleRef.current = ingredientsByLocale;
+  }, [ingredientsByLocale]);
+
+  React.useEffect(() => {
+    dotykackaLabelsByLocaleRef.current = dotykackaLabelsByLocale;
+  }, [dotykackaLabelsByLocale]);
+
+  React.useEffect(() => {
+    activeLocaleRef.current = activeLocale;
+  }, [activeLocale]);
+
+  const currentSaveKey = React.useCallback(
+    () =>
+      stableStringify({
+        textByLocale: byLocaleRef.current,
+        ingredientsByLocale: ingredientsByLocaleRef.current,
+        dotykackaLabelsByLocale: dotykackaLabelsByLocaleRef.current,
+      }),
+    [],
+  );
 
   const markDirty = React.useCallback(() => {
     setAutoSaveState((s) => (s === "saving" ? s : "dirty"));
@@ -523,31 +552,33 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
     async (opts?: { silent?: boolean }) => {
     if (!restaurantId) return;
     if (savingRef.current) {
-      // Pokud už se ukládá (ručně nebo auto-save), jen si poznačíme,
-      // že po doběhu má proběhnout další uložení.
+      // Pokud už se ukládá, po doběhu zkusíme znovu (např. blur během ukládání).
       autoSavePendingRef.current = true;
       return;
     }
     const silent = opts?.silent === true;
+    const locale = activeLocaleRef.current;
     setSaving(true);
     if (!silent) setErr(null);
     setAutoSaveErr(null);
     setAutoSaveState("saving");
     try {
-      const payload = byLocale[activeLocale] ?? emptyLocale();
+      const payload = byLocaleRef.current[locale] ?? emptyLocale();
+      const ingredientsSnapshot = ingredientsByLocaleRef.current;
+      const dotykackaSnapshot = dotykackaLabelsByLocaleRef.current;
       const [rText, ...rIngAll] = await Promise.all([
         fetch("/api/admin/menu/text-overrides", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             restaurantId,
-            locale: activeLocale,
+            locale,
             items: payload.items,
             categories: payload.categories,
           }),
         }),
         ...enabledLocaleCodes.map((loc) => {
-          const payloadIng = ingredientsByLocale[loc] ?? { items: {} };
+          const payloadIng = ingredientsSnapshot[loc] ?? { items: {} };
           // Server zatím neukládá prázdné seznamy (0 řádků) — pro "autoritatívně prázdno"
           // posíláme skrytý marker řádek, který se ve veřejném menu i editoru ignoruje.
           const itemsWithEmptyMarkers: Record<string, MenuIngredientOverrideLine[]> = {};
@@ -584,9 +615,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         setAutoSaveState("error");
         return;
       }
-      setByLocale(mergeLoaded(enabledLocales, jText.byLocale));
       // Ingredience ukládáme pro všechny povolené jazyky, aby se interní klíče synchronizovaly a nechyběly překlady.
-      let lastByLocale: Record<string, MenuIngredientOverridesForLocale> | null = null;
       for (const rIng of rIngAll) {
         const jIng = (await rIng.json()) as {
           ok?: boolean;
@@ -600,21 +629,17 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           setAutoSaveState("error");
           return;
         }
-        lastByLocale = jIng.byLocale;
-      }
-      if (lastByLocale) {
-        setIngredientsByLocale(mergeLoadedIngredients(enabledLocales, lastByLocale));
       }
 
       // Uložíme Dotyka labels jen pro aktivní jazyk (ostatní zůstávají jak jsou).
       try {
-        const dl = dotykackaLabelsByLocale[activeLocale] ?? { groups: {}, options: {} };
+        const dl = dotykackaSnapshot[locale] ?? { groups: {}, options: {} };
         const rDl = await fetch("/api/admin/menu/dotykacka-labels", {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({
             restaurantId,
-            locale: activeLocale,
+            locale,
             groups: expandDotykackaGroupLabelsForSave(dl.groups, dotykackaGroupsMergedForEditor),
             options: dl.options,
           }),
@@ -627,15 +652,8 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       setSavedAt(Date.now());
       setAutoSaveState("saved");
 
-      // Snapshot po úspěšném uložení, aby auto-save necyklil.
-      const nextText = mergeLoaded(enabledLocales, jText.byLocale);
-      const nextIngredients = lastByLocale ? mergeLoadedIngredients(enabledLocales, lastByLocale) : ingredientsByLocale;
-      const nextDotykacka = dotykackaLabelsByLocale;
-      lastSavedKeyRef.current = stableStringify({
-        textByLocale: nextText,
-        ingredientsByLocale: nextIngredients,
-        dotykackaLabelsByLocale: nextDotykacka,
-      });
+      // Lokální stav nepřepisujeme odpovědí serveru — při psaní by mizely znaky.
+      lastSavedKeyRef.current = currentSaveKey();
     } catch {
       const msg = "Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.";
       if (silent) setAutoSaveErr(msg);
@@ -645,8 +663,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       setSaving(false);
       if (autoSavePendingRef.current) {
         autoSavePendingRef.current = false;
-        // Pokud se mezitím změnil obsah, zkusíme to hned znovu (silent).
-        if (lastSavedKeyRef.current != null) {
+        if (lastSavedKeyRef.current != null && currentSaveKey() !== lastSavedKeyRef.current) {
           window.setTimeout(() => {
             void onSave({ silent: true });
           }, 0);
@@ -654,17 +671,18 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       }
     }
     },
-    [
-      activeLocale,
-      byLocale,
-      dotykackaGroupsMergedForEditor,
-      dotykackaLabelsByLocale,
-      enabledLocales,
-      enabledLocaleCodes,
-      ingredientsByLocale,
-      restaurantId,
-    ],
+    [currentSaveKey, dotykackaGroupsMergedForEditor, enabledLocaleCodes, restaurantId],
   );
+
+  const saveWhenDirty = React.useCallback(() => {
+    if (!restaurantId || loading) return;
+    if (lastSavedKeyRef.current != null && currentSaveKey() === lastSavedKeyRef.current) return;
+    void onSave({ silent: true });
+  }, [currentSaveKey, loading, onSave, restaurantId]);
+
+  const saveOnBlur = React.useCallback(() => {
+    saveWhenDirty();
+  }, [saveWhenDirty]);
 
   const autoSaveKey = React.useMemo(() => {
     return stableStringify({
@@ -688,14 +706,14 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
     // Počkáme krátce, až se doběhne případné ukládání + případné "pending" uložení.
     const startedAt = Date.now();
     while (Date.now() - startedAt < 7000) {
-      if (!savingRef.current && lastSavedKeyRef.current != null && lastSavedKeyRef.current === autoSaveKey) {
+      if (!savingRef.current && lastSavedKeyRef.current != null && lastSavedKeyRef.current === currentSaveKey()) {
         return true;
       }
       // eslint-disable-next-line no-await-in-loop
       await new Promise<void>((r) => window.setTimeout(r, 120));
     }
     return false;
-  }, [autoSaveKey, onSave, restaurantId]);
+  }, [autoSaveKey, currentSaveKey, onSave, restaurantId]);
 
   React.useEffect(() => {
     // Varování při zavření/refresh – jen když jsou neuložené změny.
@@ -748,36 +766,24 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
   }, [autoSaveKey, flushPendingSaves, hasMissingIngredientTranslations]);
 
   React.useEffect(() => {
-    if (!restaurantId) return;
-    if (loading) return;
-
-    // První stabilní render po načtení: nastavíme snapshot a neukládáme.
+    if (!restaurantId || loading) return;
     if (lastSavedKeyRef.current == null) {
       lastSavedKeyRef.current = autoSaveKey;
       setAutoSaveState("idle");
       setAutoSaveErr(null);
-      return;
     }
+  }, [autoSaveKey, loading, restaurantId]);
 
-    // Nic se nezměnilo.
+  React.useEffect(() => {
+    if (!restaurantId || loading) return;
+    if (lastSavedKeyRef.current == null) return;
     if (autoSaveKey === lastSavedKeyRef.current) {
       if (autoSaveState === "dirty") setAutoSaveState("idle");
       return;
     }
-
     setAutoSaveState((s) => (s === "saving" ? s : "dirty"));
     setAutoSaveErr(null);
-
-    if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
-    autoSaveTimerRef.current = window.setTimeout(() => {
-      autoSaveTimerRef.current = null;
-      void onSave({ silent: true });
-    }, 1500);
-
-    return () => {
-      if (autoSaveTimerRef.current) window.clearTimeout(autoSaveTimerRef.current);
-    };
-  }, [autoSaveKey, autoSaveState, loading, onSave, restaurantId, saving]);
+  }, [autoSaveKey, autoSaveState, loading, restaurantId]);
 
   React.useEffect(() => {
     if (savedAt == null) return;
@@ -850,6 +856,10 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           Tip: v <strong>češtině</strong> většinou nemusíte nic vyplňovat. Když necháte pole prázdné, použije se původní český
           text z Dotykačky. Překlady vyplňujte hlavně pro <strong>ostatní jazyky</strong>.
         </p>
+        <p className="textMuted2" style={{ margin: "8px 0 0", lineHeight: 1.55 }}>
+          Změny se ukládají po <strong>opuštění pole</strong> (klik jinam nebo Tab), při přepnutí jazyka nebo tlačítkem Uložit — během
+          psaní se nic neposílá na server.
+        </p>
       </div>
 
       {loadError ? (
@@ -894,15 +904,21 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
             type="button"
             className={`adminTab${activeLocale === l.code ? " adminTab--active" : ""}`}
             onClick={() => {
-              if (activeLocale === l.code) return;
-              if (!hasMissingIngredientTranslations) {
+              void (async () => {
+                if (activeLocale === l.code) return;
+                if (hasMissingIngredientTranslations) {
+                  const ok = window.confirm(
+                    "Chybí překlady ingrediencí v některých jazycích. Chcete přesto přepnout jazyk úprav?",
+                  );
+                  if (!ok) return;
+                }
+                const saved = await flushPendingSaves();
+                if (!saved) {
+                  window.alert("Nepodařilo se uložit změny. Zkuste prosím Uložit nebo zkontrolujte připojení.");
+                  return;
+                }
                 setActiveLocale(l.code);
-                return;
-              }
-              const ok = window.confirm(
-                "Chybí překlady ingrediencí v některých jazycích. Chcete přesto přepnout jazyk úprav?",
-              );
-              if (ok) setActiveLocale(l.code);
+              })();
             }}
           >
             {l.label}
@@ -911,12 +927,12 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         <button type="button" className="btnPrimary" disabled={saving || loading} onClick={() => void onSave()} style={{ cursor: "pointer" }}>
           {saving ? "Ukládám…" : "Uložit"}
         </button>
-        {autoSaveState === "dirty" ? <span className="textMuted2">Neuloženo…</span> : null}
-        {autoSaveState === "saving" ? <span className="textMuted2">Auto‑ukládám…</span> : null}
-        {autoSaveState === "saved" ? <span className="textMuted2">Auto‑uloženo</span> : null}
+        {autoSaveState === "dirty" ? <span className="textMuted2">Neuloženo — opuste pole nebo uložte</span> : null}
+        {autoSaveState === "saving" ? <span className="textMuted2">Ukládám…</span> : null}
+        {autoSaveState === "saved" ? <span className="textMuted2">Uloženo</span> : null}
         {autoSaveState === "error" ? (
           <span className="textMuted2" style={{ color: "#fecaca" }}>
-            Auto‑save selhal{autoSaveErr ? `: ${autoSaveErr}` : ""}.
+            Uložení selhalo{autoSaveErr ? `: ${autoSaveErr}` : ""}.
           </span>
         ) : null}
         {loading ? <span className="textMuted2">Načítám…</span> : null}
@@ -966,6 +982,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                       className="chip"
                       value={(byLocale[activeLocale] ?? emptyLocale()).categories[catKey]?.name ?? ""}
                       onChange={(e) => setCategoryName(activeLocale, catKey, e.target.value)}
+                      onBlur={saveOnBlur}
                       placeholder={dotykaName}
                       style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                       autoComplete="off"
@@ -1021,6 +1038,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                         className="chip"
                         value={(byLocale[activeLocale] ?? emptyLocale()).items[item.id]?.name ?? ""}
                         onChange={(e) => setItemName(activeLocale, item.id, e.target.value)}
+                        onBlur={saveOnBlur}
                         placeholder={item.name}
                         style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                         autoComplete="off"
@@ -1035,6 +1053,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                         className="chip"
                         value={(byLocale[activeLocale] ?? emptyLocale()).items[item.id]?.description ?? ""}
                         onChange={(e) => setItemDescription(activeLocale, item.id, e.target.value)}
+                        onBlur={saveOnBlur}
                         placeholder={item.description ?? "Popis položky (původně z Dotykačky)"}
                         style={{
                           padding: "10px 12px",
@@ -1078,6 +1097,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                                   className="chip"
                                   value={l.sourceName}
                                   onChange={(e) => setIngredientLine(activeLocale, item.id, idx, { sourceName: e.target.value }, list)}
+                                  onBlur={saveOnBlur}
                                   placeholder="Např. Rajče"
                                   style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                                   autoComplete="off"
@@ -1091,6 +1111,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                                   className="chip"
                                   value={l.label}
                                   onChange={(e) => setIngredientLine(activeLocale, item.id, idx, { label: e.target.value }, list)}
+                                  onBlur={saveOnBlur}
                                   placeholder="Např. Rajče"
                                   style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                                   autoComplete="off"
@@ -1100,18 +1121,37 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                                 <input
                                   type="checkbox"
                                   checked={l.allowExclude !== false}
-                                  onChange={(e) => setIngredientLine(activeLocale, item.id, idx, { allowExclude: e.target.checked }, list)}
+                                  onChange={(e) => {
+                                    setIngredientLine(activeLocale, item.id, idx, { allowExclude: e.target.checked }, list);
+                                    window.setTimeout(() => saveWhenDirty(), 0);
+                                  }}
                                 />
                                 <span className="textMuted2" style={{ fontSize: 13 }}>Odebrat</span>
                               </label>
-                              <button type="button" className="chip" onClick={() => removeIngredientLine(activeLocale, item.id, idx, list)} style={{ cursor: "pointer" }}>
+                              <button
+                                type="button"
+                                className="chip"
+                                onClick={() => {
+                                  removeIngredientLine(activeLocale, item.id, idx, list);
+                                  window.setTimeout(() => saveWhenDirty(), 0);
+                                }}
+                                style={{ cursor: "pointer" }}
+                              >
                                 Odebrat
                               </button>
                             </div>
                           ));
                         })()}
                       </div>
-                      <button type="button" className="chip" onClick={() => addIngredientLine(activeLocale, item.id)} style={{ cursor: "pointer", justifySelf: "start" }}>
+                      <button
+                        type="button"
+                        className="chip"
+                        onClick={() => {
+                          addIngredientLine(activeLocale, item.id);
+                          window.setTimeout(() => saveWhenDirty(), 0);
+                        }}
+                        style={{ cursor: "pointer", justifySelf: "start" }}
+                      >
                         + Přidat ingredienci
                       </button>
                     </div>
@@ -1157,6 +1197,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                     className="chip"
                     value={getMergedDotykackaGroupLabel(dotykackaLabelsByLocale[activeLocale]?.groups, g)}
                     onChange={(e) => setDotykackaGroupLabel(activeLocale, g, e.target.value)}
+                    onBlur={saveOnBlur}
                     placeholder={g.label || "Překlad názvu skupiny"}
                     style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                     autoComplete="off"
@@ -1172,6 +1213,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                             className="chip"
                             value={(dotykackaLabelsByLocale[activeLocale]?.options ?? {})[o.id] ?? ""}
                             onChange={(e) => setDotykackaOptionLabel(activeLocale, o.id, e.target.value)}
+                            onBlur={saveOnBlur}
                             placeholder={o.label || "Překlad volby"}
                             style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                             autoComplete="off"
