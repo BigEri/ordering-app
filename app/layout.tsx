@@ -5,7 +5,6 @@ import { cookies } from "next/headers";
 
 import "./globals.css";
 
-import { ConditionalFooter } from "../components/ConditionalFooter";
 import { ConditionalLayoutHeader } from "../components/ConditionalLayoutHeader";
 import { ConditionalTopbar } from "../components/ConditionalTopbar";
 import { DeviceTableProvider } from "../components/DeviceTableProvider";
@@ -50,8 +49,6 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
                   <ConditionalTopbar />
 
                   {children}
-
-                  <ConditionalFooter />
                 </div>
               </DeviceTableProvider>
             </MenuCartProvider>
