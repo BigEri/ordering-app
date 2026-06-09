@@ -36,6 +36,7 @@ export function AdminShell({
     () => bootstrap?.activeLabel ?? null,
   );
   const [clientReady, setClientReady] = React.useState(false);
+  const [logoutLoading, setLogoutLoading] = React.useState(false);
 
   const isLogin = pathname === "/admin/login";
 
@@ -148,7 +149,12 @@ export function AdminShell({
   };
 
   const onLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    setLogoutLoading(true);
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    } catch {
+      /* ignore */
+    }
     window.location.href = "/kiosk/reset-mode";
   };
 
@@ -193,8 +199,14 @@ export function AdminShell({
               Načítání…
             </p>
           )}
-          <button type="button" className="chip adminShell__logout" onClick={() => void onLogout()}>
-            Odhlásit
+          <button
+            type="button"
+            className="chip adminShell__logout"
+            disabled={logoutLoading}
+            onClick={() => void onLogout()}
+            style={{ cursor: logoutLoading ? "wait" : "pointer" }}
+          >
+            {logoutLoading ? "…" : "Odhlásit"}
           </button>
         </div>
         <TableflowBrand className="adminShell__tableflow" />

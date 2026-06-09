@@ -103,6 +103,7 @@ function ShowcaseFillImage({
  */
 const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   onSelectLanguage,
+  navigatingLang,
   brandName,
   t,
   availableLocales,
@@ -111,6 +112,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   layoutPreset,
 }: {
   onSelectLanguage: (code: string) => void;
+  navigatingLang: string | null;
   brandName: string;
   t: (key: string) => string;
   availableLocales: Array<{ code: string; label: string }>;
@@ -313,17 +315,30 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
             <span className="welcomeLangHint">{t("welcome.langHint")}</span>
             <div className="welcomeLangGrid">
               {availableLocales.map((item) => (
-                <button key={item.code} type="button" className="welcomeLangBtn" onClick={() => onSelectLanguage(item.code)}>
+                <button
+                  key={item.code}
+                  type="button"
+                  className="welcomeLangBtn"
+                  disabled={navigatingLang !== null}
+                  onClick={() => onSelectLanguage(item.code)}
+                  style={{ cursor: navigatingLang !== null ? "wait" : "pointer" }}
+                >
                   <span className="welcomeLangBtnInner">
-                    {(() => {
-                      const f = flagForLocale(item.code);
-                      return f ? (
-                        <LocaleFlag code={f} className={`welcomeLangFlag welcomeLangFlag--${f}`} />
-                      ) : (
-                        <GlobeIcon className="welcomeLangFlag" />
-                      );
-                    })()}
-                    <span className="welcomeLangLabel">{item.label}</span>
+                    {navigatingLang === item.code ? (
+                      <span className="welcomeLangLabel">…</span>
+                    ) : (
+                      <>
+                        {(() => {
+                          const f = flagForLocale(item.code);
+                          return f ? (
+                            <LocaleFlag code={f} className={`welcomeLangFlag welcomeLangFlag--${f}`} />
+                          ) : (
+                            <GlobeIcon className="welcomeLangFlag" />
+                          );
+                        })()}
+                        <span className="welcomeLangLabel">{item.label}</span>
+                      </>
+                    )}
                   </span>
                 </button>
               ))}
@@ -347,11 +362,13 @@ export function WelcomePage({
 }) {
   const { setLocale, t, availableLocales } = useLanguage();
   const { ready, needsPairing, pairingCode, pairingExpiresAtIso } = usePosTableFields();
+  const [navigatingLang, setNavigatingLang] = React.useState<string | null>(null);
 
   const onSelectLanguage = React.useCallback(
     (code: string) => {
       setLocale(code);
       if (!ready || needsPairing) return;
+      setNavigatingLang(code);
       kioskNavigate(buildKioskMenuUrl());
     },
     [needsPairing, ready, setLocale],
@@ -412,6 +429,7 @@ export function WelcomePage({
     <WelcomeShowcaseInner
       key={innerKey}
       onSelectLanguage={onSelectLanguage}
+      navigatingLang={navigatingLang}
       brandName={brandName}
       t={t}
       availableLocales={availableLocales}

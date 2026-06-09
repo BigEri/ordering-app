@@ -32,9 +32,13 @@ export default function AdminHomePage() {
   const [err, setErr] = React.useState<string | null>(null);
   const [editName, setEditName] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
 
   const load = React.useCallback(async (opts?: { background?: boolean }) => {
-    if (!opts?.background) setErr(null);
+    if (!opts?.background) {
+      setErr(null);
+      setRefreshing(true);
+    }
     try {
       const [meR, rR] = await Promise.all([
         fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" }),
@@ -52,6 +56,8 @@ export default function AdminHomePage() {
       }
     } catch {
       setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+    } finally {
+      if (!opts?.background) setRefreshing(false);
     }
   }, []);
 
@@ -148,8 +154,14 @@ export default function AdminHomePage() {
           )}
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
-            Obnovit
+          <button
+            type="button"
+            className="chip"
+            disabled={refreshing}
+            onClick={() => void load()}
+            style={{ cursor: refreshing ? "wait" : "pointer" }}
+          >
+            {refreshing ? "…" : "Obnovit"}
           </button>
         </div>
       </div>

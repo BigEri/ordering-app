@@ -7,6 +7,7 @@ import { isKioskWebView } from "../../lib/kiosk/isKioskWebView";
 /** V kiosk APK na přihlášení: přepnutí z omylem zvoleného Admin režimu na Host + párování. */
 export function KioskModeSwitch() {
   const [kiosk, setKiosk] = React.useState(false);
+  const [switching, setSwitching] = React.useState(false);
 
   React.useEffect(() => {
     setKiosk(isKioskWebView());
@@ -15,6 +16,7 @@ export function KioskModeSwitch() {
   if (!kiosk) return null;
 
   const onSwitchToHost = async () => {
+    setSwitching(true);
     try {
       await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
     } catch {
@@ -37,8 +39,14 @@ export function KioskModeSwitch() {
       <p style={{ margin: "0 0 10px", fontSize: 14, lineHeight: 1.45 }}>
         Tablet je v režimu <strong>Admin</strong>. Pro hosty a objednávání přepněte na režim kiosk (host).
       </p>
-      <button type="button" className="chip" onClick={() => void onSwitchToHost()} style={{ cursor: "pointer" }}>
-        Přepnout na host → párování / menu
+      <button
+        type="button"
+        className="chip"
+        disabled={switching}
+        onClick={() => void onSwitchToHost()}
+        style={{ cursor: switching ? "wait" : "pointer" }}
+      >
+        {switching ? "…" : "Přepnout na host → párování / menu"}
       </button>
     </section>
   );

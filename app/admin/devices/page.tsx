@@ -83,6 +83,7 @@ export default function AdminDevicesPage() {
   const [editTableMsg, setEditTableMsg] = React.useState<"ok" | "err" | null>(null);
 
   const [removingId, setRemovingId] = React.useState<string | null>(null);
+  const [listRefreshing, setListRefreshing] = React.useState(false);
 
   const load = React.useCallback(async () => {
     setLoadErr(false);
@@ -262,6 +263,16 @@ export default function AdminDevicesPage() {
     }
   };
 
+  const onRefreshList = React.useCallback(async () => {
+    setListRefreshing(true);
+    try {
+      await load();
+      await loadHealth(activeRestaurantId);
+    } finally {
+      setListRefreshing(false);
+    }
+  }, [activeRestaurantId, load, loadHealth]);
+
   const onApkUpdate = async (deviceId: string) => {
     setApkUpdateErr(false);
     setApkUpdatingId(deviceId);
@@ -405,14 +416,12 @@ export default function AdminDevicesPage() {
         <button
           type="button"
           className="chip"
-          onClick={() => {
-            void load();
-            void loadHealth(activeRestaurantId);
-          }}
-          style={{ cursor: "pointer" }}
+          disabled={listRefreshing}
+          onClick={() => void onRefreshList()}
+          style={{ cursor: listRefreshing ? "wait" : "pointer" }}
           title={tStaff("admin.devices.refreshAllHint")}
         >
-          {tStaff("admin.devices.refresh")}
+          {listRefreshing ? "…" : tStaff("admin.devices.refresh")}
         </button>
         <button
           type="button"
@@ -641,7 +650,7 @@ export default function AdminDevicesPage() {
                         style={{ cursor: kioskRelease ? "pointer" : "not-allowed" }}
                         title={!kioskRelease ? tStaff("admin.devices.apkUpdateNoRelease") : undefined}
                       >
-                        {tStaff("admin.devices.apkUpdate")}
+                        {apkUpdatingId === d.deviceId ? "…" : tStaff("admin.devices.apkUpdate")}
                       </button>
                       <button
                         type="button"
@@ -651,7 +660,7 @@ export default function AdminDevicesPage() {
                         style={{ cursor: "pointer" }}
                         title={tStaff("admin.devices.reloadHint")}
                       >
-                        {tStaff("admin.devices.reload")}
+                        {reloadingId === d.deviceId ? "…" : tStaff("admin.devices.reload")}
                       </button>
                       <button
                         type="button"
@@ -660,7 +669,7 @@ export default function AdminDevicesPage() {
                         onClick={() => void onRemoveDevice(d)}
                         style={{ cursor: removingId === d.deviceId ? "wait" : "pointer" }}
                       >
-                        Odstranit zařízení
+                        {removingId === d.deviceId ? "…" : "Odstranit zařízení"}
                       </button>
                     </div>
                   </td>

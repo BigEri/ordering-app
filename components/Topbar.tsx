@@ -38,6 +38,8 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   const [billPayErrorKey, setBillPayErrorKey] = React.useState<string | null>(null);
   const [billPayErrorDetail, setBillPayErrorDetail] = React.useState<string | null>(null);
   const [billPayLoading, setBillPayLoading] = React.useState(false);
+  const [callStaffLoading, setCallStaffLoading] = React.useState(false);
+  const [topbarRetryLoading, setTopbarRetryLoading] = React.useState(false);
   const billOpenRef = React.useRef(false);
   billOpenRef.current = billOpen;
 
@@ -117,20 +119,25 @@ export function Topbar({ previewMode = false }: TopbarProps) {
       setCallStaffOpen(true);
       return;
     }
-    const r = await postPosJsonResilient("/api/pos/staff-call", { ...posTableFields() });
-    if (r.ok) {
-      setCallStaffOpen(true);
-      return;
+    setCallStaffLoading(true);
+    try {
+      const r = await postPosJsonResilient("/api/pos/staff-call", { ...posTableFields() });
+      if (r.ok) {
+        setCallStaffOpen(true);
+        return;
+      }
+      if (r.kind === "queued") {
+        setTopbarError({ messageKey: "pos.error.queued", kind: "staff" });
+        return;
+      }
+      setTopbarError({
+        messageKey: r.kind === "network" ? "pos.error.network" : "pos.error.http",
+        kind: "staff",
+        ...(r.kind === "http" && r.detail ? { detail: r.detail } : {}),
+      });
+    } finally {
+      setCallStaffLoading(false);
     }
-    if (r.kind === "queued") {
-      setTopbarError({ messageKey: "pos.error.queued", kind: "staff" });
-      return;
-    }
-    setTopbarError({
-      messageKey: r.kind === "network" ? "pos.error.network" : "pos.error.http",
-      kind: "staff",
-      ...(r.kind === "http" && r.detail ? { detail: r.detail } : {}),
-    });
   }, [posTableFields, previewMode]);
 
   const openBillRequest = React.useCallback(async () => {
@@ -150,12 +157,21 @@ export function Topbar({ previewMode = false }: TopbarProps) {
       setTopbarError(null);
       return;
     }
-    if (topbarError?.messageKey === "pos.error.queued") {
-      await flushPendingPosQueue();
-      return;
+    setTopbarRetryLoading(true);
+    try {
+      if (topbarError?.messageKey === "pos.error.queued") {
+        await flushPendingPosQueue();
+        return;
+      }
+      if (!topbarError) return;
+      if (topbarError.kind === "staff") {
+        await sendStaffCall();
+      } else {
+        await openBillRequest();
+      }
+    } finally {
+      setTopbarRetryLoading(false);
     }
-    if (!topbarError) return;
-    void (topbarError.kind === "staff" ? sendStaffCall() : openBillRequest());
   }, [topbarError, sendStaffCall, openBillRequest, previewMode]);
 
   React.useEffect(() => {
@@ -249,10 +265,11 @@ export function Topbar({ previewMode = false }: TopbarProps) {
               <button
                 type="button"
                 className="chip topbarBtn"
+                disabled={callStaffLoading}
                 onClick={() => void sendStaffCall()}
-                style={{ cursor: "pointer" }}
+                style={{ cursor: callStaffLoading ? "wait" : "pointer" }}
               >
-                {t("topbar.callStaff")}
+                {callStaffLoading ? "…" : t("topbar.callStaff")}
               </button>
             </div>
 
@@ -292,8 +309,14 @@ export function Topbar({ previewMode = false }: TopbarProps) {
             ) : null}
           </span>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button type="button" className="chip" onClick={() => void retryTopbar()} style={{ cursor: "pointer" }}>
-              {t("pos.retry")}
+            <button
+              type="button"
+              className="chip"
+              disabled={topbarRetryLoading}
+              onClick={() => void retryTopbar()}
+              style={{ cursor: topbarRetryLoading ? "wait" : "pointer" }}
+            >
+              {topbarRetryLoading ? "…" : t("pos.retry")}
             </button>
             <button type="button" className="chip" onClick={() => setTopbarError(null)} style={{ cursor: "pointer" }}>
               {t("pos.dismiss")}
