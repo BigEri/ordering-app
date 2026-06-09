@@ -142,7 +142,7 @@ const OPEN_DETAILS_ARIA: Record<Locale, string> = {
   ko: "상세 보기",
 };
 
-export function MenuItem({ item, onOpenDetails, guestTablet, locale = "cs", mediaPriority }: MenuItemProps) {
+export function MenuItemInner({ item, onOpenDetails, guestTablet, locale = "cs", mediaPriority }: MenuItemProps) {
   const mediaRef = React.useRef<HTMLDivElement | null>(null);
   const [mediaVisible, setMediaVisible] = React.useState(Boolean(mediaPriority));
 
@@ -219,3 +219,22 @@ export function MenuItem({ item, onOpenDetails, guestTablet, locale = "cs", medi
     </article>
   );
 }
+
+function menuItemPropsAreEqual(prev: MenuItemProps, next: MenuItemProps): boolean {
+  if (prev.guestTablet !== next.guestTablet) return false;
+  if (prev.locale !== next.locale) return false;
+  if (prev.mediaPriority !== next.mediaPriority) return false;
+  if (prev.onOpenDetails !== next.onOpenDetails) return false;
+  const a = prev.item;
+  const b = next.item;
+  return (
+    a.id === b.id &&
+    a.name === b.name &&
+    a.imageUrl === b.imageUrl &&
+    a.description === b.description &&
+    a.priceCzk === b.priceCzk &&
+    a.veganFriendly === b.veganFriendly
+  );
+}
+
+export const MenuItem = React.memo(MenuItemInner, menuItemPropsAreEqual);

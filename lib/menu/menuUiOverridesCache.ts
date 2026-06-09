@@ -65,6 +65,19 @@ export function seedMenuUiOverridesCache(
   putMenuUiOverridesInCache(locale, bundle);
 }
 
+/** SSR: přednačte všechny jazyky do paměti klienta. */
+export function seedAllMenuUiOverridesCache(
+  restaurantId: string,
+  byLocale: Record<string, MenuUiOverridesBundle>,
+): void {
+  const rid = restaurantId.trim();
+  if (!rid) return;
+  resetMenuUiOverridesCache(rid);
+  for (const [locale, bundle] of Object.entries(byLocale)) {
+    putMenuUiOverridesInCache(locale, bundle);
+  }
+}
+
 async function fetchMenuUiOverridesOnce(locale: string): Promise<MenuUiOverridesBundle | null> {
   const loc = normLocale(locale);
   try {

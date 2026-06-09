@@ -9,6 +9,7 @@ import {
   type MenuTextOverrideCategoryPayload,
   type MenuTextOverrideItemPayload,
 } from "../../../../../lib/server/menuTextOverrides";
+import { invalidateMenuUiCache } from "../../../../../lib/server/menuOverridesCached";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
 import { prisma } from "../../../../../lib/server/prisma";
 
@@ -109,6 +110,7 @@ export async function PATCH(req: Request) {
       nowIso(),
     );
 
+    invalidateMenuUiCache(restaurantId);
     const byLocale = await readAllMenuTextOverridesForRestaurant(restaurantId);
     return NextResponse.json({ ok: true, restaurantId, byLocale });
   } catch {

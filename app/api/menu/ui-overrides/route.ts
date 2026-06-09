@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { readMenuIngredientOverridesForRestaurantLocale } from "../../../../lib/server/menuIngredientOverrides";
-import { isEnabledLocale, readMenuTextOverridesForRestaurantLocale } from "../../../../lib/server/menuTextOverrides";
-import { readDotykackaLabelsForRestaurantLocale } from "../../../../lib/server/menuDotykackaLabels";
+import { readMenuUiBundleForLocaleCached } from "../../../../lib/server/menuOverridesCached";
+import { isEnabledLocale } from "../../../../lib/server/menuTextOverrides";
 import { resolvePublicMenuApiRestaurantIdAsync } from "../../../../lib/server/publicMenuRestaurantResolve";
 
 export const dynamic = "force-dynamic";
@@ -20,11 +19,7 @@ export async function GET(req: Request) {
 
   const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.trim().toLowerCase() : "cs";
 
-  const [text, ingredients, dotykacka] = await Promise.all([
-    readMenuTextOverridesForRestaurantLocale(restaurantId, locale),
-    readMenuIngredientOverridesForRestaurantLocale(restaurantId, locale),
-    readDotykackaLabelsForRestaurantLocale(restaurantId, locale),
-  ]);
+  const { text, ingredients, dotykacka } = await readMenuUiBundleForLocaleCached(restaurantId, locale);
 
   // Pro hosty můžeme krátce cachovat (a SWR), aby to bylo rychlé, ale změny se do pár minut projeví.
   return NextResponse.json(

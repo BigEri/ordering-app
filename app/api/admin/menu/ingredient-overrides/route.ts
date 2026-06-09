@@ -9,6 +9,7 @@ import {
   readAllMenuIngredientOverridesForRestaurant,
   replaceMenuIngredientOverridesForLocale,
 } from "../../../../../lib/server/menuIngredientOverrides";
+import { invalidateMenuUiCache } from "../../../../../lib/server/menuOverridesCached";
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +84,7 @@ export async function PATCH(req: Request) {
     }
 
     await replaceMenuIngredientOverridesForLocale(restaurantId, locale, items, session.userId, nowIso());
+    invalidateMenuUiCache(restaurantId);
     const byLocale = await readAllMenuIngredientOverridesForRestaurant(restaurantId);
     return NextResponse.json({ ok: true, restaurantId, byLocale });
   } catch {

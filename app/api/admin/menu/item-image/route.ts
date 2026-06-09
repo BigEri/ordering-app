@@ -4,6 +4,7 @@ import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { nowIso } from "../../../../../lib/server/db";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
 import { isAllowedStoredImageUrl, tryDeleteStoredMenuImage } from "../../../../../lib/server/menuImageStorage";
+import { invalidateMenuOverridesCache } from "../../../../../lib/server/menuOverridesCached";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ export async function PATCH(req: Request): Promise<NextResponse> {
     if (imageUrl === null || imageUrl === "") {
       await prisma.menuImage.deleteMany({ where: { restaurantId, menuItemId } });
       await tryDeleteStoredMenuImage(previousUrl);
+      invalidateMenuOverridesCache(restaurantId);
       return NextResponse.json({ ok: true, cleared: true });
     }
 
@@ -79,6 +81,7 @@ export async function PATCH(req: Request): Promise<NextResponse> {
       await tryDeleteStoredMenuImage(previousUrl);
     }
 
+    invalidateMenuOverridesCache(restaurantId);
     return NextResponse.json({ ok: true, imageUrl });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";

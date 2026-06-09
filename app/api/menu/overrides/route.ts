@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { readMenuOverridesForRestaurant } from "../../../../lib/server/menuOverridesRead";
+import { readMenuOverridesForRestaurantCached } from "../../../../lib/server/menuOverridesCached";
 import { resolvePublicMenuApiRestaurantIdAsync } from "../../../../lib/server/publicMenuRestaurantResolve";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +13,6 @@ export async function GET(req: Request) {
   }
   const { restaurantId } = ctx;
 
-  const payload = await readMenuOverridesForRestaurant(restaurantId);
+  const payload = await readMenuOverridesForRestaurantCached(restaurantId);
   return NextResponse.json({ ok: true, restaurantId, ...payload });
 }

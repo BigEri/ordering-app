@@ -34,6 +34,7 @@ import {
   loadMenuUiOverrides,
   prefetchMenuUiOverrides,
   resetMenuUiOverridesCache,
+  seedAllMenuUiOverridesCache,
   seedMenuUiOverridesCache,
   type MenuUiOverridesBundle,
 } from "../../lib/menu/menuUiOverridesCache";
@@ -89,6 +90,8 @@ type MenuBrowseClientProps = {
     ingredients: MenuIngredientOverridesForLocale;
     dotykacka: DotykackaLabelOverrides | null;
   };
+  /** SSR prefetch všech jazyků — okamžité přepínání vlajky bez HTTP. */
+  initialMenuUiByLocale?: Record<string, MenuUiOverridesBundle>;
   /** Náhled z administrace (`/menu?from=admin`) — zobrazit návrat do admin sekce. */
   adminPreview?: boolean;
 };
@@ -127,6 +130,7 @@ export function MenuBrowseClient({
   menuVariant = "guest",
   initialMenuOverrides,
   initialMenuUi,
+  initialMenuUiByLocale,
   adminPreview = false,
 }: MenuBrowseClientProps) {
   useMenuIdleRedirect();
@@ -253,14 +257,16 @@ export function MenuBrowseClient({
       usedInitialMenuUiRef.current = false;
       resetMenuUiOverridesCache(restaurantId);
     }
-    if (initialMenuUi && initialMenuUiLocale) {
+    if (initialMenuUiByLocale && Object.keys(initialMenuUiByLocale).length > 0) {
+      seedAllMenuUiOverridesCache(restaurantId, initialMenuUiByLocale);
+    } else if (initialMenuUi && initialMenuUiLocale) {
       seedMenuUiOverridesCache(restaurantId, initialMenuUiLocale, {
         text: initialMenuUi.text,
         ingredients: initialMenuUi.ingredients,
         dotykacka: initialMenuUi.dotykacka ?? { groups: {}, options: {} },
       });
     }
-  }, [restaurantId, initialMenuUi, initialMenuUiLocale]);
+  }, [restaurantId, initialMenuUi, initialMenuUiLocale, initialMenuUiByLocale]);
 
   React.useEffect(() => {
     if (!restaurantId) return;
@@ -1335,7 +1341,7 @@ export function MenuBrowseClient({
                             guestTablet
                             locale={menuLocale}
                             mediaPriority={itemIdx < 3}
-                            onOpenDetails={() => openMenuItem(item)}
+                            onOpenDetails={openMenuItem}
                           />
                         </div>
                       </div>
@@ -1346,7 +1352,7 @@ export function MenuBrowseClient({
                         guestTablet
                         locale={menuLocale}
                         mediaPriority={itemIdx < 3}
-                        onOpenDetails={() => openMenuItem(item)}
+                        onOpenDetails={openMenuItem}
                       />
                     ),
                   )}

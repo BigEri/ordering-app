@@ -3,10 +3,12 @@ import { cookies } from "next/headers";
 import { fetchDotykackaProductsForMenuCached } from "../../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../../lib/dotykacka/menuItemOverrides";
 import { getAdminMenuRestaurantId } from "../../../lib/server/adminMenuRestaurantContext";
-import { readDotykackaLabelsForRestaurantLocale } from "../../../lib/server/menuDotykackaLabels";
-import { readMenuIngredientOverridesForRestaurantLocale } from "../../../lib/server/menuIngredientOverrides";
-import { readMenuOverridesForRestaurant } from "../../../lib/server/menuOverridesRead";
-import { isEnabledLocale, readMenuTextOverridesForRestaurantLocale } from "../../../lib/server/menuTextOverrides";
+import {
+  readAllMenuUiBundlesForRestaurantCached,
+  readMenuOverridesForRestaurantCached,
+  readMenuUiBundleForLocaleCached,
+} from "../../../lib/server/menuOverridesCached";
+import { isEnabledLocale } from "../../../lib/server/menuTextOverrides";
 import { getPublicRestaurantDisplayName } from "../../../lib/server/publicRestaurantName";
 import { MenuBrowseClient } from "../../menu/MenuBrowseClient";
 
@@ -29,13 +31,12 @@ export default async function AdminMenuPage() {
   const localeRaw = cookieStore.get("ordering-locale")?.value?.trim() ?? "cs";
   const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.toLowerCase() : "cs";
 
-  const [result, menuOverrides, textOverrides, ingredientOverrides, dotykackaLabels] = await Promise.all([
+  const [result, menuOverrides, initialMenuUiByLocale] = await Promise.all([
     fetchDotykackaProductsForMenuCached(restaurantId),
-    readMenuOverridesForRestaurant(restaurantId),
-    readMenuTextOverridesForRestaurantLocale(restaurantId, locale),
-    readMenuIngredientOverridesForRestaurantLocale(restaurantId, locale),
-    readDotykackaLabelsForRestaurantLocale(restaurantId, locale),
+    readMenuOverridesForRestaurantCached(restaurantId),
+    readAllMenuUiBundlesForRestaurantCached(restaurantId),
   ]);
+  const activeUi = initialMenuUiByLocale[locale] ?? (await readMenuUiBundleForLocaleCached(restaurantId, locale));
 
   if (!result.ok) {
     return (
@@ -46,11 +47,12 @@ export default async function AdminMenuPage() {
         restaurantId={restaurantId}
         menuVariant="editor"
         initialMenuOverrides={menuOverrides}
+        initialMenuUiByLocale={initialMenuUiByLocale}
         initialMenuUi={{
           locale,
-          text: textOverrides,
-          ingredients: ingredientOverrides,
-          dotykacka: dotykackaLabels,
+          text: activeUi.text,
+          ingredients: activeUi.ingredients,
+          dotykacka: activeUi.dotykacka,
         }}
       />
     );
@@ -66,11 +68,12 @@ export default async function AdminMenuPage() {
       restaurantId={restaurantId}
       menuVariant="editor"
       initialMenuOverrides={menuOverrides}
+      initialMenuUiByLocale={initialMenuUiByLocale}
       initialMenuUi={{
         locale,
-        text: textOverrides,
-        ingredients: ingredientOverrides,
-        dotykacka: dotykackaLabels,
+        text: activeUi.text,
+        ingredients: activeUi.ingredients,
+        dotykacka: activeUi.dotykacka,
       }}
     />
   );

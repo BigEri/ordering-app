@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
+import { invalidateMenuOverridesCache } from "../../../../../lib/server/menuOverridesCached";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -54,6 +55,7 @@ export async function PATCH(req: Request) {
       });
     });
 
+    invalidateMenuOverridesCache(restaurantId);
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";

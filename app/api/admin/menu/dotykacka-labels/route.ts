@@ -9,6 +9,7 @@ import {
   replaceDotykackaLabelsForRestaurantLocale,
   type DotykackaLabelPayload,
 } from "../../../../../lib/server/menuDotykackaLabels";
+import { invalidateMenuUiCache } from "../../../../../lib/server/menuOverridesCached";
 
 export const dynamic = "force-dynamic";
 
@@ -97,6 +98,7 @@ export async function PATCH(req: Request) {
       session.userId,
       nowIso(),
     );
+    invalidateMenuUiCache(restaurantId);
     const payload = await readDotykackaLabelsForRestaurantLocale(restaurantId, locale);
     return NextResponse.json({ ok: true, restaurantId, locale, ...payload });
   } catch {

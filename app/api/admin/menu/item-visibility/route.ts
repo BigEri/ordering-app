@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { nowIso } from "../../../../../lib/server/db";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
+import { invalidateMenuOverridesCache } from "../../../../../lib/server/menuOverridesCached";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export async function PATCH(req: Request) {
       await prisma.menuHiddenItem.deleteMany({ where: { restaurantId, menuItemId } });
     }
 
+    invalidateMenuOverridesCache(restaurantId);
     return NextResponse.json({ ok: true, restaurantId, menuItemId, hidden });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
