@@ -11,8 +11,10 @@ import { getPublicRestaurantDisplayName } from "../../../lib/server/publicRestau
 import { MenuBrowseClient } from "../../menu/MenuBrowseClient";
 
 export default async function AdminMenuPage() {
-  const restaurantName = await getPublicRestaurantDisplayName();
-  const restaurantId = await getAdminMenuRestaurantId();
+  const [restaurantName, restaurantId] = await Promise.all([
+    getPublicRestaurantDisplayName(),
+    getAdminMenuRestaurantId(),
+  ]);
   if (!restaurantId) {
     return (
       <main style={{ padding: "2rem", maxWidth: 560 }}>

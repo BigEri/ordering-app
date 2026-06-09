@@ -16,8 +16,10 @@ export default async function HomePage() {
   const restaurantId = await resolvePublicMenuRestaurantIdFromRequestUrl(
     new Request(url.toString(), { headers: { cookie: cookieHeader } }),
   );
-  const brandName = await getPublicRestaurantDisplayNameForRestaurantId(restaurantId);
-  const showcase = await getWelcomeShowcaseForPublicAsync(restaurantId);
+  const [brandName, showcase] = await Promise.all([
+    getPublicRestaurantDisplayNameForRestaurantId(restaurantId),
+    getWelcomeShowcaseForPublicAsync(restaurantId),
+  ]);
   return (
     <WelcomePage
       brandName={brandName}

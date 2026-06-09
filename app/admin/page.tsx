@@ -56,10 +56,7 @@ export default function AdminHomePage() {
   }, []);
 
   React.useEffect(() => {
-    if (shellBootstrap) {
-      void load({ background: true });
-      return;
-    }
+    if (shellBootstrap) return;
     void load();
   }, [load, shellBootstrap]);
 

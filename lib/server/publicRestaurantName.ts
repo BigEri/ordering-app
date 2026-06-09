@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { prisma } from "./prisma";
 
 /** Jen `.env` / jediná restaurace — bez URL a cookie (pro admin fallback apod.). */
@@ -27,7 +29,7 @@ export async function getPublicMenuRestaurantId(): Promise<string | null> {
 }
 
 /** Veřejný název — jedna restaurace / PUBLIC_RESTAURANT_ID, jinak obecný text. */
-export async function getPublicRestaurantDisplayName(): Promise<string> {
+export const getPublicRestaurantDisplayName = cache(async function getPublicRestaurantDisplayName(): Promise<string> {
   const envId = process.env.PUBLIC_RESTAURANT_ID?.trim();
   if (envId) {
     const row = await prisma.restaurant.findUnique({ where: { id: envId }, select: { name: true } });
@@ -43,10 +45,12 @@ export async function getPublicRestaurantDisplayName(): Promise<string> {
     if (n) return n;
   }
   return "Restaurace";
-}
+});
 
 /** Název provozovny podle ID (např. po rozlišení menu z cookie). */
-export async function getPublicRestaurantDisplayNameForRestaurantId(restaurantId: string | null): Promise<string> {
+export const getPublicRestaurantDisplayNameForRestaurantId = cache(async function getPublicRestaurantDisplayNameForRestaurantId(
+  restaurantId: string | null,
+): Promise<string> {
   if (!restaurantId?.trim()) return await getPublicRestaurantDisplayName();
   const row = await prisma.restaurant.findUnique({
     where: { id: restaurantId.trim() },
@@ -55,4 +59,4 @@ export async function getPublicRestaurantDisplayNameForRestaurantId(restaurantId
   const n = row?.name?.trim();
   if (n) return n;
   return await getPublicRestaurantDisplayName();
-}
+});

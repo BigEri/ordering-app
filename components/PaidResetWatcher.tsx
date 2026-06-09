@@ -26,6 +26,8 @@ export function PaidResetWatcher() {
   const [open, setOpen] = React.useState(false);
   const [paidTotal, setPaidTotal] = React.useState<number | null>(null);
   const handledRef = React.useRef(false);
+  const posTableFieldsRef = React.useRef(posTableFields);
+  posTableFieldsRef.current = posTableFields;
 
   React.useEffect(() => {
     // Na welcome page / adminu nic nedělat.
@@ -44,7 +46,7 @@ export function PaidResetWatcher() {
         const r = await fetch("/api/pos/payment-status", {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify(posTableFields()),
+          body: JSON.stringify(posTableFieldsRef.current()),
           cache: "no-store",
         });
         const j = (await r.json()) as { ok?: boolean; configured?: boolean; paid?: boolean; totalCzk?: number | null };
@@ -75,7 +77,7 @@ export function PaidResetWatcher() {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [pathname, orders.length, posTableFields, clearOrders, setCart]);
+  }, [pathname, orders.length, clearOrders, setCart]);
 
   if (!open) return null;
 

@@ -40,11 +40,37 @@ function needsKioskDeviceContext(pathname: string | null | undefined): boolean {
   return true;
 }
 
+type DeviceConfigJson = {
+  ok?: boolean;
+  binding?: {
+    tableId: string;
+    tableLabel: string;
+    restaurantId?: string | null;
+    deviceSecret?: string | null;
+  } | null;
+  reloadNonce?: number;
+};
+
+const configInflight = new Map<string, Promise<DeviceConfigJson>>();
+
 function fetchDeviceConfig(deviceId: string) {
   const u = new URL("/api/devices/config", typeof window !== "undefined" ? window.location.origin : "http://localhost");
   u.searchParams.set("deviceId", deviceId);
   u.searchParams.set("_t", String(Date.now()));
   return fetch(u.toString(), { cache: "no-store" });
+}
+
+/** Sdílený in-flight request — init, poll a cookie sync nevolají config 3× najednou. */
+function fetchDeviceConfigJson(deviceId: string): Promise<DeviceConfigJson> {
+  const hit = configInflight.get(deviceId);
+  if (hit) return hit;
+  const run = fetchDeviceConfig(deviceId)
+    .then(async (r) => (await r.json()) as DeviceConfigJson)
+    .finally(() => {
+      configInflight.delete(deviceId);
+    });
+  configInflight.set(deviceId, run);
+  return run;
 }
 
 function defaultTableLabel(tableId: string): string {
@@ -405,13 +431,9 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
       };
 
       try {
-        const r = await fetchDeviceConfig(id);
-        const data = (await r.json()) as {
-          ok?: boolean;
-          binding?: ConfigBinding;
-          reloadNonce?: number;
-        };
+        const data = await fetchDeviceConfigJson(id);
         if (cancelled) return;
+        lastConfigRef.current = { deviceId: id, binding: data.binding ?? null };
         if (data.ok && data.binding) {
           applyBinding(data.binding);
           applyDeviceSecret(data.binding.deviceSecret);
@@ -434,14 +456,14 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     if (!needsKioskDeviceContext(pathname)) return;
     if (!deviceId || !ready) return;
 
+    let cancelled = false;
+
     const poll = async () => {
+      if (cancelled) return;
       try {
-        const r = await fetchDeviceConfig(deviceId);
-        const data = (await r.json()) as {
-          ok?: boolean;
-          binding?: ConfigBinding;
-          reloadNonce?: number;
-        };
+        const data = await fetchDeviceConfigJson(deviceId);
+        if (cancelled) return;
+        lastConfigRef.current = { deviceId, binding: data.binding ?? null };
         if (data.ok && data.binding) {
           setTableId(data.binding.tableId);
           setTableLabel(data.binding.tableLabel);
@@ -449,19 +471,19 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
           applyDeviceSecret(data.binding.deviceSecret);
         }
         applyServerReloadNonce(data.reloadNonce);
-        await syncPairingWithConfig(deviceId, data.ok ? data.binding ?? null : null, () => false);
+        await syncPairingWithConfig(deviceId, data.ok ? data.binding ?? null : null, () => cancelled);
       } catch {
         /* ignore */
       }
     };
 
-    void poll();
-    const t = window.setInterval(poll, CONFIG_POLL_MS);
+    const t = window.setInterval(() => void poll(), CONFIG_POLL_MS);
     const onVisible = () => {
       if (document.visibilityState === "visible") void poll();
     };
     document.addEventListener("visibilitychange", onVisible);
     return () => {
+      cancelled = true;
       window.clearInterval(t);
       document.removeEventListener("visibilitychange", onVisible);
     };
@@ -489,9 +511,11 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
   }, [deviceId, tableId, tableLabel, ready, pathname]);
 
   const kioskMenuCookieSynced = React.useRef(false);
+  const lastConfigRef = React.useRef<{ deviceId: string; binding: DeviceConfigJson["binding"] } | null>(null);
 
   React.useEffect(() => {
     kioskMenuCookieSynced.current = false;
+    lastConfigRef.current = null;
   }, [deviceId]);
 
   /** Párování tabletu v adminu → cookie veřejné provozovny a obnoví SSR (fotky, ingredience). */
@@ -503,11 +527,12 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     let cancelled = false;
     void (async () => {
       try {
-        const r = await fetchDeviceConfig(deviceId);
-        const data = (await r.json()) as {
-          ok?: boolean;
-          binding?: { restaurantId?: string | null } | null;
-        };
+        const cached =
+          lastConfigRef.current?.deviceId === deviceId ? lastConfigRef.current.binding : null;
+        const data =
+          cached != null
+            ? { ok: true as const, binding: cached }
+            : await fetchDeviceConfigJson(deviceId);
         if (cancelled || !data.ok || !data.binding?.restaurantId) return;
         const sync = await fetch("/api/public/kiosk-menu-cookie", {
           method: "POST",

@@ -374,7 +374,9 @@ export function MenuBrowseClient({
     if (menuVariant !== "editor" || !restaurantId || !editorStatus) return;
     if (!editorStatus.canEdit) return;
     let cancelled = false;
-    void (async () => {
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      void (async () => {
       setMenuImagesHealthErr(null);
       try {
         const r = await fetch(`/api/admin/menu/images-health?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
@@ -408,8 +410,10 @@ export function MenuBrowseClient({
         setMenuImagesHealthCheckedCount(null);
       }
     })();
+    }, 6000);
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [menuVariant, restaurantId, editorStatus]);
 
@@ -567,7 +571,7 @@ export function MenuBrowseClient({
         const top = el.getBoundingClientRect().top + window.scrollY;
         if (top <= anchorY) current = k;
       }
-      setActiveCategoryKey(current);
+      setActiveCategoryKey((prev) => (prev === current ? prev : current));
     };
     window.addEventListener("scroll", onScroll, { passive: true });
     onScroll();

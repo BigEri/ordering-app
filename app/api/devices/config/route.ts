@@ -28,9 +28,11 @@ export async function GET(req: NextRequest) {
 
   // Strict mode: binding exists only if it's stored in DB (kiosk_device_bindings).
   // Presence fallback would make "removed device" still look paired.
-  const t = await getEffectiveTable(deviceId, { allowFallback: false });
-  const reloadNonce = await getDeviceReloadNonce(deviceId);
-  const apkUpdateNonce = await getDeviceApkUpdateNonce(deviceId);
+  const [t, reloadNonce, apkUpdateNonce] = await Promise.all([
+    getEffectiveTable(deviceId, { allowFallback: false }),
+    getDeviceReloadNonce(deviceId),
+    getDeviceApkUpdateNonce(deviceId),
+  ]);
   const appRelease = getKioskAppRelease();
 
   if (!t) {

@@ -53,14 +53,18 @@ export async function getAdminShellBootstrap(): Promise<AdminShellBootstrap | nu
       select: { id: true, name: true },
     });
   } else {
-    const rows = await prisma.membership.findMany({
-      where: { userId: session.userId },
-      select: { restaurant: { select: { id: true, name: true, createdAtIso: true } } },
-    });
-    restaurants = rows
-      .map((r) => r.restaurant)
-      .sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id, "en"))
-      .map((r) => ({ id: r.id, name: r.name }));
+    const restIds = memberships.map((m) => m.restaurantId);
+    if (restIds.length === 0) {
+      restaurants = [];
+    } else {
+      const rows = await prisma.restaurant.findMany({
+        where: { id: { in: restIds } },
+        select: { id: true, name: true, createdAtIso: true },
+      });
+      restaurants = rows
+        .sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id, "en"))
+        .map((r) => ({ id: r.id, name: r.name }));
+    }
   }
 
   const restaurantMap: Record<string, string> = {};
