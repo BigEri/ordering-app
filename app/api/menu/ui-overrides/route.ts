@@ -20,9 +20,11 @@ export async function GET(req: Request) {
 
   const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.trim().toLowerCase() : "cs";
 
-  const text = await readMenuTextOverridesForRestaurantLocale(restaurantId, locale);
-  const ingredients = await readMenuIngredientOverridesForRestaurantLocale(restaurantId, locale);
-  const dotykacka = await readDotykackaLabelsForRestaurantLocale(restaurantId, locale);
+  const [text, ingredients, dotykacka] = await Promise.all([
+    readMenuTextOverridesForRestaurantLocale(restaurantId, locale),
+    readMenuIngredientOverridesForRestaurantLocale(restaurantId, locale),
+    readDotykackaLabelsForRestaurantLocale(restaurantId, locale),
+  ]);
 
   // Pro hosty můžeme krátce cachovat (a SWR), aby to bylo rychlé, ale změny se do pár minut projeví.
   return NextResponse.json(

@@ -29,8 +29,30 @@ import { clearPendingOrderConfirmed, hasPendingOrderConfirmed, POS_QUEUE_ORDER_S
 import { postPosJsonResilient } from "../../lib/pos/postPosJsonResilient";
 import { buildDotykackaCustomizationAliasIndex, resolveDotykackaGroupLabel } from "../../lib/menu/dotykackaLabelMerge";
 import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
+import {
+  getMenuUiOverridesFromCache,
+  loadMenuUiOverrides,
+  prefetchMenuUiOverrides,
+  resetMenuUiOverridesCache,
+  seedMenuUiOverridesCache,
+  type MenuUiOverridesBundle,
+} from "../../lib/menu/menuUiOverridesCache";
 import { useMenuIdleRedirect } from "../../hooks/useMenuIdleRedirect";
 import { useBrowserOnline } from "../../components/OnlineBanner";
+
+type DotykackaLabelOverrides = { groups: Record<string, string>; options: Record<string, string> };
+
+function applyMenuUiBundle(bundle: MenuUiOverridesBundle): {
+  text: MenuTextOverridesForLocale;
+  ingredients: MenuIngredientOverridesForLocale;
+  dotykacka: DotykackaLabelOverrides;
+} {
+  return {
+    text: bundle.text,
+    ingredients: { items: bundle.ingredients.items ?? {} },
+    dotykacka: bundle.dotykacka,
+  };
+}
 
 function formatCzk(value: number) {
   return `${value} Kč`;
@@ -72,8 +94,6 @@ type MenuBrowseClientProps = {
 };
 
 type EditorStatus = { canEdit: boolean; reason?: string };
-
-type DotykackaLabelOverrides = { groups: Record<string, string>; options: Record<string, string> };
 
 function applyDotykackaLabelOverridesToItem(
   item: MenuItemData,
@@ -119,7 +139,7 @@ export function MenuBrowseClient({
     pairingExpiresAtIso,
     needsPairing,
   } = usePosTableFields();
-  const { locale, t } = useLanguage();
+  const { locale, t, availableLocales } = useLanguage();
   const menuLocale = (locale === "cs" || locale === "en" || locale === "ko" ? locale : "cs") as "cs" | "en" | "ko";
   const [added, setAdded] = React.useState<string | null>(null);
   const { cart, setCart } = useMenuCart();
@@ -162,6 +182,7 @@ export function MenuBrowseClient({
   const initialMenuUiLocale = initialMenuUi?.locale ?? null;
   /** První paint má SSR data — další přepnutí jazyka (i zpět na výchozí) vždy fetchneme. */
   const usedInitialMenuUiRef = React.useRef(false);
+  const menuUiCacheRestaurantRef = React.useRef<string | null>(null);
   const dotykackaCustomizationAliasIndex = React.useMemo(
     () => buildDotykackaCustomizationAliasIndex(sections),
     [sections],
@@ -219,36 +240,62 @@ export function MenuBrowseClient({
 
   React.useEffect(() => {
     if (!restaurantId) {
+      menuUiCacheRestaurantRef.current = null;
       usedInitialMenuUiRef.current = false;
+      resetMenuUiOverridesCache(null);
       setTextOverrides({ items: {}, categories: {} });
       setIngredientOverrides({ items: {} });
       setDotykackaLabelOverrides(null);
       return;
     }
+    if (menuUiCacheRestaurantRef.current !== restaurantId) {
+      menuUiCacheRestaurantRef.current = restaurantId;
+      usedInitialMenuUiRef.current = false;
+      resetMenuUiOverridesCache(restaurantId);
+    }
+    if (initialMenuUi && initialMenuUiLocale) {
+      seedMenuUiOverridesCache(restaurantId, initialMenuUiLocale, {
+        text: initialMenuUi.text,
+        ingredients: initialMenuUi.ingredients,
+        dotykacka: initialMenuUi.dotykacka ?? { groups: {}, options: {} },
+      });
+    }
+  }, [restaurantId, initialMenuUi, initialMenuUiLocale]);
+
+  React.useEffect(() => {
+    if (!restaurantId) return;
+    const codes = availableLocales.map((l) => l.code);
+    const timer = window.setTimeout(() => {
+      prefetchMenuUiOverrides(codes);
+    }, 400);
+    return () => window.clearTimeout(timer);
+  }, [availableLocales, restaurantId]);
+
+  React.useEffect(() => {
+    if (!restaurantId) return;
+
     if (initialMenuUi && menuLocale === initialMenuUiLocale && !usedInitialMenuUiRef.current) {
       usedInitialMenuUiRef.current = true;
       return;
     }
+
+    const cached = getMenuUiOverridesFromCache(menuLocale);
+    if (cached) {
+      const applied = applyMenuUiBundle(cached);
+      setTextOverrides(applied.text);
+      setIngredientOverrides(applied.ingredients);
+      setDotykackaLabelOverrides(applied.dotykacka);
+      return;
+    }
+
     let cancelled = false;
     void (async () => {
-      try {
-        const r = await fetch(`/api/menu/ui-overrides?locale=${encodeURIComponent(menuLocale)}`, { cache: "no-store" });
-        const j = (await r.json()) as {
-          ok?: boolean;
-          text?: { items?: Record<string, { name?: string; description?: string }>; categories?: Record<string, { name?: string }> };
-          ingredients?: { items?: Record<string, unknown> };
-          dotykacka?: { groups?: Record<string, string>; options?: Record<string, string> };
-        };
-        if (cancelled || !r.ok || !j.ok) return;
-        setTextOverrides({
-          items: j.text?.items ?? {},
-          categories: j.text?.categories ?? {},
-        });
-        setIngredientOverrides({ items: (j.ingredients?.items ?? {}) as Record<string, any> });
-        setDotykackaLabelOverrides({ groups: j.dotykacka?.groups ?? {}, options: j.dotykacka?.options ?? {} });
-      } catch {
-        /* ignore */
-      }
+      const bundle = await loadMenuUiOverrides(menuLocale);
+      if (cancelled || !bundle) return;
+      const applied = applyMenuUiBundle(bundle);
+      setTextOverrides(applied.text);
+      setIngredientOverrides(applied.ingredients);
+      setDotykackaLabelOverrides(applied.dotykacka);
     })();
     return () => {
       cancelled = true;
