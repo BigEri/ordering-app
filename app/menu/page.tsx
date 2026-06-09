@@ -10,7 +10,7 @@ import {
   readMenuUiBundleForLocaleCached,
 } from "../../lib/server/menuOverridesCached";
 import { isEnabledLocale } from "../../lib/server/menuTextOverrides";
-import { resolvePublicMenuRestaurantIdFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
+import { resolvePublicMenuRestaurantIdSlimFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
 import { getPublicRestaurantDisplayNameForRestaurantId } from "../../lib/server/publicRestaurantName";
 import { MenuBrowseClient } from "./MenuBrowseClient";
 
@@ -32,7 +32,7 @@ export default async function MenuPage(props: MenuPageProps) {
   if (deviceId && deviceId.length <= 200) url.searchParams.set("deviceId", deviceId);
   if (typeof searchParams.from === "string") url.searchParams.set("from", searchParams.from);
 
-  const restaurantId = await resolvePublicMenuRestaurantIdFromRequestUrl(
+  const restaurantId = await resolvePublicMenuRestaurantIdSlimFromRequestUrl(
     new Request(url.toString(), { headers: { cookie: cookieHeader } }),
   );
   if (!restaurantId) {
