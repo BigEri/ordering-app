@@ -217,50 +217,33 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
     setErr(null);
     void (async () => {
       try {
-        const [rText, rIng] = await Promise.all([
-          fetch(`/api/admin/menu/text-overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" }),
-          fetch(`/api/admin/menu/ingredient-overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" }),
-        ]);
-        const jText = (await rText.json()) as {
+        const r = await fetch(
+          `/api/admin/menu/ui-overrides?restaurantId=${encodeURIComponent(restaurantId)}`,
+          { cache: "no-store" },
+        );
+        const j = (await r.json()) as {
           ok?: boolean;
-          byLocale?: Record<string, MenuTextOverridesForLocale>;
-          error?: string;
-        };
-        const jIng = (await rIng.json()) as {
-          ok?: boolean;
-          byLocale?: Record<string, MenuIngredientOverridesForLocale>;
+          text?: Record<string, MenuTextOverridesForLocale>;
+          ingredients?: Record<string, MenuIngredientOverridesForLocale>;
+          dotykacka?: Record<string, { groups?: Record<string, string>; options?: Record<string, string> }>;
           error?: string;
         };
         if (cancelled) return;
-        if (!rText.ok || !jText.ok || !jText.byLocale) {
-          setErr(jText.error ?? "Nelze načíst překlady.");
+        if (!r.ok || !j.ok || !j.text) {
+          setErr(j.error ?? "Nelze načíst překlady.");
           return;
         }
-        setByLocale(mergeLoaded(enabledLocales, jText.byLocale));
-        if (rIng.ok && jIng.ok && jIng.byLocale) {
-          setIngredientsByLocale(mergeLoadedIngredients(enabledLocales, jIng.byLocale));
+        setByLocale(mergeLoaded(enabledLocales, j.text));
+        if (j.ingredients) {
+          setIngredientsByLocale(mergeLoadedIngredients(enabledLocales, j.ingredients));
         } else {
           setIngredientsByLocale(mergeLoadedIngredients(enabledLocales, {}));
         }
-        // Dotyka labels načteme per locale (jen enabled), fail-safe.
-        try {
-          const pairs = await Promise.all(
-            enabledLocales.map(async (l) => {
-              const rr = await fetch(
-                `/api/admin/menu/dotykacka-labels?restaurantId=${encodeURIComponent(restaurantId)}&locale=${encodeURIComponent(l.code)}`,
-                { cache: "no-store" },
-              );
-              const jj = (await rr.json()) as { ok?: boolean; groups?: Record<string, string>; options?: Record<string, string> };
-              if (!rr.ok || !jj.ok) return [l.code, { groups: {}, options: {} }] as const;
-              return [l.code, { groups: jj.groups ?? {}, options: jj.options ?? {} }] as const;
-            }),
-          );
-          const map: Record<string, { groups: Record<string, string>; options: Record<string, string> }> = {};
-          for (const [code, val] of pairs) map[code] = val;
-          setDotykackaLabelsByLocale(map);
-        } catch {
-          setDotykackaLabelsByLocale({});
+        const dotykackaMap: Record<string, { groups: Record<string, string>; options: Record<string, string> }> = {};
+        for (const [code, val] of Object.entries(j.dotykacka ?? {})) {
+          dotykackaMap[code] = { groups: val?.groups ?? {}, options: val?.options ?? {} };
         }
+        setDotykackaLabelsByLocale(dotykackaMap);
 
         lastSavedKeyRef.current = null;
         setAutoSaveState("idle");

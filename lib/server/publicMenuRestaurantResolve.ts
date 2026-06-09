@@ -1,3 +1,5 @@
+import { cache } from "react";
+
 import { isMenuOpenedFromAdmin } from "../admin/publicMenuPreviewUrl";
 import {
   activeRestaurantCookieName,
@@ -9,6 +11,8 @@ import { getKioskDeviceBinding } from "./kioskDeviceBindings";
 import { prisma } from "./prisma";
 import { getDefaultPublicMenuRestaurantId } from "./publicRestaurantName";
 import { isPublicMenuRidQueryTrusted } from "./publicMenuRidTrust";
+
+const getDefaultPublicMenuRestaurantIdCached = cache(getDefaultPublicMenuRestaurantId);
 
 /**
  * Cookie pro hosty / kiosky: která provozovna se zobrazí na `/menu` (fotky, úpravy, Dotyka).
@@ -139,11 +143,66 @@ export function resolvePublicMenuRestaurantIdSync(opts: {
 
 /** Pro API routy a SSR host stránek — cookie + query na stejném requestu. */
 export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request): Promise<string | null> {
+  return resolvePublicMenuRestaurantIdFullFromRequestUrl(req);
+}
+
+/**
+ * Rychlejší varianta pro úvodní stránku / tablet bez přihlášeného admina:
+ * po vazbě zařízení nebo cookie `oa_menu_rid` nevolá membership / staff větve.
+ */
+export async function resolvePublicMenuRestaurantIdSlimFromRequestUrl(req: Request): Promise<string | null> {
+  const deviceBound = await resolveRestaurantIdFromKioskDeviceRequest(req);
+  if (deviceBound) return deviceBound;
+
+  const url = new URL(req.url);
+  const cookieHeader = req.headers.get("cookie");
+  const session = getSessionFromCookieHeader(cookieHeader);
+  const fromAdmin = isMenuOpenedFromAdmin({ from: url.searchParams.get("from") ?? undefined });
+
+  if (!session && !fromAdmin) {
+    return resolveGuestKioskRestaurantId(cookieHeader, url);
+  }
+
+  return resolvePublicMenuRestaurantIdFullFromRequestUrl(req, deviceBound);
+}
+
+async function resolveGuestKioskRestaurantId(
+  cookieHeader: string | null | undefined,
+  url: URL,
+): Promise<string | null> {
+  const kioskRid = cookieValue(cookieHeader, PUBLIC_MENU_RESTAURANT_COOKIE)?.trim() ?? "";
+  const ridRaw = url.searchParams.get("rid")?.trim() ?? "";
+  const defaultRestaurantId = await getDefaultPublicMenuRestaurantIdCached();
+
+  if (ridRaw && (await restaurantExistsInDb(ridRaw))) {
+    if (
+      isPublicMenuRidQueryTrusted({
+        ridQueryTrimmed: ridRaw,
+        kioskRestaurantId: kioskRid,
+        adminRestaurantId: null,
+        deviceBoundRestaurantId: null,
+        defaultSingletonRestaurantId: defaultRestaurantId,
+      })
+    ) {
+      return ridRaw;
+    }
+  }
+
+  if (kioskRid && (await restaurantExistsInDb(kioskRid))) return kioskRid;
+
+  if (defaultRestaurantId && (await restaurantExistsInDb(defaultRestaurantId))) return defaultRestaurantId;
+  return null;
+}
+
+async function resolvePublicMenuRestaurantIdFullFromRequestUrl(
+  req: Request,
+  knownDeviceBound?: string | null,
+): Promise<string | null> {
   const url = new URL(req.url);
   const cookieHeader = req.headers.get("cookie");
   const fromAdmin = isMenuOpenedFromAdmin({ from: url.searchParams.get("from") ?? undefined });
 
-  const deviceBound = await resolveRestaurantIdFromKioskDeviceRequest(req);
+  const deviceBound = knownDeviceBound ?? (await resolveRestaurantIdFromKioskDeviceRequest(req));
   const session = getSessionFromCookieHeader(cookieHeader);
   const adminActive = await resolveAdminActiveRestaurantForPublicMenuAsync(cookieHeader);
   const staffGuest = await resolveStaffRestaurantForGuestViewAsync(session, adminActive);
@@ -152,7 +211,7 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
 
   let trustedRidQuery: string | null = null;
   if (ridRaw && (await restaurantExistsInDb(ridRaw))) {
-    const singleton = await getDefaultPublicMenuRestaurantId();
+    const singleton = await getDefaultPublicMenuRestaurantIdCached();
     if (
       isPublicMenuRidQueryTrusted({
         ridQueryTrimmed: ridRaw,
@@ -166,7 +225,7 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
     }
   }
 
-  const defaultRestaurantId = await getDefaultPublicMenuRestaurantId();
+  const defaultRestaurantId = await getDefaultPublicMenuRestaurantIdCached();
 
   const picked = pickPublicMenuRestaurantId({
     fromAdmin,
@@ -179,6 +238,7 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
   });
 
   if (!picked) return null;
+  if (picked === deviceBound || picked === trustedRidQuery) return picked;
   if (await restaurantExistsInDb(picked)) return picked;
   return null;
 }
@@ -207,7 +267,7 @@ export async function resolvePublicMenuApiRestaurantIdAsync(req: Request): Promi
     return { ok: false, status: 403, error: "Restaurant mismatch" };
   }
   if (requested && !resolved) {
-    const def = await getDefaultPublicMenuRestaurantId();
+    const def = await getDefaultPublicMenuRestaurantIdCached();
     if (!def || requested !== def) {
       return { ok: false, status: 403, error: "Restaurant context required" };
     }

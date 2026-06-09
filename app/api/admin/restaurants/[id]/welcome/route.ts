@@ -4,6 +4,7 @@ import { requireAdminSession, type AdminSession } from "../../../../../../lib/se
 import { userHasRestaurantAccess } from "../../../../../../lib/server/auth";
 import { parseWelcomeLayoutPreset } from "../../../../../../lib/menu/welcomeLayoutPreset";
 import { getRestaurantWelcomeForAdmin, upsertRestaurantWelcome } from "../../../../../../lib/server/restaurantWelcome";
+import { invalidateWelcomeShowcaseCache } from "../../../../../../lib/server/welcomeShowcaseCached";
 import { prisma } from "../../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -74,6 +75,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
       updatedByUserId: session.userId,
     });
 
+    invalidateWelcomeShowcaseCache(rid);
     const data = await getRestaurantWelcomeForAdmin(rid);
     return NextResponse.json({ ok: true, ...data, rejectedUrls, savedCount: savedUrls.length });
   } catch (e) {
