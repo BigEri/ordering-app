@@ -160,6 +160,8 @@ export function MenuBrowseClient({
     () => initialMenuUi?.dotykacka ?? null,
   );
   const initialMenuUiLocale = initialMenuUi?.locale ?? null;
+  /** První paint má SSR data — další přepnutí jazyka (i zpět na výchozí) vždy fetchneme. */
+  const usedInitialMenuUiRef = React.useRef(false);
   const dotykackaCustomizationAliasIndex = React.useMemo(
     () => buildDotykackaCustomizationAliasIndex(sections),
     [sections],
@@ -217,12 +219,16 @@ export function MenuBrowseClient({
 
   React.useEffect(() => {
     if (!restaurantId) {
+      usedInitialMenuUiRef.current = false;
       setTextOverrides({ items: {}, categories: {} });
       setIngredientOverrides({ items: {} });
       setDotykackaLabelOverrides(null);
       return;
     }
-    if (initialMenuUi && menuLocale === initialMenuUiLocale) return;
+    if (initialMenuUi && menuLocale === initialMenuUiLocale && !usedInitialMenuUiRef.current) {
+      usedInitialMenuUiRef.current = true;
+      return;
+    }
     let cancelled = false;
     void (async () => {
       try {
