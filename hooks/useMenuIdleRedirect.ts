@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 
 import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
-import { kioskNavigate } from "../lib/kiosk/nav";
+import { buildKioskWelcomeUrl, kioskNavigate } from "../lib/kiosk/nav";
 
 /** Po této době bez interakce na `/menu` přesměrování na úvodní stránku (2 min 30 s). */
 export const MENU_IDLE_REDIRECT_MS = 150_000;
@@ -28,7 +28,7 @@ export function useMenuIdleRedirect() {
     clearTimer();
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
-      kioskNavigate("/");
+      kioskNavigate(buildKioskWelcomeUrl());
     }, MENU_IDLE_REDIRECT_MS);
   }, [clearTimer]);
 

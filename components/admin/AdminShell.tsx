@@ -133,7 +133,7 @@ export function AdminShell({
 
   const onBack = () => {
     if (pathname === "/admin" || pathname === "/admin/login") {
-      window.location.href = "/menu";
+      window.location.href = "/";
       return;
     }
     if (pathname.startsWith("/admin/restaurants/") && pathname !== "/admin/restaurants") {

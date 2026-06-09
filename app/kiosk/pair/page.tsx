@@ -86,7 +86,7 @@ export default function KioskPairPage() {
         if (j.binding) {
           setPaired(true);
           window.setTimeout(() => {
-            window.location.href = `/menu?deviceId=${encodeURIComponent(did)}`;
+            window.location.href = `/?deviceId=${encodeURIComponent(did)}`;
           }, 1200);
         }
       } catch {

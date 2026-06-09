@@ -1,7 +1,9 @@
 import { cookies, headers } from "next/headers";
+import { redirect } from "next/navigation";
 
 import { fetchDotykackaProductsForMenuCached } from "../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../lib/dotykacka/menuItemOverrides";
+import { isMenuOpenedFromWelcome, welcomeHomePathFromMenuParams } from "../../lib/kiosk/welcomeEntry";
 import { orderMenuSectionsLikeKiosk } from "../../lib/menu/menuSectionsDisplayOrder";
 import { isMenuOpenedFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import {
@@ -15,14 +17,24 @@ import { getPublicRestaurantDisplayNameForRestaurantId } from "../../lib/server/
 import { MenuBrowseClient } from "./MenuBrowseClient";
 
 type MenuPageProps = {
-  searchParams?: Promise<{ rid?: string; deviceId?: string; from?: string }>;
+  searchParams?: Promise<{ rid?: string; deviceId?: string; from?: string; fromWelcome?: string }>;
 };
 
 export default async function MenuPage(props: MenuPageProps) {
   const searchParams = props.searchParams ? await props.searchParams : {};
   const adminPreview = isMenuOpenedFromAdmin(searchParams);
+  const fromWelcome = isMenuOpenedFromWelcome(searchParams);
   const rid = typeof searchParams.rid === "string" ? searchParams.rid : undefined;
   const deviceId = typeof searchParams.deviceId === "string" ? searchParams.deviceId.trim() : "";
+
+  if (!adminPreview && !fromWelcome) {
+    redirect(
+      welcomeHomePathFromMenuParams({
+        deviceId: deviceId || undefined,
+        rid,
+      }),
+    );
+  }
   const h = await headers();
   const cookieHeader = h.get("cookie") ?? "";
   const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";

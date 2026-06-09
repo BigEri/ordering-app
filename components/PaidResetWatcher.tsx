@@ -6,6 +6,7 @@ import * as React from "react";
 import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
 import { useMenuCart } from "./MenuCartProvider";
 import { useOrders } from "./OrdersProvider";
+import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
 
@@ -61,7 +62,7 @@ export function PaidResetWatcher() {
           clearOrders();
 
           window.setTimeout(() => {
-            window.location.href = "/";
+            window.location.href = buildKioskWelcomeUrl();
           }, 4500);
         }
       } catch {
