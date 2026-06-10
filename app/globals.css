@@ -88,6 +88,27 @@ html {
   min-height: 100vh;
 }
 
+/* Úvodní stránka: jedna obrazovka bez vertikálního scrollu (padding + 100vh jinak přetéká) */
+html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))),
+html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
+  overflow: hidden;
+  height: 100%;
+}
+
+.container:has(.welcomePage) {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  display: block;
+  gap: 0;
+  min-height: 0;
+  height: 100dvh;
+  height: 100vh;
+  max-height: 100dvh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
 .container:has(.adminShell) > .footer {
   display: none;
 }
@@ -220,14 +241,14 @@ html {
 
 .welcomePage {
   position: relative;
-  flex: 1;
-  min-height: 100dvh;
-  min-height: 100vh;
   isolation: isolate;
   width: 100vw;
   max-width: 100vw;
+  height: 100%;
+  max-height: 100%;
   margin-left: calc(50% - 50vw);
   margin-right: calc(50% - 50vw);
+  overflow: hidden;
 }
 
 /* Plné pozadí: fotky přes celou obrazovku */
@@ -463,19 +484,30 @@ html {
 .welcomeOverlayStack {
   position: relative;
   z-index: 2;
-  min-height: 100dvh;
-  min-height: 100vh;
+  height: 100%;
+  max-height: 100%;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
   gap: clamp(20px, 4vw, 36px);
   padding: clamp(20px, 4vw, 36px) clamp(16px, 4vw, 28px) clamp(24px, 5vw, 40px);
   pointer-events: none;
+  overflow: hidden;
 }
 
 .welcomeOverlayStack .welcomeCopyCard,
-.welcomeOverlayStack .welcomeLangDock {
+.welcomeOverlayStack .welcomeLangDock,
+.welcomeOverlayStack .kioskStaffBack {
   pointer-events: auto;
+}
+
+.kioskStaffBack {
+  align-self: flex-start;
+  position: absolute;
+  top: clamp(12px, 3vw, 20px);
+  left: clamp(12px, 3vw, 20px);
+  z-index: 3;
+  cursor: pointer;
 }
 
 .welcomeCopyCard {
@@ -540,6 +572,12 @@ html {
 
 .welcomeOverlayStack .welcomeKioskPairingDock {
   pointer-events: auto;
+}
+
+.welcomeOverlayStack:has(.welcomeKioskPairingDock) {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 .welcomeKioskPairingDock {

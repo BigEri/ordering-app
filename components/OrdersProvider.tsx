@@ -21,7 +21,10 @@ export type ConfirmedOrder = {
 
 type OrdersContextValue = {
   orders: ConfirmedOrder[];
+  /** Náhled z adminu — lokální objednávka bez Dotykačky. */
   addOrder: (order: Omit<ConfirmedOrder, "id" | "createdAtIso">) => void;
+  /** Přepíše seznam podle otevřeného účtu u stolu v Dotyce. */
+  syncTableBillFromDotykacka: (bill: { lines: Array<{ name: string; qty: number; unitPriceCzk: number }>; totalCzk: number }) => void;
   clearOrders: () => void;
 };
 
@@ -36,11 +39,33 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     setOrders((prev) => [{ ...order, id, createdAtIso }, ...prev]);
   }, []);
 
+  const syncTableBillFromDotykacka = React.useCallback(
+    (bill: { lines: Array<{ name: string; qty: number; unitPriceCzk: number }>; totalCzk: number }) => {
+      if (bill.lines.length === 0) {
+        setOrders([]);
+        return;
+      }
+      setOrders([
+        {
+          id: "dotykacka-table-bill",
+          createdAtIso: new Date().toISOString(),
+          lines: bill.lines.map((l) => ({
+            name: l.name,
+            qty: l.qty,
+            unitPriceCzk: l.unitPriceCzk,
+          })),
+          totalCzk: bill.totalCzk,
+        },
+      ]);
+    },
+    [],
+  );
+
   const clearOrders = React.useCallback(() => setOrders([]), []);
 
   const value = React.useMemo<OrdersContextValue>(
-    () => ({ orders, addOrder, clearOrders }),
-    [orders, addOrder, clearOrders],
+    () => ({ orders, addOrder, syncTableBillFromDotykacka, clearOrders }),
+    [orders, addOrder, syncTableBillFromDotykacka, clearOrders],
   );
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;

@@ -5,6 +5,7 @@ import * as React from "react";
 import { AdminChipLink } from "../../components/admin/AdminNavLink";
 import { useAdminShellBootstrap } from "../../components/admin/AdminShellContext";
 import { postSelectActiveRestaurant } from "../../lib/admin/clientRestaurantSelect";
+import { tStaff } from "../../lib/i18n/tStaff";
 
 type MeResponse =
   | {
@@ -20,6 +21,11 @@ type RestaurantsResponse =
   | { ok: true; restaurants: { id: string; name: string }[] }
   | { ok: false; error: string };
 
+type DotykackaIntegrationStatus = {
+  syncConfigured: boolean;
+  hint: string | null;
+};
+
 export default function AdminHomePage() {
   const shellBootstrap = useAdminShellBootstrap();
   const [me, setMe] = React.useState<MeResponse | null>(() =>
@@ -33,6 +39,33 @@ export default function AdminHomePage() {
   const [editName, setEditName] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
+  const [dotykackaStatus, setDotykackaStatus] = React.useState<DotykackaIntegrationStatus | null>(null);
+  const [dotykackaLoading, setDotykackaLoading] = React.useState(false);
+
+  const loadDotykackaStatus = React.useCallback(async (restaurantId: string | null | undefined) => {
+    const rid = restaurantId?.trim() ?? "";
+    if (!rid) {
+      setDotykackaStatus(null);
+      return;
+    }
+    setDotykackaLoading(true);
+    try {
+      const r = await fetch(`/api/admin/integrations-status?restaurantId=${encodeURIComponent(rid)}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      const j = (await r.json()) as { ok?: boolean; dotykacka?: DotykackaIntegrationStatus };
+      if (r.ok && j.ok !== false && j.dotykacka) {
+        setDotykackaStatus(j.dotykacka);
+      } else {
+        setDotykackaStatus(null);
+      }
+    } catch {
+      setDotykackaStatus(null);
+    } finally {
+      setDotykackaLoading(false);
+    }
+  }, []);
 
   const load = React.useCallback(async (opts?: { background?: boolean }) => {
     if (!opts?.background) {
@@ -76,6 +109,14 @@ export default function AdminHomePage() {
     activeId &&
     (me.session.globalRole === "SUPER_ADMIN" ||
       me.memberships.some((m) => m.restaurantId === activeId && m.role === "RESTAURANT_ADMIN"));
+
+  React.useEffect(() => {
+    if (!canManageDotykacka || !activeId) {
+      setDotykackaStatus(null);
+      return;
+    }
+    void loadDotykackaStatus(activeId);
+  }, [activeId, canManageDotykacka, loadDotykackaStatus]);
 
   React.useEffect(() => {
     if (activeName) setEditName(activeName);
@@ -281,16 +322,46 @@ export default function AdminHomePage() {
           }}
         >
           <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>Dotykačka (cloud)</h2>
-          <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
-            Pokud „vypadne“ přihlášení do Dotypos cloudu, můžete znovu spustit OAuth pro <strong>vaši restauraci</strong>. Nastavení pobočky a mapy produktů najdete v administraci v sekci Dotykačka.
+          <p
+            style={{
+              margin: "0 0 8px",
+              fontSize: 14,
+              lineHeight: 1.5,
+              color: dotykackaLoading
+                ? "var(--muted2)"
+                : dotykackaStatus?.syncConfigured
+                  ? "var(--success)"
+                  : "#fcd34d",
+            }}
+          >
+            {dotykackaLoading
+              ? "Načítám stav Dotykačky…"
+              : dotykackaStatus?.syncConfigured
+                ? tStaff("admin.devices.healthDotykackaYes")
+                : tStaff("admin.devices.healthDotykackaNo")}
           </p>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {dotykackaStatus?.syncConfigured === false && dotykackaStatus.hint ? (
+            <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
+              {dotykackaStatus.hint}
+            </p>
+          ) : null}
+          <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
+            {dotykackaStatus?.syncConfigured
+              ? "Propojení funguje. OAuth znovu spusťte jen když vypadne přihlášení do Dotypos cloudu."
+              : "Dokončete propojení přes OAuth a v nastavení vyberte pobočku a mapu produktů."}
+          </p>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
             <a
-              className="btnPrimary"
-              style={{ textDecoration: "none", display: "inline-block", padding: "8px 14px", borderRadius: 10 }}
+              className={dotykackaStatus?.syncConfigured ? "chip" : "btnPrimary"}
+              style={{
+                textDecoration: "none",
+                display: "inline-block",
+                padding: dotykackaStatus?.syncConfigured ? undefined : "8px 14px",
+                borderRadius: dotykackaStatus?.syncConfigured ? undefined : 10,
+              }}
               href={`/api/integrations/dotykacka/connect?restaurantId=${encodeURIComponent(activeId)}`}
             >
-              Připojit Dotykačku (OAuth)
+              {dotykackaStatus?.syncConfigured ? "Znovu propojit Dotykačku (OAuth)" : "Připojit Dotykačku (OAuth)"}
             </a>
             <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(activeId)}?tab=dotykacka`}>
               Nastavení Dotykačky (pobočka + mapa) →

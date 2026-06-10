@@ -4,11 +4,13 @@ import * as React from "react";
 
 import { buildOrderLineName } from "../lib/menu/orderLineLabel";
 import { localeTag } from "../lib/i18n/messages";
+import { isKioskWebView } from "../lib/kiosk/isKioskWebView";
 import { flushPendingPosQueue, POS_QUEUE_FLUSH_DETAIL } from "../lib/pos/pendingPosQueue";
 import { postPosJsonResilient } from "../lib/pos/postPosJsonResilient";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
 import { LanguageMenu } from "./LanguageMenu";
+import { KioskModeChooserModal } from "./kiosk/KioskModeChooserModal";
 import { type ConfirmedOrderLine, useOrders } from "./OrdersProvider";
 
 function formatCzk(value: number) {
@@ -40,8 +42,14 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   const [billPayLoading, setBillPayLoading] = React.useState(false);
   const [callStaffLoading, setCallStaffLoading] = React.useState(false);
   const [topbarRetryLoading, setTopbarRetryLoading] = React.useState(false);
+  const [kioskWebView, setKioskWebView] = React.useState(false);
+  const [kioskModeOpen, setKioskModeOpen] = React.useState(false);
   const billOpenRef = React.useRef(false);
   billOpenRef.current = billOpen;
+
+  React.useEffect(() => {
+    setKioskWebView(isKioskWebView());
+  }, []);
 
   const ordersTotal = React.useMemo(
     () => orders.reduce((sum, o) => sum + o.totalCzk, 0),
@@ -245,6 +253,19 @@ export function Topbar({ previewMode = false }: TopbarProps) {
       <header className="topbar">
         <nav className="nav" style={{ width: "100%" }}>
           <div className="topbarNavRow">
+            {kioskWebView ? (
+              <div className="topbarNavCell">
+                <button
+                  type="button"
+                  className="chip topbarBtn"
+                  aria-haspopup="dialog"
+                  onClick={() => setKioskModeOpen(true)}
+                  style={{ cursor: "pointer" }}
+                >
+                  ← Zpět
+                </button>
+              </div>
+            ) : null}
             <div className="topbarNavCell">
               <button
                 type="button"
@@ -591,6 +612,8 @@ export function Topbar({ previewMode = false }: TopbarProps) {
           </div>
         </div>
       ) : null}
+
+      <KioskModeChooserModal open={kioskModeOpen} onClose={() => setKioskModeOpen(false)} />
     </>
   );
 }

@@ -4,6 +4,7 @@ import Image from "next/image";
 import * as React from "react";
 
 import { KioskAnchor } from "./kiosk/KioskAnchor";
+import { KioskStaffBackButton } from "./kiosk/KioskStaffBackButton";
 import { buildKioskMenuUrl, kioskNavigate } from "../lib/kiosk/nav";
 
 import type { WelcomeLayoutPreset } from "../lib/menu/welcomeLayoutPreset";
@@ -282,6 +283,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
       </div>
 
       <div className="welcomeOverlayStack">
+        <KioskStaffBackButton />
         {insufficientMsg ? (
           <p className="welcomeLayoutWarn" role="alert">
             {insufficientMsg}

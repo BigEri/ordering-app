@@ -3,6 +3,8 @@
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 
+import { KioskStaffBackButton } from "../../../components/kiosk/KioskStaffBackButton";
+
 type PairingResp =
   | { ok: true; code: string; expiresAtIso: string }
   | { ok: false; error: string };
@@ -122,9 +124,13 @@ export default function KioskPairPage() {
           borderRadius: 18,
           background: "var(--panel)",
           padding: 22,
+          position: "relative",
         }}
       >
-        <h1 style={{ margin: "0 0 10px", fontSize: "1.6rem" }}>Párování tabletu</h1>
+        <div style={{ position: "absolute", top: 16, left: 16, zIndex: 1 }}>
+          <KioskStaffBackButton className="chip" />
+        </div>
+        <h1 style={{ margin: "0 0 10px", fontSize: "1.6rem", paddingTop: 44 }}>Párování tabletu</h1>
         <p className="textMuted" style={{ margin: "0 0 18px", lineHeight: 1.55 }}>
           Tento kód zadejte v administraci v sekci párování zařízení. Po spárování se tablet automaticky přepne do menu.
         </p>

@@ -3,11 +3,20 @@ import { randomUUID } from "node:crypto";
 import type { DotykackaConfig } from "./config";
 import { getDotykackaAccessTokenForCloud } from "./accessToken";
 import { dotykackaPosWebhookMaxWaitMs, getDotykackaPosWebhookPublicBaseUrl } from "./posWebhookBase";
+import {
+  parseDotykackaPosActionCode,
+  parseDotykackaPosActionCodeFromText,
+  pickTargetOpenOrdersForMerge,
+  shouldRelistOrdersAfterCreateFailure,
+  shouldTryNextOpenOrder,
+} from "./syncOrderMerge";
 import { cancelPosActionWebhook, waitForPosActionWebhook } from "../server/posActionWebhookRegistry";
 
 export type DotykackaSyncMeta = {
   action?: string;
   httpStatus?: number;
+  /** Kód z těla odpovědi pos-actions (0 = OK) */
+  posActionCode?: number;
   /** external-id relace u stolu (naše idempotence / merge key) */
   sessionExternalId?: string;
   /** table id v Dotyce */
@@ -115,6 +124,14 @@ function posActionsUrl(cfg: DotykackaConfig): string {
  */
 function formatPosActionsHttpError(cfg: DotykackaConfig, status: number, text: string): string {
   const snippet = text.trim().slice(0, 400);
+  const code = parseDotykackaPosActionCodeFromText(text);
+  if (code === 2001) {
+    return (
+      "Dotykačka dočasně zamkla účet u stolu (právě ho někdo otevřel na pokladně). " +
+      "Počkejte chvíli a zkuste objednávku znovu — aplikace ji přidá k otevřenému účtu. " +
+      "Personál může účet v Dotypos zaparkovat (uložit), pak to obvykle projde hned."
+    );
+  }
   if (status === 404) {
     const webhookHint = getDotykackaPosWebhookPublicBaseUrl()
       ? ""
@@ -171,6 +188,9 @@ function sleep(ms: number) {
 }
 
 function shouldRetryDotykackaPosActions(body: Record<string, unknown>, status: number, text: string): boolean {
+  if (status !== 400 && status !== 403) return false;
+  const code = parseDotykackaPosActionCodeFromText(text);
+  if (code === 2001) return true;
   if (status !== 400) return false;
   const t = text.toLowerCase();
   // Dotypos občas vrací 400 "message parsing error" při paralelních požadavcích – retry po krátké pauze často projde.
@@ -240,8 +260,8 @@ async function postDotykackaPosAction(
     }
   };
 
-  // Retry/backoff: když Dotypos vrátí 400 "message parsing error", často jde o transient při paralelních akcích.
-  const backoffMs = [700, 1500, 2800];
+  // Retry/backoff: parsing error nebo ORDER_LOCKED (2001) — pokladna krátce drží účet otevřený.
+  const backoffMs = [700, 1400, 2800, 4500, 6500];
   let last = await attemptOnce();
   for (const d of backoffMs) {
     if (last.ok) return last;
@@ -345,6 +365,7 @@ function buildBillRequestNoOpenAccountError(
 
 /**
  * Najde otevřenou objednávku na stole se stejným external-id (Dotypos 1.235+ `order/list`).
+ * @deprecated Prefer `listOpenDotykackaOrdersForTable` + `pickTargetOpenOrdersForMerge`.
  */
 async function findOpenDotykackaOrderIdForSession(
   cfg: DotykackaConfig,
@@ -668,6 +689,164 @@ type OrderLineInput = {
   dotykackaCustomizations?: DotykackaLineCustomization[];
 };
 
+type OrderPosItem = {
+  id: number;
+  qty: number;
+  note?: string;
+  customizations?: Array<{
+    "product-customization-id": number;
+    "product-id": number;
+    qty: number;
+  }>;
+};
+
+function posActionResponseCode(
+  posted: { ok: true; data: unknown } | { ok: false; status: number; text: string },
+): number | undefined {
+  if (!posted.ok) return parseDotykackaPosActionCodeFromText(posted.text);
+  return parseDotykackaPosActionCode(posted.data);
+}
+
+function dotykackaActionErrorMessage(
+  cfg: DotykackaConfig,
+  action: string,
+  code: number,
+  httpStatus?: number,
+  rawText?: string,
+): string {
+  if (code === 2001) {
+    return (
+      "Dotykačka dočasně zamkla účet u stolu (právě ho někdo otevřel na pokladně). " +
+      "Zkuste objednávku znovu za chvíli."
+    );
+  }
+  if (code === 2009) {
+    return "Na stole už je otevřený účet — objednávka se přidá k němu při dalším pokusu.";
+  }
+  if (httpStatus !== undefined && rawText !== undefined) {
+    return formatPosActionsHttpError(cfg, httpStatus, rawText);
+  }
+  return `Dotykačka ${action} selhal (code ${code})`;
+}
+
+function interpretPosActionPost(
+  cfg: DotykackaConfig,
+  posted: { ok: true; data: unknown } | { ok: false; status: number; text: string },
+  action: string,
+  meta: DotykackaSyncMeta,
+): DotykackaSyncResult | { ok: true; meta: DotykackaSyncMeta } {
+  if (!posted.ok) {
+    const code = parseDotykackaPosActionCodeFromText(posted.text);
+    return {
+      ok: false,
+      error: dotykackaActionErrorMessage(cfg, action, code ?? -1, posted.status, posted.text),
+      meta: { ...meta, action, httpStatus: posted.status, posActionCode: code },
+    };
+  }
+  const code = parseDotykackaPosActionCode(posted.data);
+  if (code !== undefined && code !== 0) {
+    return {
+      ok: false,
+      error: dotykackaActionErrorMessage(cfg, action, code),
+      meta: { ...meta, action, posActionCode: code },
+    };
+  }
+  return { ok: true, meta: { ...meta, action, posActionCode: 0 } };
+}
+
+async function tryAddItemsToOpenOrders(
+  cfg: DotykackaConfig,
+  accessToken: string,
+  tableId: number,
+  sessionExternalId: string,
+  items: OrderPosItem[],
+): Promise<DotykackaSyncResult | { ok: true; meta: DotykackaSyncMeta } | null> {
+  const listResult = await listOpenDotykackaOrdersForTable(cfg, accessToken, tableId);
+  if (!listResult.ok) {
+    return {
+      ok: false,
+      error: listResult.message,
+      meta: { tableId, sessionExternalId, action: "order/list", httpStatus: listResult.httpStatus },
+    };
+  }
+
+  const candidates = pickTargetOpenOrdersForMerge(listResult.orders, sessionExternalId);
+  if (candidates.length === 0) return null;
+
+  let lastErr: DotykackaSyncResult | null = null;
+  for (const cand of candidates) {
+    const posted = await postDotykackaPosAction(cfg, accessToken, {
+      action: "order/add-item",
+      "order-id": cand.orderId,
+      items,
+    });
+    const outcome = interpretPosActionPost(cfg, posted, "order/add-item", {
+      tableId,
+      sessionExternalId,
+    });
+    if (outcome.ok) return outcome;
+
+    lastErr = outcome;
+    const code = posActionResponseCode(posted);
+    if (shouldTryNextOpenOrder(code) && candidates.length > 1) continue;
+    if (!shouldTryNextOpenOrder(code)) return outcome;
+  }
+
+  return lastErr;
+}
+
+async function tryCreateOrderOnTable(
+  cfg: DotykackaConfig,
+  accessToken: string,
+  tableId: number,
+  sessionExternalId: string,
+  items: OrderPosItem[],
+  tableNote?: string,
+): Promise<DotykackaSyncResult | { ok: true; meta: DotykackaSyncMeta }> {
+  const posted = await postDotykackaPosAction(cfg, accessToken, {
+    action: "order/create",
+    "table-id": tableId,
+    "external-id": sessionExternalId,
+    items,
+    ...(tableNote ? { note: tableNote } : {}),
+  });
+  return interpretPosActionPost(cfg, posted, "order/create", { tableId, sessionExternalId });
+}
+
+/**
+ * Odeslání položek na stůl: add-item k libovolnému otevřenému účtu, jinak create, pak znovu add-item.
+ */
+async function submitOrderItemsToDotykackaTable(
+  cfg: DotykackaConfig,
+  accessToken: string,
+  tableId: number,
+  sessionExternalId: string,
+  items: OrderPosItem[],
+  tableNote?: string,
+): Promise<DotykackaSyncResult> {
+  const addFirst = await tryAddItemsToOpenOrders(cfg, accessToken, tableId, sessionExternalId, items);
+  if (addFirst?.ok) return addFirst;
+
+  const createResult = await tryCreateOrderOnTable(
+    cfg,
+    accessToken,
+    tableId,
+    sessionExternalId,
+    items,
+    tableNote,
+  );
+  if (createResult.ok) return createResult;
+
+  if (shouldRelistOrdersAfterCreateFailure(createResult.meta.posActionCode)) {
+    const addAfter = await tryAddItemsToOpenOrders(cfg, accessToken, tableId, sessionExternalId, items);
+    if (addAfter?.ok) return addAfter;
+    if (addAfter && !addAfter.ok) return addAfter;
+  }
+
+  if (addFirst && !addFirst.ok) return addFirst;
+  return createResult;
+}
+
 /**
  * Odeslání potvrzené objednávky do pokladny.
  * Stejný stůl + zařízení = jeden `external-id` relace; druhá a další objednávka jdou přes
@@ -779,51 +958,13 @@ export async function syncOrderConfirmedToDotykacka(
     typeof o.tableLabel === "string" && o.tableLabel.trim()
       ? `Stůl: ${o.tableLabel.trim()}`
       : undefined;
-  const existingOrderId = await findOpenDotykackaOrderIdForSession(cfg, accessToken, tableId, sessionExternalId);
 
-  const body: Record<string, unknown> =
-    existingOrderId !== undefined
-      ? {
-          action: "order/add-item",
-          "order-id": existingOrderId.orderId,
-          items,
-        }
-      : {
-          action: "order/create",
-          "table-id": tableId,
-          "external-id": sessionExternalId,
-          items,
-          ...(tableNote ? { note: tableNote } : {}),
-        };
-
-  const posted = await postDotykackaPosAction(cfg, accessToken, body);
-  if (!posted.ok) {
-    return {
-      ok: false,
-      error: formatPosActionsHttpError(cfg, posted.status, posted.text),
-      meta: {
-        tableId,
-        sessionExternalId,
-        action: typeof body.action === "string" ? body.action : undefined,
-        httpStatus: posted.status,
-      },
-    };
-  }
-  const postedData = posted.data;
-  if (postedData && typeof postedData === "object") {
-    const code = (postedData as { code?: unknown }).code;
-    if (typeof code === "number" && code !== 0) {
-      const action = typeof body.action === "string" ? body.action : "akce";
-      return {
-        ok: false,
-        error: `Dotykačka ${action} selhal (code ${code})`,
-        meta: { tableId, sessionExternalId, action: typeof body.action === "string" ? body.action : undefined },
-      };
-    }
-  }
-
-  return {
-    ok: true,
-    meta: { tableId, sessionExternalId, action: typeof body.action === "string" ? body.action : "order" },
-  };
+  return submitOrderItemsToDotykackaTable(
+    cfg,
+    accessToken,
+    tableId,
+    sessionExternalId,
+    items,
+    tableNote,
+  );
 }
