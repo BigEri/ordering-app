@@ -146,6 +146,14 @@ export function MenuItemInner({ item, onOpenDetails, guestTablet, locale = "cs",
   const mediaRef = React.useRef<HTMLDivElement | null>(null);
   const [mediaVisible, setMediaVisible] = React.useState(Boolean(mediaPriority));
 
+  const openDetails = React.useCallback(
+    (from: HTMLElement) => {
+      onOpenDetails?.(item);
+      from.blur();
+    },
+    [item, onOpenDetails],
+  );
+
   React.useEffect(() => {
     if (mediaVisible) return;
     const el = mediaRef.current;
@@ -175,12 +183,15 @@ export function MenuItemInner({ item, onOpenDetails, guestTablet, locale = "cs",
       className={`menuItemCard${onOpenDetails ? " menuItemCardClickable" : ""}`}
       role={onOpenDetails ? "button" : undefined}
       tabIndex={onOpenDetails ? 0 : undefined}
-      onClick={() => onOpenDetails?.(item)}
+      onClick={(e) => {
+        if (!onOpenDetails) return;
+        openDetails(e.currentTarget);
+      }}
       onKeyDown={(e) => {
         if (!onOpenDetails) return;
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onOpenDetails(item);
+          openDetails(e.currentTarget);
         }
       }}
     >
@@ -210,7 +221,7 @@ export function MenuItemInner({ item, onOpenDetails, guestTablet, locale = "cs",
           aria-label={`${OPEN_DETAILS_ARIA[locale]}: ${item.name}`}
           onClick={(e) => {
             e.stopPropagation();
-            onOpenDetails?.(item);
+            openDetails(e.currentTarget.closest("article") ?? e.currentTarget);
           }}
         >
           +
