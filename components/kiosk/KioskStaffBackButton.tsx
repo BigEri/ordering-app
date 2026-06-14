@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { isKioskWebView } from "../../lib/kiosk/isKioskWebView";
+import { usePosTableFields } from "../DeviceTableProvider";
 
 import { KioskModeChooserModal } from "./KioskModeChooserModal";
 
@@ -12,7 +13,7 @@ type KioskStaffBackButtonProps = {
   label?: string;
 };
 
-/** V kiosk APK: návrat k volbě Host / Admin (stejný modal jako na přihlášení). */
+/** V kiosk APK jen před spárováním: volba Host / Admin (personál při setupu). */
 export function KioskStaffBackButton({
   className = "chip kioskStaffBack",
   style,
@@ -20,12 +21,13 @@ export function KioskStaffBackButton({
 }: KioskStaffBackButtonProps) {
   const [kiosk, setKiosk] = React.useState(false);
   const [open, setOpen] = React.useState(false);
+  const { ready, needsPairing } = usePosTableFields();
 
   React.useEffect(() => {
     setKiosk(isKioskWebView());
   }, []);
 
-  if (!kiosk) return null;
+  if (!kiosk || !ready || !needsPairing) return null;
 
   return (
     <>
