@@ -803,7 +803,7 @@ export function MenuBrowseClient({
         const next = typeof action === "function" ? (action as (p: MenuCartState) => MenuCartState)(prev) : action;
         if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
 
-        const guard = orderPosErrRef.current === "pos.error.queued" || hasPendingOrderRef.current;
+        const guard = hasPendingOrderRef.current;
         if (!guard) return next;
 
         setCartPendingModal(next);
@@ -922,7 +922,7 @@ export function MenuBrowseClient({
     });
 
     if (linesPos.some((x) => !x.menuItemId || typeof x.menuItemId !== "string" || !x.menuItemId.trim())) {
-      setOrderPosErrorKey("pos.error.http");
+      setOrderPosErrorKey("pos.error.order");
       setOrderPosErrorDetail(null);
       return;
     }
@@ -953,16 +953,16 @@ export function MenuBrowseClient({
       }
       if (r.kind === "queued") {
         hasPendingOrderRef.current = true;
-        setOrderPosErrorKey("pos.error.queued");
+        setOrderPosErrorKey("pos.error.order");
         setOrderPosErrorDetail(null);
         return;
       }
       if (r.kind === "network") {
-        setOrderPosErrorKey("pos.error.network");
+        setOrderPosErrorKey("pos.error.order");
         setOrderPosErrorDetail(null);
         return;
       }
-      setOrderPosErrorKey("pos.error.http");
+      setOrderPosErrorKey("pos.error.order");
       setOrderPosErrorDetail(r.kind === "http" && r.detail ? r.detail : null);
     } finally {
       setOrderConfirmLoading(false);
@@ -1520,7 +1520,7 @@ export function MenuBrowseClient({
               {orderPosErrorKey ? (
                 <p role="alert" style={{ color: "#fecaca", fontSize: 14, marginBottom: 8, whiteSpace: "pre-wrap" }}>
                   {t(orderPosErrorKey)}
-                  {orderPosErrorDetail ? (
+                  {adminPreview && orderPosErrorDetail ? (
                     <>
                       <br />
                       <span className="textMuted2" style={{ fontSize: 13 }}>

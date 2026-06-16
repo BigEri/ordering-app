@@ -11,6 +11,7 @@ import {
   shouldTryNextOpenOrder,
 } from "./syncOrderMerge";
 import { cancelPosActionWebhook, waitForPosActionWebhook } from "../server/posActionWebhookRegistry";
+import { formatRestaurantLocalHhmm } from "../restaurantLocalTime";
 
 export type DotykackaSyncMeta = {
   action?: string;
@@ -53,13 +54,6 @@ export function buildDotykackaTableSessionExternalId(
 function fmtCzk(n: number): string {
   const v = Number.isFinite(n) ? Math.round(n) : 0;
   return `${v} Kč`;
-}
-
-function hhmmLocalNow(): string {
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  return `${hh}:${mm}`;
 }
 
 function mergeOrderNoteWithOaBillLine(existingNote: unknown, billLine: string): string {
@@ -509,7 +503,7 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
   const rawLabel = typeof o.tableLabel === "string" ? o.tableLabel.trim() : "";
   const humanTableNumber = rawLabel ? (rawLabel.match(/\d+/)?.[0] ?? rawLabel) : String(tableId);
   const billLine = [
-    `CHCE ZAPLATIT: ${hhmmLocalNow()}`,
+    `CHCE ZAPLATIT: ${formatRestaurantLocalHhmm()}`,
     `STŮL - ${humanTableNumber}`,
     ...(paymentMethodLabel ? [`platba ${paymentMethodLabel}`] : []),
     `subtotal ${fmtCzk(ordersTotal)}`,
@@ -593,7 +587,7 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
   }
   const rawLabel = typeof o.tableLabel === "string" ? o.tableLabel.trim() : "";
   const humanTableNumber = rawLabel ? (rawLabel.match(/\d+/)?.[0] ?? rawLabel) : String(tableId);
-  const staffLine = [`VOLÁ OBSLUHU: ${hhmmLocalNow()}`, `STŮL - ${humanTableNumber}`].join(" · ");
+  const staffLine = [`VOLÁ OBSLUHU: ${formatRestaurantLocalHhmm()}`, `STŮL - ${humanTableNumber}`].join(" · ");
 
   // Pokud účet na stole ještě neexistuje, založíme ho jen kvůli poznámce (bez `issue`).
   // Pozor: některé konfigurace Dotypos nemusí povolit účet bez položek; v tom případě vracíme chybu z API.

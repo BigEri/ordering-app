@@ -7,6 +7,7 @@ import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
 import { setKioskDeviceSecretForPos } from "../lib/pos/kioskDeviceSecretStore";
 import { randomUuid } from "../lib/randomUuid";
 import { prefetchMenuCacheFromWelcome } from "../lib/kiosk/warmMenuCache";
+import { prefetchTableBillFromWelcome } from "../lib/kiosk/warmTableBillCache";
 
 const STORAGE_DEVICE_ID = "kiosk.deviceId";
 const STORAGE_TABLE_ID = "kiosk.tableId";
@@ -572,12 +573,18 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     };
   }, [pathname]);
 
-  /** Úvodní stránka: přednahřát Dotykačka menu + overrides, aby přechod na /menu byl rychlý. */
+  /** Úvodní stránka: přednahřát menu a otevřený účet, aby přechod na /menu byl rychlý. */
   React.useEffect(() => {
     if (pathname !== "/") return;
     if (!ready || !deviceId || needsPairing) return;
     prefetchMenuCacheFromWelcome(deviceId);
-  }, [pathname, ready, deviceId, needsPairing]);
+    prefetchTableBillFromWelcome({
+      deviceId,
+      tableId,
+      tableLabel,
+      ...(menuRestaurantId ? { restaurantId: menuRestaurantId } : {}),
+    });
+  }, [pathname, ready, deviceId, needsPairing, tableId, tableLabel, menuRestaurantId]);
 
   const posTableFields = React.useCallback(
     () => ({

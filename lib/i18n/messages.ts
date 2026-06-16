@@ -50,17 +50,24 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "orders.grandTotal": "Celkem objednáno",
     "lang.choose": "Jazyk",
     "lang.current": "Vybraný jazyk",
-    "pos.error.network": "Nepodařilo se spojit se serverem. Zkontrolujte připojení.",
-    "pos.error.http": "Požadavek se nezdařil (pokladna nebo server). Zkuste to znovu.",
-    "pos.error.billDotykacka": "Účet se nepodařilo odeslat do Dotykačky.",
+    "pos.error.network":
+      "Nepodařilo se spojit se serverem. Zkuste to prosím za chvíli znovu, nebo přivolejte obsluhu.",
+    "pos.error.http":
+      "Požadavek se nepodařilo dokončit. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
+    "pos.error.order":
+      "Objednávku se nepodařilo odeslat. Zkuste to prosím znovu tlačítkem Potvrdit objednávku. Když to nepomůže, přivolejte obsluhu.",
+    "pos.error.billDotykacka":
+      "Žádost o účet se nepodařilo odeslat. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
     "pos.error.tableId": "Zařízení nemá platné číslo stolu pro pokladnu. V adminu zkontrolujte přiřazení tabletu ke stolu a zkuste to znovu.",
     "pos.error.queued":
-      "Objednávka je uložená v zařízení a odešle se automaticky po obnovení připojení. Můžete zkusit odeslat znovu.",
-    "pos.error.offlineHint": "Nejste připojeni k internetu. Zkuste to prosím za chvíli znovu.",
+      "Požadavek se nepodařilo odeslat. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
+    "pos.error.offlineHint":
+      "Připojení není k dispozici. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
     "pos.retry": "Zkusit znovu",
     "pos.dismiss": "Zavřít",
-    "app.offline.title": "Bez připojení k internetu",
-    "app.offline.banner": "Zkuste to prosím za chvíli znovu. Po obnovení sítě se uložené akce odešlou samy.",
+    "app.offline.title": "Problém s připojením",
+    "app.offline.banner":
+      "Zkuste to prosím znovu. Když to nepomůže, přivolejte obsluhu.",
     "app.brand": "Název restaurace",
     "welcome.title": "Vítejte",
     "welcome.kicker": "Objednávka přímo u stolu",
@@ -279,17 +286,24 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "orders.grandTotal": "Total ordered",
     "lang.choose": "Language",
     "lang.current": "Selected language",
-    "pos.error.network": "Could not reach the server. Check your connection.",
-    "pos.error.http": "The request failed (POS or server). Please try again.",
-    "pos.error.billDotykacka": "Could not send the bill request to Dotykacka.",
+    "pos.error.network":
+      "Could not reach the server. Please try again in a moment, or call a staff member.",
+    "pos.error.http":
+      "We could not complete the request. Please try again, or call a staff member.",
+    "pos.error.order":
+      "We could not send your order. Tap Confirm order to try again. If it still fails, please call a staff member.",
+    "pos.error.billDotykacka":
+      "We could not send your bill request. Please try again, or call a staff member.",
     "pos.error.tableId": "This device does not have a valid POS table number. Check the tablet-to-table binding in admin and try again.",
     "pos.error.queued":
-      "Your order is saved on this device and will send automatically when you are back online. You can also try again.",
-    "pos.error.offlineHint": "You are not connected to the internet. Please try again in a moment.",
+      "We could not send the request. Please try again, or call a staff member.",
+    "pos.error.offlineHint":
+      "Connection is unavailable. Please try again, or call a staff member.",
     "pos.retry": "Try again",
     "pos.dismiss": "Dismiss",
-    "app.offline.title": "No internet connection",
-    "app.offline.banner": "Please try again in a moment. Saved actions will send when the network returns.",
+    "app.offline.title": "Connection problem",
+    "app.offline.banner":
+      "Please try again. If it still fails, call a staff member.",
     "app.brand": "Restaurant name",
     "welcome.title": "Welcome",
     "welcome.kicker": "Order right at your table",
@@ -508,17 +522,24 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "orders.grandTotal": "주문 합계",
     "lang.choose": "언어",
     "lang.current": "선택한 언어",
-    "pos.error.network": "서버에 연결할 수 없습니다. 연결을 확인하세요.",
-    "pos.error.http": "요청이 실패했습니다(POS 또는 서버). 다시 시도하세요.",
-    "pos.error.billDotykacka": "Dotykacka로 계산서 요청을 보내지 못했습니다.",
+    "pos.error.network":
+      "서버에 연결할 수 없습니다. 잠시 후 다시 시도하거나 직원을 호출해 주세요.",
+    "pos.error.http":
+      "요청을 완료하지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
+    "pos.error.order":
+      "주문을 보내지 못했습니다. 주문 확인 버튼으로 다시 시도해 주세요. 계속 안 되면 직원을 호출해 주세요.",
+    "pos.error.billDotykacka":
+      "계산서 요청을 보내지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
     "pos.error.tableId": "이 기기에 POS 테이블 번호가 올바르게 설정되어 있지 않습니다. 관리자에서 테이블 연결을 확인한 뒤 다시 시도하세요.",
     "pos.error.queued":
-      "주문이 저장되었습니다. 연결이 복구되면 자동으로 전송됩니다. 다시 시도할 수도 있습니다.",
-    "pos.error.offlineHint": "인터넷에 연결되어 있지 않습니다. 잠시 후 다시 시도하세요.",
+      "요청을 보내지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
+    "pos.error.offlineHint":
+      "연결을 사용할 수 없습니다. 다시 시도하거나 직원을 호출해 주세요.",
     "pos.retry": "다시 시도",
     "pos.dismiss": "닫기",
-    "app.offline.title": "인터넷에 연결되어 있지 않습니다",
-    "app.offline.banner": "잠시 후 다시 시도하세요. 저장된 작업은 연결이 복구되면 전송됩니다.",
+    "app.offline.title": "연결 문제",
+    "app.offline.banner":
+      "다시 시도해 주세요. 계속 안 되면 직원을 호출해 주세요.",
     "app.brand": "레스토랑 이름",
     "welcome.title": "환영합니다",
     "welcome.kicker": "테이블에서 바로 주문",

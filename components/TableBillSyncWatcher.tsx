@@ -4,15 +4,20 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 
 import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
-import { TABLE_BILL_SYNC_REQUEST } from "../lib/client/tableBillSync";
+import { TABLE_BILL_SYNC_REQUEST, requestTableBillSyncBurst } from "../lib/client/tableBillSync";
+import {
+  clearTableBillSession,
+  loadTableBillSession,
+  saveTableBillSession,
+} from "../lib/client/tableBillSession";
 import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
 import { resetPendingOrderConfirmedState } from "../lib/pos/pendingPosQueue";
 import { useOrders } from "./OrdersProvider";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
 
-/** Běžný interval — na tabletu se může škrtit, proto máme i sync po interakci. */
-const POLL_MS = 7000;
+/** Dokud účet ještě neznáme (po reloadu), sync častěji. */
+const POLL_UNKNOWN_BILL_MS = 2500;
 /** Když už běží účet u stolu, sync častěji (položky z Dotypos od obsluhy). */
 const POLL_OPEN_BILL_MS = 4000;
 /** Minimální odstup syncu po dotyku obrazovky. */
@@ -41,7 +46,7 @@ export function TableBillSyncWatcher() {
   const pathname = usePathname() ?? "";
   const { t } = useLanguage();
   const { posTableFields, ready } = usePosTableFields();
-  const { syncTableBillFromDotykacka, clearOrders, hasOpenTableBill } = useOrders();
+  const { syncTableBillFromDotykacka, clearOrders, hasOpenTableBill, orders } = useOrders();
 
   const [issuedOpen, setIssuedOpen] = React.useState(false);
   const [issuedTotal, setIssuedTotal] = React.useState<number | null>(null);
@@ -63,6 +68,12 @@ export function TableBillSyncWatcher() {
       if (billOpen && lines.length > 0) {
         hadOpenBillRef.current = true;
         lastTotalRef.current = totalCzk;
+        const fields = posTableFieldsRef.current();
+        const deviceId = fields.deviceId?.trim() ?? "";
+        const tableId = String(fields.tableId ?? "").trim();
+        if (deviceId && /^\d+$/.test(tableId)) {
+          saveTableBillSession({ deviceId, tableId }, { lines, totalCzk });
+        }
         syncTableBillFromDotykacka({ lines, totalCzk });
         return;
       }
@@ -73,6 +84,7 @@ export function TableBillSyncWatcher() {
       }
 
       syncTableBillFromDotykacka({ lines: [], totalCzk: 0 });
+      clearTableBillSession();
 
       if (!handledIssuedRef.current && hadOpenBillRef.current) {
         handledIssuedRef.current = true;
@@ -127,6 +139,19 @@ export function TableBillSyncWatcher() {
   }, [pathname]);
 
   React.useEffect(() => {
+    if (!isWatcherPath(pathname) || !ready || handledIssuedRef.current) return;
+
+    const fields = posTableFields();
+    const deviceId = fields.deviceId?.trim() ?? "";
+    const tableId = String(fields.tableId ?? "").trim();
+    if (!deviceId || !/^\d+$/.test(tableId)) return;
+
+    const cached = loadTableBillSession({ deviceId, tableId });
+    if (cached) syncTableBillFromDotykacka(cached);
+    requestTableBillSyncBurst();
+  }, [pathname, ready, posTableFields, syncTableBillFromDotykacka]);
+
+  React.useEffect(() => {
     if (!isWatcherPath(pathname)) return;
     if (handledIssuedRef.current) return;
 
@@ -144,7 +169,7 @@ export function TableBillSyncWatcher() {
     };
 
     void tick();
-    const pollMs = hasOpenTableBill ? POLL_OPEN_BILL_MS : POLL_MS;
+    const pollMs = hasOpenTableBill ? POLL_OPEN_BILL_MS : orders.length > 0 ? POLL_OPEN_BILL_MS : POLL_UNKNOWN_BILL_MS;
     const id = window.setInterval(tick, pollMs);
     const onSyncRequest = () => void tick();
 
@@ -170,7 +195,7 @@ export function TableBillSyncWatcher() {
       window.removeEventListener("pointerdown", onPointer, capture);
       window.removeEventListener("touchstart", onPointer, capture);
     };
-  }, [pathname, hasOpenTableBill, bumpInteractionSync]);
+  }, [pathname, hasOpenTableBill, orders.length, ready, bumpInteractionSync]);
 
   if (!issuedOpen) return null;
 
