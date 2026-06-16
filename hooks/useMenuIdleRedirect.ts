@@ -4,18 +4,27 @@ import { usePathname } from "next/navigation";
 import * as React from "react";
 
 import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
+import { getMenuIdleRedirectMs, MENU_IDLE_REDIRECT_MS_DEFAULT } from "../lib/kiosk/menuIdleRedirect";
 import { buildKioskWelcomeUrl, kioskNavigate } from "../lib/kiosk/nav";
 
-/** Po této době bez interakce na `/menu` přesměrování na úvodní stránku (2 min 30 s). */
-export const MENU_IDLE_REDIRECT_MS = 150_000;
+/** @deprecated Prefer `getMenuIdleRedirectMs()` — hodnota respektuje env override. */
+export const MENU_IDLE_REDIRECT_MS = MENU_IDLE_REDIRECT_MS_DEFAULT;
+
+type UseMenuIdleRedirectOptions = {
+  /** Pozastaví odpočet (např. neprázdný košík nebo otevřený účet v Dotyce). */
+  pause?: boolean;
+};
 
 /**
  * Kiosk / tablet: návrat na `/` po nečinnosti (klik, scroll, kolečko, klávesa, tah prstem).
  * Na jiné kartě se odpočet pozastaví.
  */
-export function useMenuIdleRedirect() {
+export function useMenuIdleRedirect(opts?: UseMenuIdleRedirectOptions) {
+  const pause = opts?.pause ?? false;
   const pathname = usePathname() ?? "";
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pauseRef = React.useRef(pause);
+  pauseRef.current = pause;
 
   const clearTimer = React.useCallback(() => {
     if (timerRef.current !== null) {
@@ -24,13 +33,21 @@ export function useMenuIdleRedirect() {
     }
   }, []);
 
+  const idleMs = React.useMemo(() => getMenuIdleRedirectMs(), []);
+
   const schedule = React.useCallback(() => {
     clearTimer();
+    if (pauseRef.current) return;
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       kioskNavigate(buildKioskWelcomeUrl());
-    }, MENU_IDLE_REDIRECT_MS);
-  }, [clearTimer]);
+    }, idleMs);
+  }, [clearTimer, idleMs]);
+
+  React.useEffect(() => {
+    if (pause) clearTimer();
+    else schedule();
+  }, [pause, clearTimer, schedule]);
 
   React.useEffect(() => {
     if (pathname.startsWith("/admin") || isAdminMenuPreviewOnClient()) {

@@ -21,6 +21,8 @@ export type ConfirmedOrder = {
 
 type OrdersContextValue = {
   orders: ConfirmedOrder[];
+  /** Otevřený účet u stolu podle posledního syncu z Dotykačky. */
+  hasOpenTableBill: boolean;
   /** Náhled z adminu — lokální objednávka bez Dotykačky. */
   addOrder: (order: Omit<ConfirmedOrder, "id" | "createdAtIso">) => void;
   /** Přepíše seznam podle otevřeného účtu u stolu v Dotyce. */
@@ -32,6 +34,7 @@ const OrdersContext = React.createContext<OrdersContextValue | null>(null);
 
 export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = React.useState<ConfirmedOrder[]>([]);
+  const [hasOpenTableBill, setHasOpenTableBill] = React.useState(false);
 
   const addOrder = React.useCallback((order: Omit<ConfirmedOrder, "id" | "createdAtIso">) => {
     const createdAtIso = new Date().toISOString();
@@ -43,8 +46,10 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     (bill: { lines: Array<{ name: string; qty: number; unitPriceCzk: number }>; totalCzk: number }) => {
       if (bill.lines.length === 0) {
         setOrders([]);
+        setHasOpenTableBill(false);
         return;
       }
+      setHasOpenTableBill(true);
       setOrders([
         {
           id: "dotykacka-table-bill",
@@ -61,11 +66,14 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const clearOrders = React.useCallback(() => setOrders([]), []);
+  const clearOrders = React.useCallback(() => {
+    setOrders([]);
+    setHasOpenTableBill(false);
+  }, []);
 
   const value = React.useMemo<OrdersContextValue>(
-    () => ({ orders, addOrder, syncTableBillFromDotykacka, clearOrders }),
-    [orders, addOrder, syncTableBillFromDotykacka, clearOrders],
+    () => ({ orders, hasOpenTableBill, addOrder, syncTableBillFromDotykacka, clearOrders }),
+    [orders, hasOpenTableBill, addOrder, syncTableBillFromDotykacka, clearOrders],
   );
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;

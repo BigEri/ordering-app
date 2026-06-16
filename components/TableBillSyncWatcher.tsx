@@ -6,7 +6,7 @@ import * as React from "react";
 import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
 import { TABLE_BILL_SYNC_REQUEST } from "../lib/client/tableBillSync";
 import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
-import { useMenuCart } from "./MenuCartProvider";
+import { resetPendingOrderConfirmedState } from "../lib/pos/pendingPosQueue";
 import { useOrders } from "./OrdersProvider";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
@@ -31,7 +31,6 @@ export function TableBillSyncWatcher() {
   const { t } = useLanguage();
   const { posTableFields } = usePosTableFields();
   const { syncTableBillFromDotykacka, clearOrders } = useOrders();
-  const { setCart } = useMenuCart();
 
   const [issuedOpen, setIssuedOpen] = React.useState(false);
   const [issuedTotal, setIssuedTotal] = React.useState<number | null>(null);
@@ -62,14 +61,14 @@ export function TableBillSyncWatcher() {
         setIssuedOpen(true);
         hadOpenBillRef.current = false;
         lastTotalRef.current = null;
-        setCart(() => ({}));
+        void resetPendingOrderConfirmedState();
         clearOrders();
         window.setTimeout(() => {
           window.location.href = buildKioskWelcomeUrl();
         }, 4500);
       }
     },
-    [clearOrders, setCart, syncTableBillFromDotykacka],
+    [clearOrders, syncTableBillFromDotykacka],
   );
 
   const syncNow = React.useCallback(async () => {

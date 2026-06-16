@@ -90,6 +90,22 @@ export async function clearPendingOrderConfirmed(): Promise<void> {
   }
 }
 
+export const POS_QUEUE_ORDER_SENT = "pos-queue-order-sent";
+export const POS_QUEUE_FLUSH_DETAIL = "pos-queue-flush-detail";
+/** Fronta order-confirmed byla vyčištěna — UI může zrušit guard „Neodeslaná objednávka“. */
+export const POS_PENDING_ORDER_RESET = "pos-pending-order-reset";
+
+/**
+ * Vymaže frontu order-confirmed a synchronně upozorní UI.
+ * Volat po úspěšném odeslání, zaplacení účtu v Dotyce, nebo ručním zrušení fronty.
+ */
+export async function resetPendingOrderConfirmedState(): Promise<void> {
+  await clearPendingOrderConfirmed();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(POS_PENDING_ORDER_RESET));
+  }
+}
+
 export async function removePending(id: string): Promise<void> {
   try {
     const db = await openDb();
@@ -109,9 +125,6 @@ export async function removePending(id: string): Promise<void> {
     /* ignore */
   }
 }
-
-export const POS_QUEUE_ORDER_SENT = "pos-queue-order-sent";
-export const POS_QUEUE_FLUSH_DETAIL = "pos-queue-flush-detail";
 
 /** Odešle všechny položky ve frontě; při úspěchu maže a dispatchuje události pro UI. */
 export async function flushPendingPosQueue(): Promise<void> {

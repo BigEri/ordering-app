@@ -26,7 +26,12 @@ import {
   makeMenuCartLineKey,
 } from "../../lib/menu/dotykackaLine";
 import { buildOrderLineName, menuCartLineToSnapshot, orderLineUnitPriceCzk } from "../../lib/menu/orderLineLabel";
-import { clearPendingOrderConfirmed, hasPendingOrderConfirmed, POS_QUEUE_ORDER_SENT } from "../../lib/pos/pendingPosQueue";
+import {
+  hasPendingOrderConfirmed,
+  POS_PENDING_ORDER_RESET,
+  POS_QUEUE_ORDER_SENT,
+  resetPendingOrderConfirmedState,
+} from "../../lib/pos/pendingPosQueue";
 import { postPosJsonResilient } from "../../lib/pos/postPosJsonResilient";
 import { buildDotykackaCustomizationAliasIndex, resolveDotykackaGroupLabel } from "../../lib/menu/dotykackaLabelMerge";
 import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
@@ -40,7 +45,9 @@ import {
   type MenuUiOverridesBundle,
 } from "../../lib/menu/menuUiOverridesCache";
 import { useMenuIdleRedirect } from "../../hooks/useMenuIdleRedirect";
+import { shouldPauseMenuIdleRedirect } from "../../lib/kiosk/menuIdleRedirect";
 import { useBrowserOnline } from "../../components/OnlineBanner";
+import { MenuCartSessionSync } from "../../components/MenuCartSessionSync";
 
 type DotykackaLabelOverrides = { groups: Record<string, string>; options: Record<string, string> };
 
@@ -134,7 +141,16 @@ export function MenuBrowseClient({
   initialMenuUiByLocale,
   adminPreview = false,
 }: MenuBrowseClientProps) {
-  useMenuIdleRedirect();
+  const { cart, setCart } = useMenuCart();
+  const { hasOpenTableBill } = useOrders();
+  const cartHasItems = Object.keys(cart).length > 0;
+  const pauseIdleRedirect = shouldPauseMenuIdleRedirect({
+    adminPreview,
+    menuVariant,
+    cartHasItems,
+    hasOpenTableBill,
+  });
+  useMenuIdleRedirect({ pause: pauseIdleRedirect });
   const router = useRouter();
   const online = useBrowserOnline();
   const {
@@ -147,7 +163,6 @@ export function MenuBrowseClient({
   const { locale, t, availableLocales } = useLanguage();
   const menuLocale = (locale === "cs" || locale === "en" || locale === "ko" ? locale : "cs") as "cs" | "en" | "ko";
   const [added, setAdded] = React.useState<string | null>(null);
-  const { cart, setCart } = useMenuCart();
   // Pravý sloupec košíku držíme otevřený, ať je pořád vidět, co se bude objednávat.
   const [cartOpen, setCartOpen] = React.useState(true);
   const [orderConfirmedOpen, setOrderConfirmedOpen] = React.useState(false);
@@ -757,11 +772,18 @@ export function MenuBrowseClient({
     orderPosErrRef.current = orderPosErrorKey;
   }, [orderPosErrorKey]);
 
-  const syncPendingFromIdb = React.useCallback(() => {
-    void hasPendingOrderConfirmed().then((v) => {
-      hasPendingOrderRef.current = v;
-    });
+  const applyPendingOrderReset = React.useCallback(() => {
+    hasPendingOrderRef.current = false;
+    setOrderPosErrorKey(null);
+    setOrderPosErrorDetail(null);
+    setCartPendingModal(null);
   }, []);
+
+  React.useEffect(() => {
+    const onReset = () => applyPendingOrderReset();
+    window.addEventListener(POS_PENDING_ORDER_RESET, onReset);
+    return () => window.removeEventListener(POS_PENDING_ORDER_RESET, onReset);
+  }, [applyPendingOrderReset]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -924,9 +946,8 @@ export function MenuBrowseClient({
 
       if (r.ok) {
         addOrder({ lines: linesStore, totalCzk: totalCzkPos });
-        hasPendingOrderRef.current = false;
+        await resetPendingOrderConfirmedState();
         applyCart(() => ({}), { skipPendingGuard: true });
-        syncPendingFromIdb();
         setCartOpen(false);
         setOrderConfirmedOpen(true);
         requestTableBillSync();
@@ -948,7 +969,7 @@ export function MenuBrowseClient({
     } finally {
       setOrderConfirmLoading(false);
     }
-  }, [adminPreview, applyCart, cartEntries, addOrder, locale, posTableFields, restaurantId, syncPendingFromIdb]);
+  }, [adminPreview, applyCart, applyPendingOrderReset, cartEntries, addOrder, locale, posTableFields, restaurantId]);
 
   React.useEffect(() => {
     const onQueueSent = (e: Event) => {
@@ -956,18 +977,15 @@ export function MenuBrowseClient({
         .detail;
       if (!d?.lines) return;
       addOrder({ lines: d.lines, totalCzk: d.totalCzk });
-      hasPendingOrderRef.current = false;
+      applyPendingOrderReset();
       applyCart(() => ({}), { skipPendingGuard: true });
-      syncPendingFromIdb();
       setCartOpen(true);
       setOrderConfirmedOpen(true);
-      setOrderPosErrorKey(null);
-      setOrderPosErrorDetail(null);
       requestTableBillSync();
     };
     window.addEventListener(POS_QUEUE_ORDER_SENT, onQueueSent as EventListener);
     return () => window.removeEventListener(POS_QUEUE_ORDER_SENT, onQueueSent as EventListener);
-  }, [addOrder, applyCart, syncPendingFromIdb]);
+  }, [addOrder, applyCart, applyPendingOrderReset]);
 
   React.useEffect(() => {
     if (cartEntries.length === 0) {
@@ -991,8 +1009,15 @@ export function MenuBrowseClient({
     return;
   }, [cartOpen]);
 
+  const menuCartSessionSync =
+    restaurantId && menuVariant === "guest" && !adminPreview ? (
+      <MenuCartSessionSync restaurantId={restaurantId} enabled />
+    ) : null;
+
   if (menuVariant === "guest" && needsPairing && !adminPreview) {
     return (
+      <>
+        {menuCartSessionSync}
       <main style={{ maxWidth: 720, margin: "36px auto", padding: "0 20px" }}>
         <h1 style={{ fontSize: "1.35rem", marginBottom: 8 }}>{restaurantName}</h1>
         <p style={{ lineHeight: 1.55, opacity: 0.9, marginBottom: 18 }}>
@@ -1038,6 +1063,7 @@ export function MenuBrowseClient({
           </div>
         </section>
       </main>
+      </>
     );
   }
 
@@ -1048,6 +1074,7 @@ export function MenuBrowseClient({
     <main
       className={`menuPage menuPageGrid${gridClass}${adminPreview ? " menuPageGrid--adminPreview" : ""}${online ? "" : " menuPage--offline"}`}
     >
+      {menuCartSessionSync}
       {showCategoryNav ? (
         <nav className="menuPageNavCol sideNav" aria-label={t("menu.sideNav.aria")}>
           <div className="sideNavHeader">
@@ -1594,12 +1621,8 @@ export function MenuBrowseClient({
                 className="btnPrimary"
                 onClick={() => {
                   void (async () => {
-                    await clearPendingOrderConfirmed();
-                    hasPendingOrderRef.current = false;
-                    setOrderPosErrorKey(null);
-                    setOrderPosErrorDetail(null);
+                    await resetPendingOrderConfirmedState();
                     const next = cartPendingModal;
-                    setCartPendingModal(null);
                     if (next) setCart(next);
                   })();
                 }}
