@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { requestTableBillSyncBurst } from "../lib/client/tableBillSync";
 import { buildOrderLineName } from "../lib/menu/orderLineLabel";
 import { localeTag } from "../lib/i18n/messages";
 import { flushPendingPosQueue, POS_QUEUE_FLUSH_DETAIL } from "../lib/pos/pendingPosQueue";
@@ -140,9 +141,14 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     }
   }, [posTableFields, previewMode]);
 
+  const openOrdersModal = React.useCallback(() => {
+    if (!previewMode) requestTableBillSyncBurst();
+    setOpen(true);
+  }, [previewMode]);
+
   const openBillRequest = React.useCallback(async () => {
     setTopbarError(null);
-    if (orders.length === 0) return;
+    if (!previewMode) requestTableBillSyncBurst();
     // Jen otevře dialog – do Dotykačky se pošle až po volbě spropitného a kliknutí na "Zaplatit".
     setBillPayErrorKey(null);
     setBillPayErrorDetail(null);
@@ -150,7 +156,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     setTipPct((prev) => prev); // zachovat poslední volbu na zařízení
     setBillPaymentMethod((prev) => prev); // zachovat poslední volbu na zařízení
     setBillOpen(true);
-  }, [orders.length]);
+  }, [previewMode]);
 
   const retryTopbar = React.useCallback(async () => {
     if (previewMode) {
@@ -249,12 +255,8 @@ export function Topbar({ previewMode = false }: TopbarProps) {
               <button
                 type="button"
                 className="chip topbarBtn"
-                onClick={() => setOpen(true)}
-                disabled={orders.length === 0}
-                style={{
-                  cursor: orders.length === 0 ? "not-allowed" : "pointer",
-                  opacity: orders.length === 0 ? 0.6 : 1,
-                }}
+                onClick={openOrdersModal}
+                style={{ cursor: "pointer" }}
               >
                 <span>{t("topbar.orders")}</span>
                 <span className="modalBadge">{orders.length}</span>
@@ -278,11 +280,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                 type="button"
                 className="chip topbarBtn"
                 onClick={() => void openBillRequest()}
-                disabled={orders.length === 0}
-                style={{
-                  cursor: orders.length === 0 ? "not-allowed" : "pointer",
-                  opacity: orders.length === 0 ? 0.6 : 1,
-                }}
+                style={{ cursor: "pointer" }}
               >
                 {t("topbar.billRequest")}
               </button>

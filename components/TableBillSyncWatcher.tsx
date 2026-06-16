@@ -11,7 +11,12 @@ import { useOrders } from "./OrdersProvider";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
 
+/** Běžný interval — na tabletu se může škrtit, proto máme i sync po interakci. */
 const POLL_MS = 7000;
+/** Když už běží účet u stolu, sync častěji (položky z Dotypos od obsluhy). */
+const POLL_OPEN_BILL_MS = 4000;
+/** Minimální odstup syncu po dotyku obrazovky. */
+const INTERACTION_SYNC_MIN_MS = 1500;
 
 type TableOpenBillResponse = {
   ok?: boolean;
@@ -26,11 +31,17 @@ function formatCzk(n: number | null | undefined) {
   return `${Math.round(n)} Kč`;
 }
 
+function isWatcherPath(pathname: string): boolean {
+  if (pathname === "/" || pathname.startsWith("/admin") || pathname === "/virtual-pos") return false;
+  if (isAdminMenuPreviewOnClient()) return false;
+  return true;
+}
+
 export function TableBillSyncWatcher() {
   const pathname = usePathname() ?? "";
   const { t } = useLanguage();
-  const { posTableFields } = usePosTableFields();
-  const { syncTableBillFromDotykacka, clearOrders } = useOrders();
+  const { posTableFields, ready } = usePosTableFields();
+  const { syncTableBillFromDotykacka, clearOrders, hasOpenTableBill } = useOrders();
 
   const [issuedOpen, setIssuedOpen] = React.useState(false);
   const [issuedTotal, setIssuedTotal] = React.useState<number | null>(null);
@@ -38,18 +49,26 @@ export function TableBillSyncWatcher() {
   const hadOpenBillRef = React.useRef(false);
   const lastTotalRef = React.useRef<number | null>(null);
   const posTableFieldsRef = React.useRef(posTableFields);
+  const readyRef = React.useRef(ready);
+  const lastInteractionSyncAtRef = React.useRef(0);
   posTableFieldsRef.current = posTableFields;
+  readyRef.current = ready;
 
   const applyBillSnapshot = React.useCallback(
     (j: TableOpenBillResponse) => {
       const lines = Array.isArray(j.lines) ? j.lines : [];
       const totalCzk = typeof j.totalCzk === "number" && Number.isFinite(j.totalCzk) ? j.totalCzk : 0;
-      const open = j.open === true && lines.length > 0;
+      const billOpen = j.open === true;
 
-      if (open) {
+      if (billOpen && lines.length > 0) {
         hadOpenBillRef.current = true;
         lastTotalRef.current = totalCzk;
         syncTableBillFromDotykacka({ lines, totalCzk });
+        return;
+      }
+
+      if (billOpen && lines.length === 0) {
+        // Otevřený účet bez naparsovaných řádků — nemazat lokální stav.
         return;
       }
 
@@ -72,15 +91,18 @@ export function TableBillSyncWatcher() {
   );
 
   const syncNow = React.useCallback(async () => {
-    if (pathname === "/" || pathname.startsWith("/admin") || pathname === "/virtual-pos") return;
-    if (isAdminMenuPreviewOnClient()) return;
+    if (!isWatcherPath(pathname)) return;
     if (handledIssuedRef.current) return;
+    if (!readyRef.current) return;
+
+    const fields = posTableFieldsRef.current();
+    if (!fields.deviceId?.trim() || !/^\d+$/.test(String(fields.tableId ?? "").trim())) return;
 
     try {
       const r = await fetch("/api/pos/table-open-bill", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(posTableFieldsRef.current()),
+        body: JSON.stringify(fields),
         cache: "no-store",
       });
       const j = (await r.json()) as TableOpenBillResponse;
@@ -88,13 +110,24 @@ export function TableBillSyncWatcher() {
       if (j.configured === false) return;
       applyBillSnapshot(j);
     } catch {
-      /* ignore */
+      /* síť — další pokus z intervalu nebo po interakci */
     }
   }, [applyBillSnapshot, pathname]);
 
+  const syncNowRef = React.useRef(syncNow);
+  syncNowRef.current = syncNow;
+
+  const bumpInteractionSync = React.useCallback(() => {
+    if (!isWatcherPath(pathname)) return;
+    if (handledIssuedRef.current) return;
+    const now = Date.now();
+    if (now - lastInteractionSyncAtRef.current < INTERACTION_SYNC_MIN_MS) return;
+    lastInteractionSyncAtRef.current = now;
+    void syncNowRef.current();
+  }, [pathname]);
+
   React.useEffect(() => {
-    if (pathname === "/" || pathname.startsWith("/admin") || pathname === "/virtual-pos") return;
-    if (isAdminMenuPreviewOnClient()) return;
+    if (!isWatcherPath(pathname)) return;
     if (handledIssuedRef.current) return;
 
     let cancelled = false;
@@ -104,23 +137,40 @@ export function TableBillSyncWatcher() {
       if (cancelled || inFlight || handledIssuedRef.current) return;
       inFlight = true;
       try {
-        await syncNow();
+        await syncNowRef.current();
       } finally {
         inFlight = false;
       }
     };
 
     void tick();
-    const id = window.setInterval(tick, POLL_MS);
+    const pollMs = hasOpenTableBill ? POLL_OPEN_BILL_MS : POLL_MS;
+    const id = window.setInterval(tick, pollMs);
     const onSyncRequest = () => void tick();
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") void tick();
+    };
+
+    const capture: AddEventListenerOptions = { capture: true, passive: true };
+    const onPointer = () => bumpInteractionSync();
+
     window.addEventListener(TABLE_BILL_SYNC_REQUEST, onSyncRequest);
+    window.addEventListener("focus", onSyncRequest);
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pointerdown", onPointer, capture);
+    window.addEventListener("touchstart", onPointer, capture);
 
     return () => {
       cancelled = true;
       window.clearInterval(id);
       window.removeEventListener(TABLE_BILL_SYNC_REQUEST, onSyncRequest);
+      window.removeEventListener("focus", onSyncRequest);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pointerdown", onPointer, capture);
+      window.removeEventListener("touchstart", onPointer, capture);
     };
-  }, [pathname, syncNow]);
+  }, [pathname, hasOpenTableBill, bumpInteractionSync]);
 
   if (!issuedOpen) return null;
 

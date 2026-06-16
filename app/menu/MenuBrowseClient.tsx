@@ -20,7 +20,7 @@ import { usePosTableFields } from "../../components/DeviceTableProvider";
 import { useLanguage } from "../../components/LanguageProvider";
 import { useMenuCart, type MenuCartState } from "../../components/MenuCartProvider";
 import { useOrders } from "../../components/OrdersProvider";
-import { requestTableBillSync } from "../../lib/client/tableBillSync";
+import { requestTableBillSyncBurst } from "../../lib/client/tableBillSync";
 import {
   buildDotykackaPosCustomizations,
   makeMenuCartLineKey,
@@ -950,7 +950,7 @@ export function MenuBrowseClient({
         applyCart(() => ({}), { skipPendingGuard: true });
         setCartOpen(false);
         setOrderConfirmedOpen(true);
-        requestTableBillSync();
+        requestTableBillSyncBurst();
         return;
       }
       if (r.kind === "queued") {
@@ -981,7 +981,7 @@ export function MenuBrowseClient({
       applyCart(() => ({}), { skipPendingGuard: true });
       setCartOpen(true);
       setOrderConfirmedOpen(true);
-      requestTableBillSync();
+      requestTableBillSyncBurst();
     };
     window.addEventListener(POS_QUEUE_ORDER_SENT, onQueueSent as EventListener);
     return () => window.removeEventListener(POS_QUEUE_ORDER_SENT, onQueueSent as EventListener);
