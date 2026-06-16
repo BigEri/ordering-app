@@ -77,4 +77,24 @@ describe("parseTableOpenBillFromPosListData", () => {
     };
     expect(parseTableOpenBillFromPosListData(data).totalCzk).toBe(165);
   });
+
+  it("parses cola with decimal unit-billed price", () => {
+    const data = {
+      code: 0,
+      orders: [
+        {
+          order: { id: 4, paid: false, "price-total": 60 },
+          items: [
+            { name: "Řízek", qty: 1, "price-with-vat": { unit: 30 } },
+            { name: "Kola", qty: 1, "price-with-vat": { "unit-billed": 29.6 } },
+          ],
+        },
+      ],
+    };
+    const bill = parseTableOpenBillFromPosListData(data);
+    expect(bill.lines).toEqual([
+      { name: "Řízek", qty: 1, unitPriceCzk: 30 },
+      { name: "Kola", qty: 1, unitPriceCzk: 30 },
+    ]);
+  });
 });

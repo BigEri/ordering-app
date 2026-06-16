@@ -1,21 +1,32 @@
 export type OpenOrderPick = { orderId: number; externalId?: string };
 
 /**
- * Kandidáti pro `order/add-item`: nejdřív účet z tohoto tabletu (external-id relace),
- * jinak jediný otevřený účet na stole, jinak účet bez external-id (personál v Dotypos),
- * jinak první otevřený.
+ * Kandidáti pro `order/add-item` v prioritním pořadí (bez duplicit).
+ * Nejdřív účet tabletu (external-id), pak bez external-id, pak všechny ostatní otevřené.
  */
 export function pickTargetOpenOrdersForMerge(
   orders: OpenOrderPick[],
   sessionExternalId: string,
 ): OpenOrderPick[] {
   if (orders.length === 0) return [];
-  const ours = orders.filter((o) => o.externalId === sessionExternalId);
-  if (ours.length > 0) return ours;
-  if (orders.length === 1) return orders;
-  const withoutExt = orders.filter((o) => !o.externalId?.trim());
-  if (withoutExt.length > 0) return withoutExt;
-  return [orders[0]!];
+
+  const seen = new Set<number>();
+  const out: OpenOrderPick[] = [];
+  const push = (o: OpenOrderPick) => {
+    if (seen.has(o.orderId)) return;
+    seen.add(o.orderId);
+    out.push(o);
+  };
+
+  for (const o of orders) {
+    if (o.externalId === sessionExternalId) push(o);
+  }
+  for (const o of orders) {
+    if (!o.externalId?.trim()) push(o);
+  }
+  for (const o of orders) push(o);
+
+  return out;
 }
 
 export function parseDotykackaPosActionCode(data: unknown): number | undefined {

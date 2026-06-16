@@ -1,4 +1,5 @@
 import type { DotykackaConfig } from "./config";
+import { unitPriceCzkFromPosOrderItem } from "./posItemPrice";
 import { parseDotykackaPosActionCode } from "./syncOrderMerge";
 
 export type TableBillLine = {
@@ -32,16 +33,6 @@ function orderIdFromPos(order: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-function unitPriceCzkFromPosItem(item: Record<string, unknown>): number | undefined {
-  const pv = item["price-with-vat"];
-  if (!pv || typeof pv !== "object" || Array.isArray(pv)) return undefined;
-  const o = pv as Record<string, unknown>;
-  const raw = o["unit-billed"] ?? o.unit;
-  const n = typeof raw === "number" ? raw : Number(raw);
-  if (!Number.isFinite(n)) return undefined;
-  return Math.round(n);
-}
-
 function parsePosOrderItemLine(item: unknown): TableBillLine | null {
   if (!item || typeof item !== "object" || Array.isArray(item)) return null;
   const row = item as Record<string, unknown>;
@@ -49,7 +40,7 @@ function parsePosOrderItemLine(item: unknown): TableBillLine | null {
   const qtyRaw = row.qty;
   const qty = typeof qtyRaw === "number" ? qtyRaw : Number(qtyRaw);
   if (!name || !Number.isFinite(qty) || qty <= 0) return null;
-  const unitPriceCzk = unitPriceCzkFromPosItem(row);
+  const unitPriceCzk = unitPriceCzkFromPosOrderItem(row);
   if (unitPriceCzk === undefined) return null;
   return { name, qty, unitPriceCzk };
 }

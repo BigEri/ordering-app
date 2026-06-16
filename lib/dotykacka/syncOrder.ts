@@ -21,6 +21,8 @@ export type DotykackaSyncMeta = {
   sessionExternalId?: string;
   /** table id v Dotyce */
   tableId?: number;
+  /** Počet otevřených účtů na stole při posledním order/list (diagnostika merge). */
+  openOrderCount?: number;
 };
 
 export type DotykackaSyncResult =
@@ -273,7 +275,7 @@ async function postDotykackaPosAction(
 }
 
 function orderExternalIdFromPos(order: Record<string, unknown>): string | undefined {
-  const v = order["external-id"];
+  const v = order["external-id"] ?? order.externalId;
   return typeof v === "string" && v.trim() ? v.trim() : undefined;
 }
 
@@ -754,13 +756,18 @@ function interpretPosActionPost(
   return { ok: true, meta: { ...meta, action, posActionCode: 0 } };
 }
 
+type TryAddItemsResult =
+  | { ok: true; meta: DotykackaSyncMeta }
+  | { ok: false; error: string; meta: DotykackaSyncMeta }
+  | null;
+
 async function tryAddItemsToOpenOrders(
   cfg: DotykackaConfig,
   accessToken: string,
   tableId: number,
   sessionExternalId: string,
   items: OrderPosItem[],
-): Promise<DotykackaSyncResult | { ok: true; meta: DotykackaSyncMeta } | null> {
+): Promise<TryAddItemsResult> {
   const listResult = await listOpenDotykackaOrdersForTable(cfg, accessToken, tableId);
   if (!listResult.ok) {
     return {
@@ -770,6 +777,7 @@ async function tryAddItemsToOpenOrders(
     };
   }
 
+  const openCount = listResult.orders.length;
   const candidates = pickTargetOpenOrdersForMerge(listResult.orders, sessionExternalId);
   if (candidates.length === 0) return null;
 
@@ -788,11 +796,14 @@ async function tryAddItemsToOpenOrders(
 
     lastErr = outcome;
     const code = posActionResponseCode(posted);
-    if (shouldTryNextOpenOrder(code) && candidates.length > 1) continue;
-    if (!shouldTryNextOpenOrder(code)) return outcome;
+    if (shouldTryNextOpenOrder(code)) continue;
+    return { ...outcome, meta: { ...outcome.meta, openOrderCount: openCount } };
   }
 
-  return lastErr;
+  if (lastErr) {
+    return { ...lastErr, meta: { ...lastErr.meta, openOrderCount: openCount } };
+  }
+  return null;
 }
 
 async function tryCreateOrderOnTable(
@@ -813,8 +824,11 @@ async function tryCreateOrderOnTable(
   return interpretPosActionPost(cfg, posted, "order/create", { tableId, sessionExternalId });
 }
 
+/** Prodleva před opakovaným order/list — Dotykačka někdy krátce nevrátí čerstvě vytvořený účet. */
+const ADD_ITEM_LIST_RETRY_MS = [0, 500, 1500, 3000];
+
 /**
- * Odeslání položek na stůl: add-item k libovolnému otevřenému účtu, jinak create, pak znovu add-item.
+ * Odeslání položek na stůl: add-item k otevřenému účtu, create jen když po opakování listu opravdu nic není.
  */
 async function submitOrderItemsToDotykackaTable(
   cfg: DotykackaConfig,
@@ -824,8 +838,40 @@ async function submitOrderItemsToDotykackaTable(
   items: OrderPosItem[],
   tableNote?: string,
 ): Promise<DotykackaSyncResult> {
-  const addFirst = await tryAddItemsToOpenOrders(cfg, accessToken, tableId, sessionExternalId, items);
-  if (addFirst?.ok) return addFirst;
+  let lastAdd: TryAddItemsResult = null;
+  let lastListError: DotykackaSyncResult | null = null;
+
+  for (let i = 0; i < ADD_ITEM_LIST_RETRY_MS.length; i++) {
+    const delay = ADD_ITEM_LIST_RETRY_MS[i]!;
+    if (delay > 0) await sleep(delay);
+
+    const addResult = await tryAddItemsToOpenOrders(cfg, accessToken, tableId, sessionExternalId, items);
+    lastAdd = addResult;
+
+    if (addResult?.ok === true) return addResult;
+
+    if (addResult === null) {
+      if (i < ADD_ITEM_LIST_RETRY_MS.length - 1) continue;
+      break;
+    }
+
+    if (addResult.meta.action === "order/list") {
+      lastListError = addResult;
+      break;
+    }
+
+    if ((addResult.meta.openOrderCount ?? 0) > 0) {
+      const code = addResult.meta.posActionCode;
+      if (code === 2001 && i < ADD_ITEM_LIST_RETRY_MS.length - 1) continue;
+      return addResult;
+    }
+
+    break;
+  }
+
+  if (lastListError) return lastListError;
+
+  if (lastAdd && !lastAdd.ok) return lastAdd;
 
   const createResult = await tryCreateOrderOnTable(
     cfg,
@@ -843,7 +889,6 @@ async function submitOrderItemsToDotykackaTable(
     if (addAfter && !addAfter.ok) return addAfter;
   }
 
-  if (addFirst && !addFirst.ok) return addFirst;
   return createResult;
 }
 

@@ -8,6 +8,7 @@ import {
   buildFlatMenuSection,
   type DotykackaMenuSection,
 } from "./dotykackaMenuSections";
+import { priceCzkFromDotykackaProduct } from "./posItemPrice";
 import { productCategoryId, resolveProductExcludedCategoryIds } from "./menuCategoryFilter";
 
 export type { DotykackaMenuSection } from "./dotykackaMenuSections";
@@ -28,9 +29,7 @@ function num(v: unknown): number | null {
 }
 
 function priceCzkFromProduct(raw: Record<string, unknown>): number {
-  const pVat = num(raw.priceWithVat);
-  const pNo = num(raw.priceWithoutVat);
-  return Math.round(pVat ?? (pNo != null ? pNo * 1.21 : 0));
+  return priceCzkFromDotykackaProduct(raw);
 }
 
 /** Produkt má v Dotyce zapnuté zobrazení (pole `display`). */

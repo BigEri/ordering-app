@@ -13,34 +13,41 @@ describe("pickTargetOpenOrdersForMerge", () => {
     expect(pickTargetOpenOrdersForMerge([], session)).toEqual([]);
   });
 
-  it("prefers session external-id", () => {
+  it("puts session external-id first, then others", () => {
     const orders = [
       { orderId: 10, externalId: "other" },
       { orderId: 20, externalId: session },
     ];
-    expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual([{ orderId: 20, externalId: session }]);
+    expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual([
+      { orderId: 20, externalId: session },
+      { orderId: 10, externalId: "other" },
+    ]);
   });
 
-  it("uses sole open order when session id missing", () => {
+  it("tries sole open order when session id missing", () => {
     const orders = [{ orderId: 99, externalId: "staff-manual" }];
     expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual(orders);
   });
 
-  it("prefers order without external-id when multiple on table", () => {
+  it("prioritizes orders without external-id before other external ids", () => {
     const orders = [
       { orderId: 1, externalId: "a" },
       { orderId: 2 },
       { orderId: 3, externalId: "b" },
     ];
-    expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual([{ orderId: 2 }]);
+    expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual([
+      { orderId: 2 },
+      { orderId: 1, externalId: "a" },
+      { orderId: 3, externalId: "b" },
+    ]);
   });
 
-  it("falls back to first when all have external-id", () => {
+  it("returns all open orders when all have external-id", () => {
     const orders = [
       { orderId: 1, externalId: "a" },
       { orderId: 2, externalId: "b" },
     ];
-    expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual([{ orderId: 1, externalId: "a" }]);
+    expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual(orders);
   });
 });
 
