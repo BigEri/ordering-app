@@ -11,7 +11,7 @@ import { buildKioskWelcomeUrl, kioskNavigate } from "../lib/kiosk/nav";
 export const MENU_IDLE_REDIRECT_MS = MENU_IDLE_REDIRECT_MS_DEFAULT;
 
 type UseMenuIdleRedirectOptions = {
-  /** Pozastaví odpočet (např. neprázdný košík nebo otevřený účet v Dotyce). */
+  /** Pozastaví odpočet (např. neprázdný košík). */
   pause?: boolean;
 };
 

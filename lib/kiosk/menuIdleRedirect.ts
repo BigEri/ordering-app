@@ -21,12 +21,11 @@ export type MenuIdlePauseInput = {
   adminPreview?: boolean;
   menuVariant?: "guest" | "editor";
   cartHasItems: boolean;
-  hasOpenTableBill: boolean;
 };
 
-/** Pozastaví idle redirect, když host ještě objednává nebo u stolu běží účet v Dotyce. */
+/** Pozastaví idle redirect jen když host má neprázdný košík (otevřený účet v Dotyce neblokuje návrat na úvod). */
 export function shouldPauseMenuIdleRedirect(input: MenuIdlePauseInput): boolean {
   if (input.adminPreview) return false;
   if (input.menuVariant !== "guest") return false;
-  return input.cartHasItems || input.hasOpenTableBill;
+  return input.cartHasItems;
 }

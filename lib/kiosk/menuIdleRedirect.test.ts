@@ -37,27 +37,24 @@ describe("menuIdleRedirect", () => {
         shouldPauseMenuIdleRedirect({
           menuVariant: "guest",
           cartHasItems: true,
-          hasOpenTableBill: false,
         }),
       ).toBe(true);
     });
 
-    it("pauses when Dotykacka table bill is open", () => {
+    it("does not pause when only Dotykacka table bill is open", () => {
       expect(
         shouldPauseMenuIdleRedirect({
           menuVariant: "guest",
           cartHasItems: false,
-          hasOpenTableBill: true,
         }),
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it("does not pause with empty cart and no open bill (scenario 3A)", () => {
+    it("does not pause with empty cart (scenario 3A)", () => {
       expect(
         shouldPauseMenuIdleRedirect({
           menuVariant: "guest",
           cartHasItems: false,
-          hasOpenTableBill: false,
         }),
       ).toBe(false);
     });
@@ -68,7 +65,6 @@ describe("menuIdleRedirect", () => {
           adminPreview: true,
           menuVariant: "guest",
           cartHasItems: true,
-          hasOpenTableBill: true,
         }),
       ).toBe(false);
     });
@@ -78,7 +74,6 @@ describe("menuIdleRedirect", () => {
         shouldPauseMenuIdleRedirect({
           menuVariant: "editor",
           cartHasItems: true,
-          hasOpenTableBill: false,
         }),
       ).toBe(false);
     });

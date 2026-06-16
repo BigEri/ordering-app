@@ -142,13 +142,11 @@ export function MenuBrowseClient({
   adminPreview = false,
 }: MenuBrowseClientProps) {
   const { cart, setCart } = useMenuCart();
-  const { hasOpenTableBill } = useOrders();
   const cartHasItems = Object.keys(cart).length > 0;
   const pauseIdleRedirect = shouldPauseMenuIdleRedirect({
     adminPreview,
     menuVariant,
     cartHasItems,
-    hasOpenTableBill,
   });
   useMenuIdleRedirect({ pause: pauseIdleRedirect });
   const router = useRouter();
