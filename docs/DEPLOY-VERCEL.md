@@ -99,6 +99,8 @@ Tím se na Vercelu vygeneruje Prisma Client před `next build`.
 
 ## Tablety (Android)
 
-V APK nastavte **base_url** na stejnou HTTPS doménu jako `NEXT_PUBLIC_APP_URL`.
+V APK je výchozí **`base_url`** = `https://app.tableflow.cz` (stejně jako `NEXT_PUBLIC_APP_URL`). Staré adresy `*.vercel.app` se při startu APK automaticky přepíší.
+
+Bez nové APK: na tabletu v režimu Admin podržte obrazovku → **Nastavení URL** → `https://app.tableflow.cz`.
 
 **Nahrávání fotek v adminu:** výběr souboru musí v nativní vrstvě WebView obsloužit `WebChromeClient.onShowFileChooser` (jinak tlačítko „Vybrat soubor“ v prohlížeči v APK nic neudělá — v Chrome na PC to funguje). Alternativa bez úpravy APK: vložit **URL obrázku** (HTTPS) místo uploadu ze zařízení.

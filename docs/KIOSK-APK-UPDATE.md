@@ -7,14 +7,14 @@
 3. Tablet v **Host (kiosk)** režimu polluje `GET /api/devices/config` a při zvýšeném `apkUpdateNonce` stáhne APK z `appRelease.apkUrl`.
 4. **Tichá instalace** funguje jen pokud je tablet **Device Owner** (viz níže).
 
-## Vercel – proměnné (aktuální release 1.3)
+## Vercel – proměnné (aktuální release 1.4)
 
 | Proměnná | Hodnota |
 |----------|---------|
-| `KIOSK_APK_VERSION_CODE` | `4` |
-| `KIOSK_APK_VERSION_NAME` | `1.3` |
+| `KIOSK_APK_VERSION_CODE` | `5` |
+| `KIOSK_APK_VERSION_NAME` | `1.4` |
 | `KIOSK_APK_URL` | (prázdné = `{NEXT_PUBLIC_APP_URL}/releases/tableflow-kiosk.apk`) |
-| `KIOSK_APK_SHA256` | `9c45750a923b8cfde976413914680fb7f0338d4cc6f3c9b941189f6d39ee6669` |
+| `KIOSK_APK_SHA256` | `a74034e79613aded70e93b2ffc06aac6c8c5bb1fe332fb86d41e1887d94c67dd` |
 
 `KIOSK_APK_VERSION_CODE` musí být **vyšší** než verze na tabletu, jinak admin „Aktualizovat APK“ nic nestáhne.
 
