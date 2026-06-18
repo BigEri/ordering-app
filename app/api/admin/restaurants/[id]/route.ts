@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { type AdminSession, requireAdminSession } from "../../../../../lib/server/adminGuard";
+import { deleteRestaurantBySuperAdmin } from "../../../../../lib/server/deleteRestaurant";
 import type { MembershipRole } from "../../../../../lib/server/db";
 import { prisma } from "../../../../../lib/server/prisma";
 
@@ -87,6 +88,36 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (!row) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 
     return NextResponse.json({ ok: true, restaurant: row });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
+    if (msg === "UNAUTHORIZED") return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ ok: false, error: "Error" }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    const session = await requireAdminSession(req.headers.get("cookie"));
+    if (session.globalRole !== "SUPER_ADMIN") {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
+
+    const { id } = await ctx.params;
+    const restaurantId = typeof id === "string" ? id.trim() : "";
+    if (!restaurantId) {
+      return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
+    }
+
+    const result = await deleteRestaurantBySuperAdmin(restaurantId);
+    if (!result.ok) {
+      return NextResponse.json({ ok: false, error: result.error }, { status: result.status });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      deletedId: result.deletedId,
+      deletedName: result.deletedName,
+    });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
     if (msg === "UNAUTHORIZED") return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });

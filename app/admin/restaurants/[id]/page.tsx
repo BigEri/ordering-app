@@ -3,7 +3,6 @@
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
-import { publicMenuUrlFromAdmin } from "../../../../lib/admin/publicMenuPreviewUrl";
 import { Suspense } from "react";
 import * as React from "react";
 
@@ -35,7 +34,7 @@ type RestaurantLocalesResponse =
   | { ok: true; hasConfig: boolean; locales: { code: string; label: string; enabled: boolean }[] }
   | { ok: false; error: string };
 
-const TABS = ["overview", "users", "menu", "dotykacka"] as const;
+const TABS = ["overview", "users", "dotykacka"] as const;
 type TabId = (typeof TABS)[number];
 
 function tabFromSearch(raw: string | null): TabId {
@@ -75,6 +74,7 @@ function RestaurantDetailInner() {
   const [localesErr, setLocalesErr] = React.useState<string | null>(null);
   const [localesSaving, setLocalesSaving] = React.useState(false);
   const [localesSavedMsg, setLocalesSavedMsg] = React.useState<string | null>(null);
+  const [deleting, setDeleting] = React.useState(false);
 
   const load = React.useCallback(async () => {
     if (!id) return;
@@ -327,6 +327,33 @@ function RestaurantDetailInner() {
     }
   };
 
+  const onDeleteRestaurant = async () => {
+    if (!id || !detail?.ok) return;
+    const label = detail.restaurant.name.trim() || id;
+    const ok = window.confirm(
+      `Opravdu trvale smazat provozovnu „${label}“?\n\nSmaže se Dotykačka, tablety, menu, fotky a uživatelské vazby v této restauraci. Uživatelské účty v systému zůstanou.\n\nTuto akci nelze vrátit.`,
+    );
+    if (!ok) return;
+    setDeleting(true);
+    setErr(null);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        credentials: "same-origin",
+      });
+      const j = (await r.json()) as { ok?: boolean; error?: string };
+      if (!r.ok || !j.ok) {
+        setErr(j.error ?? "Smazání provozovny selhalo.");
+        return;
+      }
+      window.location.href = "/admin/restaurants";
+    } catch {
+      setErr("Smazání se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const name = detail && detail.ok ? detail.restaurant.name : id;
 
   const tabHref = (t: TabId) => (t === "overview" ? pathname : `${pathname}?tab=${t}`);
@@ -383,16 +410,6 @@ function RestaurantDetailInner() {
             aria-selected={tab === "users"}
           >
             Uživatelé
-          </a>
-        </li>
-        <li style={{ display: "contents" }}>
-          <a
-            href={tabHref("menu")}
-            className={`adminTab${tab === "menu" ? " adminTab--active" : ""}`}
-            role="tab"
-            aria-selected={tab === "menu"}
-          >
-            Menu
           </a>
         </li>
         <li style={{ display: "contents" }}>
@@ -613,6 +630,38 @@ function RestaurantDetailInner() {
               </form>
             ) : null}
           </section>
+
+          {detail && detail.ok ? (
+            <section
+              style={{
+                marginTop: 24,
+                border: "1px solid rgba(248, 113, 113, 0.35)",
+                borderRadius: 16,
+                padding: 16,
+                background: "rgba(248, 113, 113, 0.06)",
+              }}
+            >
+              <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem", color: "#fecaca" }}>Smazat provozovnu</h2>
+              <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
+                Trvale odstraní provozovnu <strong>{detail.restaurant.name}</strong> včetně Dotykačky, tabletů, úprav menu a
+                fotek. Uživatelské účty (e-mail) v systému zůstanou — zmizí jen jejich vazba na tuto restauraci.
+                Provozovnu nastavenou jako <code style={{ fontSize: 12 }}>PUBLIC_RESTAURANT_ID</code> na serveru nelze smazat.
+              </p>
+              <button
+                type="button"
+                className="chip"
+                disabled={deleting}
+                onClick={() => void onDeleteRestaurant()}
+                style={{
+                  cursor: deleting ? "wait" : "pointer",
+                  borderColor: "rgba(248, 113, 113, 0.5)",
+                  color: "#fecaca",
+                }}
+              >
+                {deleting ? "Mažu…" : "Smazat provozovnu"}
+              </button>
+            </section>
+          ) : null}
         </>
       ) : null}
 
@@ -653,27 +702,6 @@ function RestaurantDetailInner() {
               Uživatelé
             </a>{" "}
             (pro vaši restauraci).
-          </p>
-        </section>
-      ) : null}
-
-      {tab === "menu" ? (
-        <section
-          style={{
-            marginTop: 16,
-            border: "1px dashed var(--border)",
-            borderRadius: 16,
-            padding: 20,
-            background: "rgba(255,255,255,0.02)",
-          }}
-        >
-          <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem" }}>Menu</h2>
-          <p className="textMuted" style={{ margin: 0, lineHeight: 1.55 }}>
-            Úpravy jídelníčku z adminu budou doplněny později. Veřejné menu pro hosty najdete na stránce{" "}
-            <a href={publicMenuUrlFromAdmin({ rid: id })} className="adminBreadcrumb__link">
-              Veřejné menu
-            </a>
-            .
           </p>
         </section>
       ) : null}
