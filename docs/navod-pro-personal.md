@@ -75,6 +75,10 @@
 
 ---
 
+| **Aktualizace APK tabletů** | Zařízení → u tabletu **Aktualizovat APK** (jeden po druhém). Aktuální verze **1.6** — viz `docs/KIOSK-APK-UPDATE.md` |
+
+---
+
 ## Rychlá tabulka
 
 | Problém | Kde v adminu | Tlačítko / akce |
@@ -82,6 +86,7 @@
 | Nepárovaný tablet | Zařízení → Párování | **Spárovat tablet** |
 | Staré ceny / menu z Dotyce | Zařízení (nahoře) | **Obnovit menu z Dotykačky** |
 | Tablet zaseknutý | Zařízení → řádek tabletu | **Vynutit obnovení** |
+| Nová verze APK tabletu | Zařízení → řádek tabletu | **Aktualizovat APK** (potvrdit dialog) |
 | Objednávka nešla | Dotykačka + WiFi | ručně v Dotyce + případně vynutit obnovení |
 
 ---

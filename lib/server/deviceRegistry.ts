@@ -10,6 +10,7 @@ import {
   getKioskDeviceApkUpdateNonce,
   getKioskDeviceReloadNonce,
   listAllKioskDeviceBindings,
+  touchKioskDeviceTelemetry,
   upsertKioskDeviceBinding,
 } from "./kioskDeviceBindings";
 
@@ -27,6 +28,16 @@ export type DeviceRecord = {
 };
 
 const ONLINE_THRESHOLD_MS = 120_000;
+
+function lastSeenMsFromIso(iso: string | null | undefined): number {
+  if (!iso?.trim()) return 0;
+  const ms = Date.parse(iso);
+  return Number.isFinite(ms) ? ms : 0;
+}
+
+function mergeLastSeen(memoryMs: number, dbIso: string | null | undefined): number {
+  return Math.max(memoryMs, lastSeenMsFromIso(dbIso));
+}
 
 const presenceByDevice = new Map<string, DeviceRecord>();
 /** Přepsání z adminu (paměť; kopírované i do DB při novém bindu). */
@@ -62,6 +73,7 @@ export function recordKioskApkVersion(deviceId: string, versionCode: number) {
       kioskApkVersionCode: versionCode,
     });
   }
+  void touchKioskDeviceTelemetry(id, { apkVersionCode: versionCode }).catch(() => {});
 }
 
 export function clearDeviceFromMemory(deviceId: string): void {
@@ -163,7 +175,9 @@ export function recordPresence(
     tableLabel,
     lastSeen: Date.now(),
     userAgent: userAgent ?? prev?.userAgent,
+    kioskApkVersionCode: prev?.kioskApkVersionCode ?? null,
   });
+  void touchKioskDeviceTelemetry(deviceId, { userAgent }).catch(() => {});
 }
 
 export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online: boolean }>> {
@@ -172,15 +186,16 @@ export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online
 
   for (const kb of await listAllKioskDeviceBindings()) {
     const p = presenceByDevice.get(kb.deviceId);
+    const lastSeen = mergeLastSeen(p?.lastSeen ?? 0, kb.lastSeenAtIso);
     merged.set(kb.deviceId, {
       deviceId: kb.deviceId,
       tableId: kb.tableId,
       tableLabel: kb.tableLabel,
-      lastSeen: p?.lastSeen ?? 0,
+      lastSeen,
       userAgent: p?.userAgent,
       restaurantId: kb.restaurantId,
       pairingLocked: kb.pairingLocked,
-      kioskApkVersionCode: p?.kioskApkVersionCode ?? null,
+      kioskApkVersionCode: p?.kioskApkVersionCode ?? kb.kioskApkVersionCode ?? null,
     });
   }
 
@@ -188,11 +203,13 @@ export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online
     if (merged.has(id)) continue;
     const kb = await getKioskDeviceBinding(id);
     const fallbackRid = kb?.restaurantId ?? getDefaultPublicMenuRestaurantIdFromEnv();
+    const lastSeen = mergeLastSeen(p.lastSeen, kb?.lastSeenAtIso);
     merged.set(id, {
       ...p,
+      lastSeen,
       restaurantId: kb?.restaurantId ?? fallbackRid ?? undefined,
       pairingLocked: kb?.pairingLocked ?? undefined,
-      kioskApkVersionCode: p.kioskApkVersionCode ?? null,
+      kioskApkVersionCode: p.kioskApkVersionCode ?? kb?.kioskApkVersionCode ?? null,
     });
   }
 

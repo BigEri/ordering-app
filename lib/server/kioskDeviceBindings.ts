@@ -12,24 +12,30 @@ export type KioskDeviceBindingRow = {
   deviceSecret: string | null;
   reloadNonce: number;
   apkUpdateNonce: number;
+  lastSeenAtIso: string | null;
+  kioskApkVersionCode: number | null;
 };
+
+const bindingSelect = {
+  deviceId: true,
+  restaurantId: true,
+  tableId: true,
+  tableLabel: true,
+  pairingLocked: true,
+  updatedAtIso: true,
+  deviceSecret: true,
+  reloadNonce: true,
+  apkUpdateNonce: true,
+  lastSeenAtIso: true,
+  kioskApkVersionCode: true,
+} as const;
 
 export async function getKioskDeviceBinding(deviceId: string): Promise<KioskDeviceBindingRow | null> {
   const id = deviceId.trim();
   if (!id) return null;
   const row = await prisma.kioskDeviceBinding.findUnique({
     where: { deviceId: id },
-    select: {
-      deviceId: true,
-      restaurantId: true,
-      tableId: true,
-      tableLabel: true,
-      pairingLocked: true,
-      updatedAtIso: true,
-      deviceSecret: true,
-      reloadNonce: true,
-      apkUpdateNonce: true,
-    },
+    select: bindingSelect,
   });
   return row ?? null;
 }
@@ -38,17 +44,7 @@ export async function getKioskDeviceBinding(deviceId: string): Promise<KioskDevi
 export async function listAllKioskDeviceBindings(): Promise<KioskDeviceBindingRow[]> {
   const rows = await prisma.kioskDeviceBinding.findMany({
     orderBy: { tableLabel: "asc" },
-    select: {
-      deviceId: true,
-      restaurantId: true,
-      tableId: true,
-      tableLabel: true,
-      pairingLocked: true,
-      updatedAtIso: true,
-      deviceSecret: true,
-      reloadNonce: true,
-      apkUpdateNonce: true,
-    },
+    select: bindingSelect,
   });
   return rows ?? [];
 }
@@ -145,5 +141,26 @@ export async function setKioskDevicePairingLocked(deviceId: string, locked: bool
   await prisma.kioskDeviceBinding.updateMany({
     where: { deviceId: id },
     data: { pairingLocked: locked ? 1 : 0, updatedAtIso: nowIso() },
+  });
+}
+
+/** Zapíše lastSeen a volitelně verzi APK do DB (spolehlivý přehled v adminu na Vercelu). */
+export async function touchKioskDeviceTelemetry(
+  deviceId: string,
+  input: { apkVersionCode?: number | null; userAgent?: string | null },
+): Promise<void> {
+  const id = deviceId.trim();
+  if (!id) return;
+  const ts = nowIso();
+  const apk =
+    input.apkVersionCode != null && Number.isFinite(input.apkVersionCode) && input.apkVersionCode > 0
+      ? Math.trunc(input.apkVersionCode)
+      : undefined;
+  await prisma.kioskDeviceBinding.updateMany({
+    where: { deviceId: id },
+    data: {
+      lastSeenAtIso: ts,
+      ...(apk !== undefined ? { kioskApkVersionCode: apk } : {}),
+    },
   });
 }

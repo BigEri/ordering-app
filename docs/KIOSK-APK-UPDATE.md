@@ -1,66 +1,163 @@
-# Kiosk APK – tichá aktualizace z administrace
+# Kiosk APK – aktualizace z administrace
+
+
 
 ## Princip
 
-1. **Web** (menu, admin) se aktualizuje z Vercelu automaticky.
-2. **Nativní APK** (`Tableordering`) – vedoucí v **Admin → Zařízení** u konkrétního tabletu klikne **„Aktualizovat APK“**.
-3. Tablet v **Host (kiosk)** režimu polluje `GET /api/devices/config` a při zvýšeném `apkUpdateNonce` stáhne APK z `appRelease.apkUrl`.
-4. **Tichá instalace** funguje jen pokud je tablet **Device Owner**. Jinak se otevře **systémový dialog** instalace (APK 1.4+).
 
-## Hromadný rollout (20 tabletů) — postup z adminu
 
-1. Tablety nechte v režimu **Host** u stolů (spárované, WiFi).
-2. Na PC: `https://app.tableflow.cz/admin/devices`.
-3. U **každého** řádku klikněte **Aktualizovat APK** (klikáte na PC, ne u stolu).
-4. Do ~1 minuty na tabletu:
-   - **Device Owner** → tichá instalace,
-   - jinak dialog **Instalovat** → potvrdit jednou na tabletu.
-5. Po instalaci 1.4 se `*.vercel.app` adresa **sama přepíše** na `https://app.tableflow.cz`.
-6. V adminu zkontrolujte **Online** a zkuste objednávku.
+1. **Web** (menu, admin, objednávky) se aktualizuje z Vercelu automaticky — tablety nic nemusí.
 
-**Poznámka:** Tablet v režimu **Admin** APK nestahuje — musí být **Host**.
+2. **Nativní APK** (`Tableordering`) — vedoucí v **Admin → Zařízení** u konkrétního tabletu: **Aktualizovat APK** → potvrdit dialog.
 
-## Vercel – proměnné (aktuální release 1.4)
+3. Tablet v **Host** režimu polluje `GET /api/devices/config` a při vyšším `apkUpdateNonce` stáhne APK z `appRelease.apkUrl`.
+
+4. **Tichá instalace** jen s **Device Owner**; jinak systémový dialog **Instalovat** na tabletu.
+
+
+
+## Aktuální release
+
+
+
+| | |
+
+|--|--|
+
+| **Verze** | **1.6** (`versionCode` **7**) |
+
+| **APK URL** | `https://app.tableflow.cz/releases/tableflow-kiosk.apk` |
+
+| **Podpis** | debug (Android Studio) — stejný na všech tabletech z `assembleDebug` |
+
+| **Nové v 1.6** | Lock Task (Host + spárovaný), autostart po bootu, DO policies, servisní PIN |
+
+
+
+## Postup u jednoho tabletu
+
+
+
+1. Tablet v režimu **Host** u stolu (WiFi, spárovaný).
+
+2. PC: `https://app.tableflow.cz/admin/devices`.
+
+3. **Aktualizovat APK** → dialog (verze na tabletu vs. server) → potvrdit.
+
+4. Admin ~2 min čeká na hlášení verze; sloupec **APK na tabletu** má ukázat `v1.6 (code 7) ✓`.
+
+5. Na tabletu případně potvrdit **Instalovat** (bez Device Owner).
+
+
+
+`KIOSK_APK_VERSION_CODE` na serveru musí být **vyšší** než na tabletu, jinak se nic nestáhne (zelená zpráva = verze už sedí).
+
+
+
+## Vercel – proměnné
+
+
 
 | Proměnná | Hodnota |
+
 |----------|---------|
-| `KIOSK_APK_VERSION_CODE` | `5` |
-| `KIOSK_APK_VERSION_NAME` | `1.4` |
+
+| `KIOSK_APK_VERSION_CODE` | `7` |
+
+| `KIOSK_APK_VERSION_NAME` | `1.6` |
+
 | `KIOSK_APK_URL` | (prázdné = `{NEXT_PUBLIC_APP_URL}/releases/tableflow-kiosk.apk`) |
-| `KIOSK_APK_SHA256` | `91743e2a43d74966848b6fdf0b7f87792a7bf9006941461af0e766c1f85e511c` |
 
-`KIOSK_APK_VERSION_CODE` musí být **vyšší** než verze na tabletu, jinak admin „Aktualizovat APK“ nic nestáhne.
+| `KIOSK_APK_SHA256` | `675ccd926bcb0ace2a48c4b7cc9ccd232ffd57cd6263e7f5c53f75fb1f141977` |
 
-Když `KIOSK_APK_URL` chybí, použije se `{NEXT_PUBLIC_APP_URL}/releases/tableflow-kiosk.apk`.
 
-## Publikace APK
 
-1. V Android Studiu: **Build → Generate Signed APK** (release) — stejný podpis jako na tabletech.
-2. Zkopírujte APK do `ordering-app/public/releases/tableflow-kiosk.apk` a nasaďte web.
-   - Pro tablety instalované ze Studia: `gradlew assembleDebug` → `app-debug.apk` (debug podpis).
-   - Pro produkci později: signed release (`keystore.properties`) — stejný podpis jako na tabletech.
-3. Nastavte env na Vercelu (`KIOSK_APK_VERSION_CODE` = `versionCode` z `app/build.gradle.kts`).
-4. Spusťte migraci DB: `npx prisma migrate deploy` (sloupec `apkUpdateNonce`) — produkce Neon i lokál.
+## Publikace nové verze APK
 
-Hash pro Vercel: `node scripts/publish-kiosk-apk-hashes.mjs` → `KIOSK_APK_SHA256`.
 
-## Device Owner (jednorázově na tablet)
 
-Po factory reset / bez Google účtu:
+1. V `Tableordering/app/build.gradle.kts`: zvedněte `versionCode` a `versionName`.
+
+2. `gradlew assembleDebug` → `app/build/outputs/apk/debug/app-debug.apk`
+
+3. Zkopírujte do `ordering-app/public/releases/tableflow-kiosk.apk`
+
+4. `node scripts/publish-kiosk-apk-hashes.mjs` → `KIOSK_APK_SHA256`
+
+5. Nastavte env na Vercelu, nasaďte web (`vercel --prod`).
+
+6. V adminu u každého tabletu **Aktualizovat APK**.
+
+
+
+## Device Owner (doporučeno — kiosk + tiché updaty)
+
+
+
+**Lock Task** (Home / Recents nefungují) vyžaduje Device Owner **nebo** ruční whitelist v nastavení Androidu. Pro provoz u stolu nastavte Device Owner:
+
+
+
+1. **Factory reset** tabletu.
+
+2. První setup **bez Google účtu** (nebo podle návodu výrobce).
+
+3. Nainstalujte kiosk APK (`adb install` nebo z releases).
+
+4. Připojte USB debugging a spusťte:
+
+
 
 ```bash
+
 adb shell dpm set-device-owner com.example.tableordering/.KioskDeviceAdminReceiver
+
 ```
 
-Tablet musí být **Host (kiosk)**, ne osobní admin telefon vedoucího.
 
-## Stabilní ID tabletu (přežije přeinstalaci APK)
 
-APK používá `android-…` z `Settings.Secure.ANDROID_ID` (stejný podpis app). Párování v DB zůstane po odinstalaci a nové instalaci.
+5. Ověření:
 
-- **Jednou po nasazení této verze:** tablety dříve spárované náhodným UUID je potřeba **jednou znovu spárovat** (nové ID začíná `android-`). Pak už reinstall nevyžaduje párování.
-- **Update APK bez odinstalace:** staré UUID v paměti tabletu zůstane, dokud neodinstalujete.
 
-## Migrace DB
 
-`20260603120000_kiosk_apk_update_nonce` – sloupec `apkUpdateNonce` v `KioskDeviceBinding`.
+```bash
+
+adb shell dpm get-device-owner
+
+adb shell dumpsys activity activities | findstr /i locktask
+
+```
+
+
+
+6. Otevřete APK → **Host (kiosk)** → spárujte v adminu. Po spárování se zapne **Lock Task**.
+
+
+
+### Servisní PIN
+
+
+
+- Výchozí PIN personálu: **2580**
+
+- Změna: Admin režim → dlouhý stisk → Nastavení URL → pole „Nový servisní PIN“
+
+- PIN je potřeba pro: servisní menu v Admin, přepnutí do Admin ze spárovaného Host, reset režimu
+
+
+
+## Stabilní ID tabletu
+
+
+
+APK používá `android-…` z `ANDROID_ID` — párování v DB přežije přeinstalaci se stejným podpisem.
+
+
+
+## Související docs
+
+
+
+- `docs/KIOSK-FULL-MODE-CHECKLIST.md` — audit kiosk režimu
+
+

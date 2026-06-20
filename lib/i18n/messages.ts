@@ -212,7 +212,18 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "Dostupné APK na serveru",
     "admin.devices.apkOnDevice": "APK na tabletu",
     "admin.devices.apkUpdateHint":
-      "Tablet v kiosk režimu (Device Owner) stáhne a nainstaluje APK bez potvrzení u hostů. Vedoucí klikne u každého zařízení zvlášť.",
+      "U každého tabletu zvlášť: potvrďte dialog, tablet musí být v režimu Host. Po aktualizaci se ověří hlášená verze APK (sloupec „APK na tabletu“). Online stav může krátce zaostávat.",
+    "admin.devices.apkUpdateConfirmTitle": "Aktualizovat APK na tabletu?",
+    "admin.devices.apkUpdateConfirmBody":
+      "Stůl {table} · zařízení {device}\n\nVerze na tabletu: {current}\nVerze na serveru: {target}\n\nTablet musí běžet v režimu Host u stolu. Po potvrzení počkáme až ~2 minuty na hlášení nové verze z tabletu.",
+    "admin.devices.apkUpdateAlreadyCurrent": "Tablet už hlásí stejnou nebo novější verzi — stažení APK pravděpodobně proběhne jen pokud server má vyšší versionCode.",
+    "admin.devices.apkUpdateOk":
+      "Stůl {table}: tablet hlásí verzi {version} (code {code}) — odpovídá serveru.",
+    "admin.devices.apkUpdatePending":
+      "Požadavek odeslán (nonce {nonce}). Verze {target} se zatím nepotvrdila — zkuste „Obnovit seznam“ za chvíli; tablet musí být v Host režimu.",
+    "admin.devices.apkVersionUnknown": "neznámá (tablet ještě nehlásil verzi)",
+    "admin.devices.apkVersionFmt": "v{name} (code {code})",
+    "admin.devices.lastSeenHint": "naposledy viděn",
     "admin.devices.editTable": "Upravit stůl",
     "admin.devices.editTableTitle": "Upravit stůl u zařízení",
     "admin.devices.editTableHint": "Změní se ID stolu v Dotyce i zobrazený název. Restaurace zůstane stejná.",
@@ -448,7 +459,18 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "APK available on server",
     "admin.devices.apkOnDevice": "APK on tablet",
     "admin.devices.apkUpdateHint":
-      "Kiosk tablets (Device Owner) download and install silently. Manager clicks once per device.",
+      "One tablet at a time: confirm the dialog; tablet must be in Host mode. After update we verify the reported APK version (column “APK on tablet”). Online status may lag briefly.",
+    "admin.devices.apkUpdateConfirmTitle": "Update APK on this tablet?",
+    "admin.devices.apkUpdateConfirmBody":
+      "Table {table} · device {device}\n\nVersion on tablet: {current}\nVersion on server: {target}\n\nTablet must run in Host mode at the table. After confirm we wait up to ~2 minutes for the new version report.",
+    "admin.devices.apkUpdateAlreadyCurrent": "Tablet already reports the same or newer version — download only runs if the server has a higher versionCode.",
+    "admin.devices.apkUpdateOk":
+      "Table {table}: tablet reports {version} (code {code}) — matches server.",
+    "admin.devices.apkUpdatePending":
+      "Request sent (nonce {nonce}). Version {target} not confirmed yet — try “Refresh list” shortly; tablet must be in Host mode.",
+    "admin.devices.apkVersionUnknown": "unknown (tablet has not reported yet)",
+    "admin.devices.apkVersionFmt": "v{name} (code {code})",
+    "admin.devices.lastSeenHint": "last seen",
     "admin.devices.editTable": "Edit table",
     "admin.devices.editTableTitle": "Change table for device",
     "admin.devices.editTableHint": "Updates the Dotykacka table ID and the display label. The restaurant stays the same.",
@@ -684,7 +706,18 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "서버 APK",
     "admin.devices.apkOnDevice": "태블릿 APK",
     "admin.devices.apkUpdateHint":
-      "키오스크(Device Owner)는 확인 없이 설치합니다. 기기마다 한 번씩 클릭하세요.",
+      "기기마다 개별 확인: 태블릿은 Host 모드여야 합니다. 업데이트 후 보고된 APK 버전을 확인합니다(‘태블릿 APK’ 열). 온라인 상태는 잠시 지연될 수 있습니다.",
+    "admin.devices.apkUpdateConfirmTitle": "이 태블릿의 APK를 업데이트할까요?",
+    "admin.devices.apkUpdateConfirmBody":
+      "테이블 {table} · 기기 {device}\n\n태블릿 버전: {current}\n서버 버전: {target}\n\n태블릿은 Host 모드여야 합니다. 확인 후 최대 ~2분간 새 버전 보고를 기다립니다.",
+    "admin.devices.apkUpdateAlreadyCurrent": "태블릿이 이미 동일하거나 더 높은 버전을 보고합니다 — 서버 versionCode가 더 높을 때만 다운로드됩니다.",
+    "admin.devices.apkUpdateOk":
+      "테이블 {table}: 태블릿 {version} (code {code}) 보고 — 서버와 일치.",
+    "admin.devices.apkUpdatePending":
+      "요청 전송됨 (nonce {nonce}). 버전 {target} 미확인 — 잠시 후 ‘목록 새로 고침’; Host 모드 필요.",
+    "admin.devices.apkVersionUnknown": "알 수 없음(아직 보고 없음)",
+    "admin.devices.apkVersionFmt": "v{name} (code {code})",
+    "admin.devices.lastSeenHint": "마지막 확인",
     "admin.devices.editTable": "테이블 수정",
     "admin.devices.editTableTitle": "기기의 테이블 변경",
     "admin.devices.editTableHint": "Dotykacka 테이블 ID와 표시 이름이 바뀝니다. 매장은 그대로입니다.",

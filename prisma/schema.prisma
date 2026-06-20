@@ -266,6 +266,10 @@ model KioskDeviceBinding {
   reloadNonce  Int    @default(0)
   /** Zvýšení z adminu = tablet má stáhnout APK z KIOSK_APK_* (kiosk Device Owner). */
   apkUpdateNonce Int @default(0)
+  /** Poslední poll config / presence (ISO) — pro online stav v adminu na serverless. */
+  lastSeenAtIso String?
+  /** Nahlášené BuildConfig.VERSION_CODE z tabletu při poll config. */
+  kioskApkVersionCode Int?
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 }

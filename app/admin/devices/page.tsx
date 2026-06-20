@@ -70,7 +70,11 @@ export default function AdminDevicesPage() {
   const [menuRefreshErr, setMenuRefreshErr] = React.useState(false);
   const [menuRefreshErrDetail, setMenuRefreshErrDetail] = React.useState<string | null>(null);
   const [apkUpdateErr, setApkUpdateErr] = React.useState(false);
+  const [apkUpdateErrDetail, setApkUpdateErrDetail] = React.useState<string | null>(null);
   const [apkUpdatingId, setApkUpdatingId] = React.useState<string | null>(null);
+  const [apkUpdateOk, setApkUpdateOk] = React.useState<string | null>(null);
+  const [apkUpdatePending, setApkUpdatePending] = React.useState<string | null>(null);
+  const [apkConfirmDevice, setApkConfirmDevice] = React.useState<DeviceRow | null>(null);
   const [kioskRelease, setKioskRelease] = React.useState<KioskRelease>(null);
   const [dotyTables, setDotyTables] = React.useState<DotyTable[] | null>(null);
   const [activeRestaurantId, setActiveRestaurantId] = React.useState<string | null>(null);
@@ -273,24 +277,87 @@ export default function AdminDevicesPage() {
     }
   }, [activeRestaurantId, load, loadHealth]);
 
-  const onApkUpdate = async (deviceId: string) => {
+  const onApkUpdate = async (device: DeviceRow) => {
+    if (!kioskRelease) return;
+    setApkConfirmDevice(null);
     setApkUpdateErr(false);
-    setApkUpdatingId(deviceId);
+    setApkUpdateErrDetail(null);
+    setApkUpdateOk(null);
+    setApkUpdatePending(null);
+    setApkUpdatingId(device.deviceId);
+    const targetCode = kioskRelease.versionCode;
+    const targetLabel = tStaff("admin.devices.apkVersionFmt")
+      .replace("{name}", kioskRelease.versionName)
+      .replace("{code}", String(targetCode));
+
+    let sentNonce: number | null = null;
     try {
       const r = await fetch("/api/devices/apk-update", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ deviceId }),
+        credentials: "same-origin",
+        body: JSON.stringify({ deviceId: device.deviceId }),
       });
-      if (!r.ok) {
+      const data = (await r.json()) as { ok?: boolean; apkUpdateNonce?: number; error?: string };
+      if (!r.ok || !data.ok) {
         setApkUpdateErr(true);
+        setApkUpdateErrDetail(data.error ?? null);
         return;
       }
+      sentNonce = typeof data.apkUpdateNonce === "number" ? data.apkUpdateNonce : null;
+
+      const sleep = (ms: number) => new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+      for (let i = 0; i < 30; i++) {
+        await sleep(i === 0 ? 2000 : 4000);
+        const listRes = await fetch("/api/devices", { cache: "no-store", credentials: "same-origin" });
+        const listData = (await listRes.json()) as { ok?: boolean; devices?: DeviceRow[] };
+        if (!listRes.ok || !listData.ok || !listData.devices) continue;
+        setDevices(listData.devices);
+        const row = listData.devices.find((d) => d.deviceId === device.deviceId);
+        const reported = row?.kioskApkVersionCode;
+        if (reported != null && reported >= targetCode) {
+          const versionLabel = tStaff("admin.devices.apkVersionFmt")
+            .replace("{name}", kioskRelease.versionName)
+            .replace("{code}", String(reported));
+          setApkUpdateOk(
+            tStaff("admin.devices.apkUpdateOk")
+              .replace("{table}", device.tableLabel)
+              .replace("{version}", versionLabel)
+              .replace("{code}", String(reported)),
+          );
+          return;
+        }
+      }
+
+      setApkUpdatePending(
+        tStaff("admin.devices.apkUpdatePending")
+          .replace("{nonce}", sentNonce != null ? String(sentNonce) : "?")
+          .replace("{target}", targetLabel),
+      );
     } catch {
       setApkUpdateErr(true);
     } finally {
       setApkUpdatingId(null);
     }
+  };
+
+  const openApkConfirm = (device: DeviceRow) => {
+    if (!kioskRelease) return;
+    setApkConfirmDevice(device);
+  };
+
+  const formatApkOnDevice = (code: number | null | undefined) => {
+    if (code == null) return tStaff("admin.devices.apkVersionUnknown");
+    const name =
+      kioskRelease && code === kioskRelease.versionCode ? kioskRelease.versionName : String(code);
+    return tStaff("admin.devices.apkVersionFmt").replace("{name}", name).replace("{code}", String(code));
+  };
+
+  const formatApkOnServer = () => {
+    if (!kioskRelease) return "—";
+    return tStaff("admin.devices.apkVersionFmt")
+      .replace("{name}", kioskRelease.versionName)
+      .replace("{code}", String(kioskRelease.versionCode));
   };
 
   const onForceReload = async (deviceId: string) => {
@@ -528,7 +595,17 @@ export default function AdminDevicesPage() {
 
       {apkUpdateErr ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
-          {tStaff("admin.devices.apkUpdateErr")}
+          {apkUpdateErrDetail ?? tStaff("admin.devices.apkUpdateErr")}
+        </p>
+      ) : null}
+      {apkUpdateOk ? (
+        <p role="status" style={{ color: "#bbf7d0", marginBottom: 12, fontSize: 14 }}>
+          {apkUpdateOk}
+        </p>
+      ) : null}
+      {apkUpdatePending ? (
+        <p role="status" style={{ color: "#fde68a", marginBottom: 12, fontSize: 14 }}>
+          {apkUpdatePending}
         </p>
       ) : null}
 
@@ -613,13 +690,15 @@ export default function AdminDevicesPage() {
                   <td style={{ padding: "10px 12px", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
                     {d.kioskApkVersionCode != null ? (
                       <>
-                        v{d.kioskApkVersionCode}
+                        {formatApkOnDevice(d.kioskApkVersionCode)}
                         {kioskRelease && d.kioskApkVersionCode < kioskRelease.versionCode ? (
                           <span style={{ marginLeft: 6, color: "#fbbf24" }}>↑</span>
+                        ) : kioskRelease && d.kioskApkVersionCode >= kioskRelease.versionCode ? (
+                          <span style={{ marginLeft: 6, color: "var(--success)" }}>✓</span>
                         ) : null}
                       </>
                     ) : (
-                      <span className="textMuted2">—</span>
+                      <span className="textMuted2">{tStaff("admin.devices.apkVersionUnknown")}</span>
                     )}
                   </td>
                   <td style={{ padding: "10px 12px" }}>
@@ -628,6 +707,11 @@ export default function AdminDevicesPage() {
                     ) : (
                       <span className="textMuted">{tStaff("admin.devices.offline")}</span>
                     )}
+                    {d.lastSeen > 0 ? (
+                      <div className="textMuted2" style={{ marginTop: 4, fontSize: 11 }}>
+                        {tStaff("admin.devices.lastSeenHint")}: {fmtTime(d.lastSeen)}
+                      </div>
+                    ) : null}
                   </td>
                   <td style={{ padding: "10px 12px" }}>{fmtTime(d.lastSeen)}</td>
                   <td style={{ padding: "10px 12px" }}>
@@ -646,7 +730,7 @@ export default function AdminDevicesPage() {
                         type="button"
                         className="chip"
                         disabled={!kioskRelease || apkUpdatingId === d.deviceId}
-                        onClick={() => void onApkUpdate(d.deviceId)}
+                        onClick={() => openApkConfirm(d)}
                         style={{ cursor: kioskRelease ? "pointer" : "not-allowed" }}
                         title={!kioskRelease ? tStaff("admin.devices.apkUpdateNoRelease") : undefined}
                       >
@@ -678,6 +762,75 @@ export default function AdminDevicesPage() {
               })}
             </tbody>
           </table>
+        </div>
+      ) : null}
+
+      {apkConfirmDevice && kioskRelease ? (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.78)",
+            backdropFilter: "blur(6px)",
+            WebkitBackdropFilter: "blur(6px)",
+            zIndex: 2000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 16,
+          }}
+          onClick={() => setApkConfirmDevice(null)}
+          role="presentation"
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="apk-update-confirm-title"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: 480,
+              width: "100%",
+              borderRadius: 16,
+              padding: 20,
+              background: "var(--menu-card-bg)",
+              border: "1px solid var(--border-strong)",
+              boxShadow: "var(--shadow-lg)",
+            }}
+          >
+            <h2 id="apk-update-confirm-title" style={{ margin: "0 0 12px", fontSize: "1.15rem" }}>
+              {tStaff("admin.devices.apkUpdateConfirmTitle")}
+            </h2>
+            <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.55, whiteSpace: "pre-line" }}>
+              {tStaff("admin.devices.apkUpdateConfirmBody")
+                .replace("{table}", apkConfirmDevice.tableLabel)
+                .replace(
+                  "{device}",
+                  `${apkConfirmDevice.deviceId.slice(0, 28)}${apkConfirmDevice.deviceId.length > 28 ? "…" : ""}`,
+                )
+                .replace("{current}", formatApkOnDevice(apkConfirmDevice.kioskApkVersionCode))
+                .replace("{target}", formatApkOnServer())}
+            </p>
+            {apkConfirmDevice.kioskApkVersionCode != null &&
+            apkConfirmDevice.kioskApkVersionCode >= kioskRelease.versionCode ? (
+              <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
+                {tStaff("admin.devices.apkUpdateAlreadyCurrent")}
+              </p>
+            ) : null}
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button type="button" className="chip" onClick={() => setApkConfirmDevice(null)}>
+                {tStaff("admin.devices.editTableCancel")}
+              </button>
+              <button
+                type="button"
+                className="chip"
+                disabled={apkUpdatingId === apkConfirmDevice.deviceId}
+                onClick={() => void onApkUpdate(apkConfirmDevice)}
+                style={{ cursor: "pointer" }}
+              >
+                {apkUpdatingId === apkConfirmDevice.deviceId ? "…" : tStaff("admin.devices.apkUpdate")}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
