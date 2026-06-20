@@ -174,9 +174,14 @@ function parsePosActionJsonBody(text: string): unknown {
   }
 }
 
-function isEmptyDotykacka404Body(text: string): boolean {
+function isEmptyDotykackaPosActionSyncBody(text: string): boolean {
   const t = text.trim();
   return t === "" || t === "{}";
+}
+
+/** @deprecated use isEmptyDotykackaPosActionSyncBody */
+function isEmptyDotykacka404Body(text: string): boolean {
+  return isEmptyDotykackaPosActionSyncBody(text);
 }
 
 function sleep(ms: number) {
@@ -236,7 +241,15 @@ async function postDotykackaPosAction(
       });
       const text = await res.text();
       if (res.ok) {
-        if (callbackId) cancelPosActionWebhook(callbackId);
+        // Dotypos často vrátí HTTP 200 s prázdným tělem a skutečnou odpověď pošle na webhook.
+        if (waitWebhook && isEmptyDotykackaPosActionSyncBody(text)) {
+          const whText = await waitWebhook;
+          if (whText != null && whText.trim() !== "") {
+            return { ok: true, data: parsePosActionJsonBody(whText) };
+          }
+        } else if (callbackId) {
+          cancelPosActionWebhook(callbackId);
+        }
         return { ok: true, data: parsePosActionJsonBody(text) };
       }
 

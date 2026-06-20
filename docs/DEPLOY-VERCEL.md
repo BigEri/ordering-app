@@ -36,8 +36,31 @@ V projektu: **Settings → Environment Variables** (Production + Preview):
 | `S3_REGION` | u R2: `auto` |
 | `S3_ENDPOINT` | u R2: `https://<accountid>.r2.cloudflarestorage.com` |
 | `S3_FORCE_PATH_STYLE` | u R2: `1` |
+| `PUBLIC_RESTAURANT_ID` | UUID ukázkové provozovny Tableflow — **doporučené** při více klientech v DB (viz níže) |
 
 Volitelně doplňte z `.env.example` (Dotykačka, `BOOTSTRAP_TOKEN`, …).
+
+### Více provozoven — výchozí úvodní stránka (`PUBLIC_RESTAURANT_ID`)
+
+Když v databázi budou **klienti i vaše provozovna**, nastavte na produkci:
+
+| Proměnná | Hodnota |
+|----------|---------|
+| `PUBLIC_RESTAURANT_ID` | UUID **ukázkové** provozovny Tableflow (ne klienta) |
+
+UUID je v adminu v URL detailu provozovny: `/admin/restaurants/<uuid>`.
+
+**Co to řeší:** anonymní návštěvník na `https://app.tableflow.cz` (bez tabletu, bez cookies) vždy uvidí tuto provozovnu — fotky z **Admin → Úvodní stránka**, název, veřejné menu. Klientské restaurace se na holou doménu nepropíší.
+
+**Co to neovlivní:** tablet spárovaný u stolu klienta — ten má prioritu (vazba zařízení) a správně ukazuje menu klienta.
+
+**Doporučení u ukázkové provozovny:**
+
+1. V **Úvodní stránka** použijte neutrální fotky nebo výchozí ilustrace (`/images/…`), ne reálné fotky z provozu klienta.
+2. Po změně env na Vercelu proveďte **Redeploy**.
+3. Ověřte v **anonymním okně** — měla by se zobrazit jen vybraná provozovna.
+
+Bez `PUBLIC_RESTAURANT_ID` při více řádcích v tabulce `restaurant` anonymní návštěvník nedostane konkrétní provozovnu (generické fotky na úvodu). Při **jediné** provozovně v DB se použije automaticky ta — proto před přidáním klientů nastavte env, nebo mějte v DB vždy aspoň dvě provozovny (ukázka + klient).
 
 ### Sentry — sledování chyb (volitelné, free plán)
 
