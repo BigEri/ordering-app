@@ -179,6 +179,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.healthOk": "API odpovídá",
     "admin.devices.healthLoading": "Kontroluji…",
     "admin.devices.healthErr": "Kontrola stavu API se nezdařila.",
+    "admin.devices.healthDbWarn":
+      "Rychlá kontrola databáze teď neodpovídá (přetížení spojení). Dotykačka a zařízení níže mohou být v pořádku — zkuste Obnovit za chvíli.",
     "admin.devices.healthPosYes": "Externí POS webhook je nastaven (volitelné).",
     "admin.devices.healthPosNo":
       "Externí POS webhook není nastaven (volitelné — objednávky jdou přes Dotykačku).",
@@ -426,6 +428,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.healthOk": "API is responding",
     "admin.devices.healthLoading": "Checking…",
     "admin.devices.healthErr": "/api/health is unavailable.",
+    "admin.devices.healthDbWarn":
+      "Quick database check timed out (connection pool). Dotykačka and devices below may still work — try Refresh in a moment.",
     "admin.devices.healthPosYes":
       "Optional external POS webhook (`POS_NOTIFICATION_URL`): set — events are also POSTed to your URL.",
     "admin.devices.healthPosNo":
@@ -673,6 +677,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.healthOk": "API 응답 정상",
     "admin.devices.healthLoading": "확인 중…",
     "admin.devices.healthErr": "/api/health를 사용할 수 없습니다.",
+    "admin.devices.healthDbWarn":
+      "DB 빠른 확인이 시간 초과되었습니다(연결 풀). 아래 Dotykačka·기기는 정상일 수 있습니다 — 잠시 후 새로 고침하세요.",
     "admin.devices.healthPosYes":
       "선택 외부 POS 웹훅(`POS_NOTIFICATION_URL`): 설정됨 — 이벤트를 해당 URL로 추가 POST합니다.",
     "admin.devices.healthPosNo":

@@ -183,8 +183,10 @@ export function recordPresence(
 export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online: boolean }>> {
   const now = Date.now();
   const merged = new Map<string, DeviceRecord>();
+  const bindings = await listAllKioskDeviceBindings();
+  const bindingById = new Map(bindings.map((kb) => [kb.deviceId, kb]));
 
-  for (const kb of await listAllKioskDeviceBindings()) {
+  for (const kb of bindings) {
     const p = presenceByDevice.get(kb.deviceId);
     const lastSeen = mergeLastSeen(p?.lastSeen ?? 0, kb.lastSeenAtIso);
     merged.set(kb.deviceId, {
@@ -201,7 +203,7 @@ export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online
 
   for (const [id, p] of presenceByDevice) {
     if (merged.has(id)) continue;
-    const kb = await getKioskDeviceBinding(id);
+    const kb = bindingById.get(id);
     const fallbackRid = kb?.restaurantId ?? getDefaultPublicMenuRestaurantIdFromEnv();
     const lastSeen = mergeLastSeen(p.lastSeen, kb?.lastSeenAtIso);
     merged.set(id, {

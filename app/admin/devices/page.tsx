@@ -61,6 +61,7 @@ export default function AdminDevicesPage() {
   const [health, setHealth] = React.useState<HealthPayload | null>(null);
   const [healthLoading, setHealthLoading] = React.useState(true);
   const [healthErr, setHealthErr] = React.useState(false);
+  const [healthWarn, setHealthWarn] = React.useState<string | null>(null);
   const [reloadErr, setReloadErr] = React.useState(false);
   const [reloadErrDetail, setReloadErrDetail] = React.useState<string | null>(null);
   const [reloadOk, setReloadOk] = React.useState<string | null>(null);
@@ -107,6 +108,7 @@ export default function AdminDevicesPage() {
 
   const loadHealth = React.useCallback(async (restaurantId: string | null) => {
     setHealthErr(false);
+    setHealthWarn(null);
     setHealthLoading(true);
     try {
       const intQs =
@@ -120,19 +122,27 @@ export default function AdminDevicesPage() {
           credentials: "same-origin",
         }),
       ]);
-      const data = (await healthRes.json()) as HealthPayload;
-      if (!healthRes.ok || !data.ok) {
-        setHealthErr(true);
-        setHealth(null);
-        return;
+
+      let merged: HealthPayload | null = null;
+      let healthFailed = false;
+
+      if (healthRes.ok) {
+        const data = (await healthRes.json()) as HealthPayload;
+        if (data.ok) {
+          merged = { ...data };
+        } else {
+          healthFailed = true;
+        }
+      } else {
+        healthFailed = true;
       }
-      let merged: HealthPayload = { ...data };
+
       if (intRes.ok) {
         const intData = (await intRes.json()) as IntegrationsStatusPayload;
         if (intData.ok !== false) {
           merged = {
-            ...merged,
-            ts: intData.ts ?? merged.ts,
+            ...(merged ?? { ok: true }),
+            ts: intData.ts ?? merged?.ts,
             pos: { configured: intData.pos?.configured },
             sentry: { configured: intData.sentry?.configured },
             dotykacka: {
@@ -142,7 +152,18 @@ export default function AdminDevicesPage() {
           };
         }
       }
-      setHealth(merged);
+
+      if (merged) {
+        setHealth(merged);
+        setHealthErr(false);
+        if (healthFailed) {
+          setHealthWarn(tStaff("admin.devices.healthDbWarn"));
+        }
+        return;
+      }
+
+      setHealthErr(true);
+      setHealth(null);
     } catch {
       setHealthErr(true);
       setHealth(null);
@@ -528,6 +549,11 @@ export default function AdminDevicesPage() {
         {healthErr ? (
           <p role="alert" style={{ margin: 0, color: "#fecaca" }}>
             {tStaff("admin.devices.healthErr")}
+          </p>
+        ) : null}
+        {healthWarn ? (
+          <p role="status" style={{ margin: healthErr ? "8px 0 0" : 0, color: "#fcd34d", fontSize: 14 }}>
+            {healthWarn}
           </p>
         ) : null}
         {!healthLoading && !healthErr && health ? (
