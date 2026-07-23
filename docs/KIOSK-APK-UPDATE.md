@@ -24,13 +24,15 @@
 
 |--|--|
 
-| **Verze** | **1.6** (`versionCode` **7**) |
+| **Verze** | **1.7** (`versionCode` **8**) |
 
 | **APK URL** | `https://app.tableflow.cz/releases/tableflow-kiosk.apk` |
 
 | **Podpis** | debug (Android Studio) — stejný na všech tabletech z `assembleDebug` |
 
-| **Nové v 1.6** | Lock Task (Host + spárovaný), autostart po bootu, DO policies, servisní PIN |
+| **SHA256** | `d43427c2df4794192daa535954d934051f6569021bb5d18cb7640d9a788eb938` |
+
+| **Nové v 1.7** | Tvrdší DO lock (uninstall block, restrikce, re-lock, Home launcher), ven jen servisní PIN |
 
 
 
@@ -62,13 +64,13 @@
 
 |----------|---------|
 
-| `KIOSK_APK_VERSION_CODE` | `7` |
+| `KIOSK_APK_VERSION_CODE` | `8` |
 
-| `KIOSK_APK_VERSION_NAME` | `1.6` |
+| `KIOSK_APK_VERSION_NAME` | `1.7` |
 
 | `KIOSK_APK_URL` | (prázdné = `{NEXT_PUBLIC_APP_URL}/releases/tableflow-kiosk.apk`) |
 
-| `KIOSK_APK_SHA256` | `675ccd926bcb0ace2a48c4b7cc9ccd232ffd57cd6263e7f5c53f75fb1f141977` |
+| `KIOSK_APK_SHA256` | `d43427c2df4794192daa535954d934051f6569021bb5d18cb7640d9a788eb938` |
 
 
 
@@ -86,11 +88,43 @@
 
 5. Nastavte env na Vercelu, nasaďte web (`vercel --prod`).
 
-6. V adminu u každého tabletu **Aktualizovat APK**.
+6. V adminu u každého tabletu **Aktualizovat APK** (jen native Device Owner — viz níže AirDroid).
 
 
 
-## Device Owner (doporučeno — kiosk + tiché updaty)
+## AirDroid Business MDM (doporučeno pro víc poboček)
+
+
+
+Tablety enrollnuté v **AirDroid** jako Device Owner + kiosk Single App → Tableflow **nejsou** Device Owner v naší APK. Na nich:
+
+
+
+| Co | Kde |
+|----|-----|
+| Kiosk zámek | AirDroid → Policy & Kiosk |
+| Update **APK** | AirDroid → Apps → App Library → **Update** → **Force Install** (stejný soubor jako na serveru) |
+| Párování stůl / restaurace | Tableflow admin → Zařízení → Párování |
+| Menu, ceny, objednávky | Tableflow admin (web deploy) |
+| Vynutit obnovení stránky | Tableflow admin → Zařízení |
+
+**Nepoužívejte** `adb dpm set-device-owner` pro Tableflow na AirDroid tabletech — Device Owner drží AirDroid Biz Daemon.
+
+
+
+### Release checklist (jedna verze APK)
+
+
+
+1. `assembleDebug` → `tableflow-kiosk.apk` na Vercel (`public/releases/`).
+2. Stejný soubor → AirDroid **Organization App Library** → Update → Force Install + Autorun App.
+3. Native tablety (pokud máte) → navíc Admin → **Aktualizovat APK**.
+
+Párování restaurace/stolu **přežije** update APK — drží server pod `deviceId` tabletu.
+
+
+
+## Device Owner (native kiosk — bez AirDroid)
 
 
 
