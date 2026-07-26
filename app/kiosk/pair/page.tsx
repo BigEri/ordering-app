@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { KioskStaffBackButton } from "../../../components/kiosk/KioskStaffBackButton";
@@ -21,7 +22,7 @@ function formatCountdown(msLeft: number): string {
   return `${m}:${String(r).padStart(2, "0")}`;
 }
 
-export default function KioskPairPage() {
+function KioskPairPageInner() {
   const sp = useSearchParams();
   const deviceId = (sp.get("deviceId") ?? "").trim();
 
@@ -205,3 +206,14 @@ export default function KioskPairPage() {
   );
 }
 
+export default function KioskPairPage() {
+  return (
+    <Suspense
+      fallback={
+        <main style={{ padding: 48, textAlign: "center" }}>Načítám párování…</main>
+      }
+    >
+      <KioskPairPageInner />
+    </Suspense>
+  );
+}
