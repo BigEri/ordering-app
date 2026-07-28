@@ -50,11 +50,16 @@ export type WelcomeSlotAssignment = {
   uniqueCount: number;
   requiredCount: number;
   sufficient: boolean;
+  /** Skutečně použitý layout (může být zúžený, když chybí fotky). */
+  layoutPreset: WelcomeLayoutPreset;
 };
 
 /**
  * Přiřadí zdroje pro viditelné sloty — nikdy neopakuje stejnou URL ve dvou slotech najednou.
  * rotateOffset posouvá výběr při rotaci slideshow.
+ *
+ * Když není dost fotek pro zvolený preset, layout se zúží (fade / split), ať nevznikají
+ * černé prázdné panely přes půlku tabletu v kiosku.
  */
 export function assignWelcomeShowcaseSlots(
   urls: readonly string[],
@@ -62,21 +67,28 @@ export function assignWelcomeShowcaseSlots(
   rotateOffset = 0,
 ): WelcomeSlotAssignment {
   const unique = uniqueWelcomeImageUrls(urls);
-  const requiredCount = welcomeLayoutVisibleSlotCount(preset);
-  const sufficient = unique.length >= requiredCount;
+  let effectivePreset = preset;
+  if (unique.length < welcomeLayoutVisibleSlotCount(preset)) {
+    if (unique.length <= 1) effectivePreset = "fade";
+    else if (unique.length === 2) effectivePreset = "split_half";
+    else if (unique.length === 3 && preset === "grid_four") effectivePreset = "mosaic";
+  }
+
+  const requiredCount = welcomeLayoutVisibleSlotCount(effectivePreset);
+  const sufficient = unique.length >= welcomeLayoutVisibleSlotCount(preset);
   const slots: string[] = [];
 
   for (let i = 0; i < requiredCount; i++) {
-    if (unique.length >= requiredCount) {
-      slots.push(unique[(rotateOffset + i) % unique.length]!);
-    } else if (i < unique.length) {
-      slots.push(unique[i]!);
-    } else {
+    if (unique.length === 0) {
       slots.push("");
+    } else if (unique.length >= requiredCount) {
+      slots.push(unique[(rotateOffset + i) % unique.length]!);
+    } else {
+      slots.push(unique[i % unique.length]!);
     }
   }
 
-  return { slots, uniqueCount: unique.length, requiredCount, sufficient };
+  return { slots, uniqueCount: unique.length, requiredCount, sufficient, layoutPreset: effectivePreset };
 }
 
 export function welcomeLayoutInsufficientMessage(

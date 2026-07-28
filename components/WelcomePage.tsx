@@ -183,7 +183,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   }, [effectiveGalleryUrls.length]);
 
   const slotAssignment = assignWelcomeShowcaseSlots(effectiveGalleryUrls, layoutPreset, imageIdx);
-  const { slots, sufficient, uniqueCount } = slotAssignment;
+  const { slots, sufficient, uniqueCount, layoutPreset: renderPreset } = slotAssignment;
   const insufficientMsg = !sufficient ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueCount) : null;
   const src0 = slots[0] ?? "";
   const src1 = slots[1] ?? "";
@@ -229,20 +229,20 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   const motionStatic = reduceMotion ? " welcomePhotoMosaic--static" : "";
 
   let media: React.ReactNode;
-  if (layoutPreset === "fade") {
+  if (renderPreset === "fade") {
     media = (
       <div className={`welcomePhotoFade${motionStatic}`} role="presentation">
         <div className="welcomePhotoFadeCell">{renderCell(src0, { sizes: "100vw", priority: imageIdx === 0, animKey: `${src0}-${imageIdx}-fade`, vignette: "main" })}</div>
       </div>
     );
-  } else if (layoutPreset === "split_half") {
+  } else if (renderPreset === "split_half") {
     media = (
       <div className={`welcomePhotoSplit${motionStatic}`} role="presentation">
         {renderCell(src0, { sizes: "50vw", priority: imageIdx === 0, animKey: `${src0}-${imageIdx}-sh0` })}
         {renderCell(src1, { sizes: "50vw", animKey: `${src1}-${imageIdx}-sh1` })}
       </div>
     );
-  } else if (layoutPreset === "grid_four") {
+  } else if (renderPreset === "grid_four") {
     media = (
       <div className={`welcomePhotoGridFour${motionStatic}`} role="presentation">
         {renderCell(src0, { sizes: "50vw", priority: imageIdx === 0, animKey: `${src0}-${imageIdx}-g0` })}
