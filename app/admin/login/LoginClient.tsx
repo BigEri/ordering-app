@@ -43,7 +43,9 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
         Přihlášení pro správu vaší restaurace.
       </p>
 
-      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
+      <KioskModeSwitch />
+
+      <form onSubmit={onSubmit} style={{ display: "grid", gap: 12, marginTop: 16 }}>
         <label style={{ display: "grid", gap: 6 }}>
           <span>Email</span>
           <input
@@ -88,8 +90,6 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
           {err}
         </p>
       ) : null}
-
-      <KioskModeSwitch />
     </main>
     <TableflowBrand className="tableflowBrand--loginCorner" />
     </div>
