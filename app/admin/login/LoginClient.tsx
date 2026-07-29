@@ -27,7 +27,10 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
         setErr(data.error ?? "Nepodařilo se přihlásit. Zkontrolujte e‑mail a heslo a zkuste to znovu.");
         return;
       }
-      window.location.href = nextPath;
+      // Dát WebView čas uložit Set-Cookie, pak tvrdý navigační reload.
+      window.setTimeout(() => {
+        window.location.replace(nextPath);
+      }, 50);
     } catch {
       setErr("Nepodařilo se přihlásit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     } finally {
