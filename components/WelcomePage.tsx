@@ -1,12 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import * as React from "react";
 
 import { KioskAnchor } from "./kiosk/KioskAnchor";
 import { KioskStaffBackButton } from "./kiosk/KioskStaffBackButton";
+import { isKioskWebView } from "../lib/kiosk/isKioskWebView";
 import { buildKioskMenuUrl, kioskNavigate } from "../lib/kiosk/nav";
-
 import type { WelcomeLayoutPreset } from "../lib/menu/welcomeLayoutPreset";
 import {
   assignWelcomeShowcaseSlots,
@@ -54,15 +53,13 @@ function baseGalleryFromProps(showcaseImageUrls: readonly string[]): string[] {
   return [];
 }
 
-/** Lokální cesty přes `next/image`, externí URL jako `<img>` (bez konfigurace domén). */
+/** Lokální i externí fotky přes `<img>` — ve WebView kiosku spolehlivější než next/image. */
 function ShowcaseFillImage({
   src,
   className,
-  priority,
-  sizes,
   reduceMotion,
   animKey,
-  onExternalError,
+  onError,
 }: {
   src: string;
   className: string;
@@ -70,31 +67,17 @@ function ShowcaseFillImage({
   sizes: string;
   reduceMotion: boolean;
   animKey: string;
-  onExternalError?: (src: string) => void;
+  onError?: (src: string) => void;
 }) {
-  const isLocal = src.startsWith("/");
-  const cls = className;
-  if (isLocal) {
-    return (
-      <Image
-        key={reduceMotion ? src : animKey}
-        src={src}
-        alt=""
-        fill
-        sizes={sizes}
-        className={cls}
-        priority={priority}
-      />
-    );
-  }
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
       key={reduceMotion ? src : animKey}
       src={src}
       alt=""
-      className={cls}
+      className={className}
       style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
-      onError={() => onExternalError?.(src)}
+      onError={() => onError?.(src)}
     />
   );
 }
@@ -130,19 +113,24 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   // Random shuffle v initial state by způsobil hydration mismatch (server a klient vygenerují jiné pořadí).
   // Proto je initial pořadí deterministické a shuffle děláme až po mountu v effectu.
   const [galleryUrls, setGalleryUrls] = React.useState<string[]>(() => baseGalleryFromProps(showcaseImageUrls));
-  const [failedExternalUrls, setFailedExternalUrls] = React.useState<Set<string>>(() => new Set());
+  const [failedUrls, setFailedUrls] = React.useState<Set<string>>(() => new Set());
   const [reduceMotion, setReduceMotion] = React.useState(false);
   const [imageIdx, setImageIdx] = React.useState(0);
+  const [kioskUa, setKioskUa] = React.useState(false);
+
+  React.useEffect(() => {
+    setKioskUa(isKioskWebView());
+  }, []);
 
   React.useEffect(() => {
     setGalleryUrls(shuffleUrls(baseGalleryFromProps(showcaseImageUrls)));
-    setFailedExternalUrls(new Set());
+    setFailedUrls(new Set());
     setImageIdx(0);
   }, [gallerySeed, layoutPreset, showcaseImageUrls]);
 
-  const onExternalError = React.useCallback((src: string) => {
-    if (!src || src.startsWith("/")) return;
-    setFailedExternalUrls((prev) => {
+  const onImageError = React.useCallback((src: string) => {
+    if (!src) return;
+    setFailedUrls((prev) => {
       if (prev.has(src)) return prev;
       const next = new Set(prev);
       next.add(src);
@@ -151,10 +139,13 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   }, []);
 
   const effectiveGalleryUrls = React.useMemo(() => {
-    const filtered = galleryUrls.filter((u) => (u.startsWith("/") ? true : !failedExternalUrls.has(u)));
+    const filtered = galleryUrls.filter((u) => !failedUrls.has(u));
     if (filtered.length > 0) return filtered;
-    return baseGalleryFromProps(showcaseImageUrls);
-  }, [failedExternalUrls, galleryUrls, showcaseImageUrls]);
+    return baseGalleryFromProps(showcaseImageUrls).filter((u) => !failedUrls.has(u));
+  }, [failedUrls, galleryUrls, showcaseImageUrls]);
+
+  // Na tabletu (kiosk APK) vždy celá plocha — mozaika tam nechává černé díry.
+  const presetForRender: WelcomeLayoutPreset = kioskUa ? "fade" : layoutPreset;
 
   React.useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -182,9 +173,10 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
     };
   }, [effectiveGalleryUrls.length]);
 
-  const slotAssignment = assignWelcomeShowcaseSlots(effectiveGalleryUrls, layoutPreset, imageIdx);
+  const slotAssignment = assignWelcomeShowcaseSlots(effectiveGalleryUrls, presetForRender, imageIdx);
   const { slots, sufficient, uniqueCount, layoutPreset: renderPreset } = slotAssignment;
-  const insufficientMsg = !sufficient ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueCount) : null;
+  const insufficientMsg =
+    !kioskUa && !sufficient ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueCount) : null;
   const src0 = slots[0] ?? "";
   const src1 = slots[1] ?? "";
   const src2 = slots[2] ?? "";
@@ -218,7 +210,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
           reduceMotion={reduceMotion}
           animKey={opts.animKey}
           className={`welcomePhotoImg${anim}`}
-          onExternalError={onExternalError}
+          onError={onImageError}
         />
         {opts.vignette === "main" ? <div className="welcomePhotoVignette welcomePhotoVignette--main" aria-hidden="true" /> : null}
         <div className="welcomePhotoFrameLine" aria-hidden="true" />
