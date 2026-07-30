@@ -68,7 +68,7 @@ export async function middleware(req: NextRequest) {
 
   const rid = (req.cookies.get(ACTIVE_RESTAURANT_COOKIE)?.value ?? "").trim();
 
-  // Legacy top-level Devices / Welcome → restaurant-scoped tabs (cookie = active/own restaurant).
+  // Legacy top-level Devices / Welcome / Users → restaurant-scoped tabs (cookie = active/own restaurant).
   if (pathname === "/admin/devices" || pathname === "/admin/devices/") {
     const url = req.nextUrl.clone();
     if (rid) {
@@ -85,6 +85,17 @@ export async function middleware(req: NextRequest) {
     if (rid) {
       url.pathname = `/admin/restaurants/${encodeURIComponent(rid)}`;
       url.searchParams.set("tab", "welcome");
+    } else {
+      url.pathname = "/admin";
+      url.search = "";
+    }
+    return NextResponse.redirect(url);
+  }
+  if (pathname === "/admin/users" || pathname === "/admin/users/") {
+    const url = req.nextUrl.clone();
+    if (rid) {
+      url.pathname = `/admin/restaurants/${encodeURIComponent(rid)}`;
+      url.searchParams.set("tab", "users");
     } else {
       url.pathname = "/admin";
       url.search = "";

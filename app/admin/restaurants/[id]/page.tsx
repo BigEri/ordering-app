@@ -4,16 +4,13 @@ import { useParams, usePathname, useSearchParams } from "next/navigation";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 import { DevicesAdminClient } from "../../../../components/admin/DevicesAdminClient";
+import { UsersAdminClient } from "../../../../components/admin/UsersAdminClient";
 import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
 import { Suspense } from "react";
 import * as React from "react";
 
 type RestaurantDetailResponse =
   | { ok: true; restaurant: { id: string; name: string; createdAtIso: string } }
-  | { ok: false; error: string };
-
-type RestaurantUsersResponse =
-  | { ok: true; restaurant: { id: string; name: string }; users: { id: string; email: string; globalRole: string; role: string }[] }
   | { ok: false; error: string };
 
 type DotykackaSettingsResponse =
@@ -52,7 +49,6 @@ function RestaurantDetailInner() {
   const tab = tabFromSearch(searchParams.get("tab"));
 
   const [detail, setDetail] = React.useState<RestaurantDetailResponse | null>(null);
-  const [users, setUsers] = React.useState<RestaurantUsersResponse | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [isSuper, setIsSuper] = React.useState(false);
   const [nameDraft, setNameDraft] = React.useState("");
@@ -99,16 +95,10 @@ function RestaurantDetailInner() {
     if (!id) return;
     setErr(null);
     try {
-      const [dR, uR] = await Promise.all([
-        fetch(`/api/admin/restaurants/${id}`, { cache: "no-store" }),
-        fetch(`/api/admin/restaurants/${id}/users`, { cache: "no-store" }),
-      ]);
+      const dR = await fetch(`/api/admin/restaurants/${id}`, { cache: "no-store" });
       const dJ = (await dR.json()) as RestaurantDetailResponse;
-      const uJ = (await uR.json()) as RestaurantUsersResponse;
       setDetail(dJ);
-      setUsers(uJ);
       if (!dR.ok || !dJ.ok) setErr(!dR.ok ? "Nelze načíst detail restaurace." : ("error" in dJ ? dJ.error : "Chyba"));
-      if (!uR.ok || !uJ.ok) setErr(!uR.ok ? "Nelze načíst uživatele restaurace." : ("error" in uJ ? uJ.error : "Chyba"));
     } catch {
       setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
     }
@@ -1017,44 +1007,13 @@ function RestaurantDetailInner() {
         </>
       ) : null}
 
-      {tab === "users" ? (
+      {tab === "users" && id ? (
         <section style={{ marginTop: 16 }}>
-          <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Uživatelé restaurace</h2>
-          {users && users.ok ? (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, border: "1px solid var(--border)", borderRadius: 12 }}>
-                <thead>
-                  <tr style={{ background: "var(--panel)" }}>
-                    <th style={{ textAlign: "left", padding: "10px 12px" }}>Email</th>
-                    <th style={{ textAlign: "left", padding: "10px 12px" }}>Role v restauraci</th>
-                    <th style={{ textAlign: "left", padding: "10px 12px" }}>Globální</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.users.map((u) => (
-                    <tr key={u.id} style={{ borderTop: "1px solid var(--border)" }}>
-                      <td style={{ padding: "10px 12px" }}>
-                        <strong>{u.email}</strong>
-                      </td>
-                      <td style={{ padding: "10px 12px" }}>
-                        {u.role === "RESTAURANT_ADMIN" ? "Vedoucí" : u.role === "STAFF" ? "Personál" : u.role}
-                      </td>
-                      <td style={{ padding: "10px 12px" }}>{u.globalRole}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <p className="textMuted">Načítání…</p>
-          )}
-          <p className="textMuted2" style={{ marginTop: 12, fontSize: 13 }}>
-            Přidání účtů probíhá v sekci{" "}
-            <a href="/admin/users" className="adminBreadcrumb__link">
-              Uživatelé
-            </a>{" "}
-            (pro vaši restauraci).
-          </p>
+          <UsersAdminClient
+            restaurantId={id}
+            restaurantName={detail && detail.ok ? detail.restaurant.name : null}
+            embedded
+          />
         </section>
       ) : null}
 

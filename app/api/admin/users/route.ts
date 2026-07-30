@@ -2,18 +2,45 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
-import { requireActiveRestaurantId, requireAdminSession } from "../../../../lib/server/adminGuard";
+import { requireAdminSession, type AdminSession } from "../../../../lib/server/adminGuard";
 import { PASSWORD_MIN_LENGTH, isPasswordLongEnough } from "../../../../lib/server/passwordPolicy";
 import { nowIso, type MembershipRole } from "../../../../lib/server/db";
 import { prisma } from "../../../../lib/server/prisma";
+import {
+  activeRestaurantCookieName,
+  userHasRestaurantAccess,
+} from "../../../../lib/server/auth";
+import { cookieValueFromHeader } from "../../../../lib/server/httpCookie";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Prefer explicit restaurant from URL/body (superadmin viewing A while cookie may be B),
+ * else active `oa_rid`. Non-super must have membership access.
+ */
+async function resolveRestaurantIdForUsers(
+  session: AdminSession,
+  cookieHeader: string | null,
+  fromExplicit: string,
+): Promise<string> {
+  const fromCookie = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
+  const rid = fromExplicit.trim() || fromCookie;
+  if (!rid) throw new Error("NO_RESTAURANT");
+  if (session.globalRole !== "SUPER_ADMIN") {
+    const access = await userHasRestaurantAccess(session.userId, rid);
+    if (!access.ok) throw new Error("FORBIDDEN");
+  }
+  return rid;
+}
 
 export async function GET(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
     const session = await requireAdminSession(cookieHeader);
-    const restaurantId = await requireActiveRestaurantId(session, cookieHeader);
+    const url = new URL(req.url);
+    const fromQuery = (url.searchParams.get("restaurantId") ?? "").trim();
+    const restaurantId = await resolveRestaurantIdForUsers(session, cookieHeader, fromQuery);
+
     const rows = await prisma.membership.findMany({
       where: { restaurantId },
       select: { role: true, user: { select: { id: true, email: true, globalRole: true } } },
@@ -50,7 +77,6 @@ export async function POST(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
     const session = await requireAdminSession(cookieHeader);
-    const restaurantId = await requireActiveRestaurantId(session, cookieHeader);
 
     let body: unknown;
     try {
@@ -65,6 +91,7 @@ export async function POST(req: Request) {
     const email = typeof o.email === "string" ? o.email.trim() : "";
     const password = typeof o.password === "string" ? o.password : "";
     const role = typeof o.role === "string" ? o.role : "";
+    const fromBody = typeof o.restaurantId === "string" ? o.restaurantId.trim() : "";
     if (!email || !password || (role !== "RESTAURANT_ADMIN" && role !== "STAFF")) {
       return NextResponse.json({ ok: false, error: "Missing email/password/role" }, { status: 400 });
     }
@@ -74,6 +101,8 @@ export async function POST(req: Request) {
         { status: 400 },
       );
     }
+
+    const restaurantId = await resolveRestaurantIdForUsers(session, cookieHeader, fromBody);
 
     // Only restaurant admins (or super admin) can manage users.
     if (session.globalRole !== "SUPER_ADMIN") {
@@ -125,10 +154,6 @@ export async function DELETE(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
     const session = await requireAdminSession(cookieHeader);
-    const restaurantId = await requireActiveRestaurantId(session, cookieHeader);
-    if (!restaurantId) {
-      return NextResponse.json({ ok: false, error: "No restaurant selected" }, { status: 400 });
-    }
 
     let body: unknown;
     try {
@@ -141,9 +166,12 @@ export async function DELETE(req: Request) {
     }
     const o = body as Record<string, unknown>;
     const userId = typeof o.userId === "string" ? o.userId.trim() : "";
+    const fromBody = typeof o.restaurantId === "string" ? o.restaurantId.trim() : "";
     if (!userId) {
       return NextResponse.json({ ok: false, error: "Missing userId" }, { status: 400 });
     }
+
+    const restaurantId = await resolveRestaurantIdForUsers(session, cookieHeader, fromBody);
 
     if (userId === session.userId) {
       return NextResponse.json({ ok: false, error: "Cannot remove yourself" }, { status: 400 });
@@ -190,4 +218,3 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ ok: false, error: "Error" }, { status: 500 });
   }
 }
-

@@ -312,9 +312,11 @@ export default function AdminHomePage() {
               <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}?tab=devices`}>
                 Zařízení
               </AdminChipLink>
+              <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}?tab=users`}>
+                Uživatelé
+              </AdminChipLink>
             </>
           ) : null}
-          <AdminChipLink href="/admin/users">Uživatelé</AdminChipLink>
           <AdminChipLink href="/admin/account">Můj účet</AdminChipLink>
         </div>
         {me && me.ok && me.session.globalRole === "SUPER_ADMIN" ? (

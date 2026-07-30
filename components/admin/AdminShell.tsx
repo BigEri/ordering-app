@@ -108,8 +108,6 @@ export function AdminShell({
       if (pathname.startsWith("/admin/menu/translations")) {
         items.push({ label: "Překlady", href: undefined });
       }
-    } else if (pathname.startsWith("/admin/users")) {
-      items.push({ label: "Uživatelé", href: undefined });
     }
     return items;
   }, [pathname, restaurantNameById, isSuper]);
@@ -192,7 +190,6 @@ export function AdminShell({
             active={pathname.startsWith("/admin/menu") && !pathname.startsWith("/admin/menu/translations")}
           />
           <AdminNavLink href="/admin/menu/translations" label="Překlady menu" active={pathname.startsWith("/admin/menu/translations")} />
-          <AdminNavLink href="/admin/users" label="Uživatelé" active={pathname.startsWith("/admin/users")} />
           <a className="adminNavLink" href={publicMenuUrlFromAdmin()} style={{ textDecoration: "none" }}>
             Veřejné menu ↗
           </a>
