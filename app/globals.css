@@ -296,7 +296,7 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
   display: grid;
   grid-template-columns: minmax(0, 1.42fr) minmax(0, 0.92fr);
   grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
-  gap: clamp(6px, 1.2vw, 10px);
+  gap: 0;
   width: 100%;
   height: 100%;
   min-height: 100%;
@@ -450,7 +450,7 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
   inset: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: clamp(6px, 1.2vw, 10px);
+  gap: 0;
   width: 100%;
   height: 100%;
   min-height: 100%;
@@ -467,14 +467,14 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
   }
 }
 
-/* Čtyři čtvrtiny (2×2) */
+/* Čtyři čtvrtiny (2×2) — bez mezer, ať neutíkají „průhledné linky“ přes pozadí. */
 .welcomePhotoGridFour {
   position: absolute;
   inset: 0;
   display: grid;
   grid-template-columns: 1fr 1fr;
   grid-template-rows: 1fr 1fr;
-  gap: clamp(6px, 1.2vw, 10px);
+  gap: 0;
   width: 100%;
   height: 100%;
   min-height: 100%;
@@ -503,12 +503,7 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
 }
 
 .welcomePhotoFrameLine {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
-  pointer-events: none;
-  z-index: 2;
+  display: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
