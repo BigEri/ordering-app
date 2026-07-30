@@ -76,6 +76,14 @@ function RestaurantDetailInner() {
   const [localesSavedMsg, setLocalesSavedMsg] = React.useState<string | null>(null);
   const [deleting, setDeleting] = React.useState(false);
 
+  const [pinConfigured, setPinConfigured] = React.useState<boolean | null>(null);
+  const [pinDraft, setPinDraft] = React.useState("");
+  const [pinConfirm, setPinConfirm] = React.useState("");
+  const [pinLoading, setPinLoading] = React.useState(false);
+  const [pinSaving, setPinSaving] = React.useState(false);
+  const [pinMsg, setPinMsg] = React.useState<string | null>(null);
+  const [pinErr, setPinErr] = React.useState<string | null>(null);
+
   const load = React.useCallback(async () => {
     if (!id) return;
     setErr(null);
@@ -125,6 +133,72 @@ function RestaurantDetailInner() {
     if (tab !== "overview") return;
     void loadLocales();
   }, [tab, loadLocales]);
+
+  const loadKioskPin = React.useCallback(async () => {
+    if (!id) return;
+    setPinLoading(true);
+    setPinErr(null);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(id)}/kiosk-service-pin`, {
+        cache: "no-store",
+      });
+      const j = (await r.json()) as { ok?: boolean; configured?: boolean; error?: string };
+      if (!r.ok || !j.ok) {
+        setPinErr(j.error ?? "Nelze načíst stav servisního PIN.");
+        setPinConfigured(null);
+        return;
+      }
+      setPinConfigured(Boolean(j.configured));
+    } catch {
+      setPinErr("Nepodařilo se načíst stav PIN (připojení).");
+      setPinConfigured(null);
+    } finally {
+      setPinLoading(false);
+    }
+  }, [id]);
+
+  React.useEffect(() => {
+    if (tab !== "overview") return;
+    void loadKioskPin();
+  }, [tab, loadKioskPin]);
+
+  const onSaveKioskPin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    setPinMsg(null);
+    setPinErr(null);
+    const pin = pinDraft.trim();
+    const confirm = pinConfirm.trim();
+    if (!/^\d{4,12}$/.test(pin)) {
+      setPinErr("PIN musí mít 4–12 číslic.");
+      return;
+    }
+    if (pin !== confirm) {
+      setPinErr("PIN a potvrzení se neshodují.");
+      return;
+    }
+    setPinSaving(true);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(id)}/kiosk-service-pin`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const j = (await r.json()) as { ok?: boolean; configured?: boolean; error?: string };
+      if (!r.ok || !j.ok) {
+        setPinErr(j.error ?? "Uložení PIN selhalo.");
+        return;
+      }
+      setPinConfigured(true);
+      setPinDraft("");
+      setPinConfirm("");
+      setPinMsg("Servisní PIN uložen. Spárované tablety ho stáhnou při dalším pollu (~15 s).");
+    } catch {
+      setPinErr("Nepodařilo se uložit PIN (připojení).");
+    } finally {
+      setPinSaving(false);
+    }
+  };
 
   const loadDotykacka = React.useCallback(async () => {
     if (!id) return;
@@ -461,6 +535,91 @@ function RestaurantDetailInner() {
                 {savingName ? "…" : "Uložit"}
               </button>
             </form>
+          </section>
+
+          <section
+            style={{
+              marginTop: 16,
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              padding: 16,
+              background: "var(--panel)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Servisní PIN tabletu</h2>
+            <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
+              PIN pro dlouhý stisk na kiosk tabletu (Host → Admin). Z tabletu se měnit nedá — jen tady jako
+              superadmin. Dokud nenastavíš vlastní, tablety používají výchozí <code>2580</code>.
+            </p>
+            {pinLoading ? (
+              <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
+                …
+              </p>
+            ) : (
+              <p style={{ margin: "0 0 12px", fontSize: 13 }}>
+                Stav:{" "}
+                {pinConfigured === true ? (
+                  <strong>vlastní PIN nastaven</strong>
+                ) : pinConfigured === false ? (
+                  <span className="textMuted2">výchozí 2580</span>
+                ) : (
+                  <span className="textMuted2">neznámý</span>
+                )}
+              </p>
+            )}
+            <form onSubmit={(e) => void onSaveKioskPin(e)} style={{ display: "grid", gap: 12, maxWidth: 360 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>Nový PIN (4–12 číslic)</span>
+                <input
+                  className="chip"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  style={{
+                    padding: "10px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    background: "var(--bg-elevated)",
+                    color: "var(--text)",
+                  }}
+                  value={pinDraft}
+                  onChange={(e) => setPinDraft(e.target.value)}
+                  maxLength={12}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>Potvrzení PIN</span>
+                <input
+                  className="chip"
+                  type="password"
+                  inputMode="numeric"
+                  autoComplete="new-password"
+                  style={{
+                    padding: "10px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    background: "var(--bg-elevated)",
+                    color: "var(--text)",
+                  }}
+                  value={pinConfirm}
+                  onChange={(e) => setPinConfirm(e.target.value)}
+                  maxLength={12}
+                />
+              </label>
+              <button type="submit" className="btnPrimary" disabled={pinSaving} style={{ cursor: "pointer", justifySelf: "start" }}>
+                {pinSaving ? "…" : "Uložit PIN"}
+              </button>
+            </form>
+            {pinMsg ? (
+              <p role="status" style={{ margin: "12px 0 0", fontSize: 13, color: "var(--success, #86efac)" }}>
+                {pinMsg}
+              </p>
+            ) : null}
+            {pinErr ? (
+              <p role="alert" style={{ margin: "12px 0 0", fontSize: 13, color: "#fecaca" }}>
+                {pinErr}
+              </p>
+            ) : null}
           </section>
 
           <section

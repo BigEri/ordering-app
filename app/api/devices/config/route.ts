@@ -8,6 +8,7 @@ import {
 } from "../../../../lib/server/deviceRegistry";
 import { getKioskAppRelease } from "../../../../lib/server/kioskAppRelease";
 import { ensureKioskDeviceSecret } from "../../../../lib/server/kioskDeviceBindings";
+import { prisma } from "../../../../lib/server/prisma";
 
 /** Konfigurace stolu se mění; bez toho tablety agresivně cachují GET a nevidí změny z adminu. */
 export const dynamic = "force-dynamic";
@@ -42,7 +43,19 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const deviceSecret = await ensureKioskDeviceSecret(deviceId);
+  const [deviceSecret, restaurantPin] = await Promise.all([
+    ensureKioskDeviceSecret(deviceId),
+    t.restaurantId
+      ? prisma.restaurant.findUnique({
+          where: { id: t.restaurantId },
+          select: { kioskServicePinSalt: true, kioskServicePinHash: true },
+        })
+      : Promise.resolve(null),
+  ]);
+
+  const servicePinSalt = restaurantPin?.kioskServicePinSalt?.trim() || null;
+  const servicePinHash = restaurantPin?.kioskServicePinHash?.trim() || null;
+  const hasServicePin = Boolean(servicePinSalt && servicePinHash);
 
   return NextResponse.json(
     {
@@ -56,6 +69,7 @@ export async function GET(req: NextRequest) {
       reloadNonce,
       apkUpdateNonce,
       appRelease,
+      ...(hasServicePin ? { servicePinSalt, servicePinHash } : {}),
     },
     { headers: NO_STORE },
   );

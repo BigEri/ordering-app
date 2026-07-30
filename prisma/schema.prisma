@@ -12,6 +12,10 @@ model Restaurant {
   name        String
   createdAtIso String
 
+  /** Servisní PIN kiosk tabletu — jen superadmin; ověření offline přes salt+SHA-256. */
+  kioskServicePinSalt String?
+  kioskServicePinHash String?
+
   memberships         Membership[]
   locales             RestaurantLocale[]
   menuImages          MenuImage[]
