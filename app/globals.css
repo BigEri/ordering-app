@@ -256,6 +256,14 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
+  /*
+   * Viditelné pozadí už během načítání fotky i pokud WebView její požadavek
+   * odmítne. Tmavý scrim pak nezanechá prázdnou černou obrazovku.
+   */
+  background:
+    radial-gradient(circle at 16% 12%, rgba(251, 191, 36, 0.48), transparent 34%),
+    radial-gradient(circle at 88% 80%, rgba(190, 100, 42, 0.5), transparent 38%),
+    linear-gradient(145deg, #3d2518 0%, #86502c 52%, #211610 100%);
 }
 
 .welcomeMediaScrim {
@@ -269,6 +277,15 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
     rgba(7, 9, 16, 0.82) 100%
   );
   pointer-events: none;
+}
+
+.welcomeFullscreenMedia--fallback .welcomeMediaScrim {
+  background: linear-gradient(
+    180deg,
+    rgba(25, 15, 10, 0.2) 0%,
+    rgba(25, 15, 10, 0.4) 45%,
+    rgba(25, 15, 10, 0.62) 100%
+  );
 }
 
 /* Tři snímky: velký vlevo, dva menší vpravo — vyplní celý viewport */
@@ -286,13 +303,17 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
 }
 
 .welcomePhotoCell--empty {
-  background: rgba(8, 12, 22, 0.92);
+  background:
+    radial-gradient(circle at 18% 14%, rgba(251, 191, 36, 0.34), transparent 35%),
+    linear-gradient(145deg, #51301d, #9a5a2e 56%, #2b1a12);
 }
 
 .welcomePhotoEmptyFill {
   position: absolute;
   inset: 0;
-  background: linear-gradient(145deg, rgba(30, 38, 58, 0.95), rgba(12, 16, 28, 0.98));
+  background:
+    radial-gradient(circle at 72% 22%, rgba(255, 221, 145, 0.28), transparent 32%),
+    linear-gradient(145deg, #5b351e, #a45f30 58%, #2c1a12);
 }
 
 .welcomeLayoutWarn {
@@ -315,7 +336,8 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
   overflow: hidden;
   border-radius: 0;
   border: none;
-  background: rgba(0, 0, 0, 0.2);
+  /* Stejný teplý podklad je vidět před dokončením načtení <img>. */
+  background: linear-gradient(145deg, #57321d, #8e522c 58%, #291912);
 }
 
 .welcomePhotoCell--main {
@@ -362,6 +384,7 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
 
 .welcomePhotoImg {
   object-fit: cover;
+  opacity: 1;
 }
 
 .welcomePhotoImg--enter {
@@ -378,11 +401,9 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
 
 @keyframes welcomePhotoIn {
   from {
-    opacity: 0;
     transform: scale(1.05);
   }
   to {
-    opacity: 1;
     transform: scale(1);
   }
 }

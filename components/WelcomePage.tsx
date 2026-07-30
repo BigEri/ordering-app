@@ -269,7 +269,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
 
   return (
     <main className="welcomePage">
-      <div className="welcomeFullscreenMedia" aria-hidden="true">
+      <div className={`welcomeFullscreenMedia${effectiveGalleryUrls.length === 0 ? " welcomeFullscreenMedia--fallback" : ""}`} aria-hidden="true">
         {media}
         <div className="welcomeMediaScrim" aria-hidden="true" />
       </div>
