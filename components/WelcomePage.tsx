@@ -121,7 +121,6 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   React.useEffect(() => {
     setKioskUa(isKioskWebView());
   }, []);
-
   React.useEffect(() => {
     setGalleryUrls(shuffleUrls(baseGalleryFromProps(showcaseImageUrls)));
     setFailedUrls(new Set());
