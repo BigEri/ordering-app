@@ -307,7 +307,7 @@ export default function AdminHomePage() {
           {me && me.ok && me.activeRestaurantId ? (
             <>
               <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}?tab=welcome`}>
-                Úvodní stránka
+                Úvodní obrazovka
               </AdminChipLink>
               <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}?tab=devices`}>
                 Zařízení

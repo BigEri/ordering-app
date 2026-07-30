@@ -525,7 +525,7 @@ function RestaurantDetailInner() {
       ) : null}
       {contextSync === "done" ? (
         <div className="adminRestaurantContextBar">
-          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Zařízení, úvodní stránka a uživatelé níže platí
+          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Zařízení, úvodní obrazovka a uživatelé níže platí
           pro tuto provozovnu.
         </div>
       ) : null}
@@ -588,7 +588,7 @@ function RestaurantDetailInner() {
             role="tab"
             aria-selected={tab === "welcome"}
           >
-            Úvodní
+            Úvodní obrazovka
           </a>
         </li>
         <li style={{ display: "contents" }}>
@@ -847,7 +847,7 @@ function RestaurantDetailInner() {
               </button>
               <AdminChipLink href={tabHref("users")}>Uživatelé</AdminChipLink>
               <AdminChipLink href={tabHref("devices")}>Zařízení</AdminChipLink>
-              <AdminChipLink href={tabHref("welcome")}>Úvodní stránka</AdminChipLink>
+              <AdminChipLink href={tabHref("welcome")}>Úvodní obrazovka</AdminChipLink>
               <AdminChipLink href={tabHref("dotykacka")}>Dotykačka</AdminChipLink>
               {isSuper ? <AdminChipLink href="/admin/restaurants">← Seznam restaurací</AdminChipLink> : null}
             </div>
@@ -1030,7 +1030,11 @@ function RestaurantDetailInner() {
 
       {tab === "welcome" && id ? (
         <section style={{ marginTop: 16 }}>
-          <WelcomeSettingsClient restaurantId={id} embedded />
+          <WelcomeSettingsClient
+            restaurantId={id}
+            restaurantName={detail && detail.ok ? detail.restaurant.name : name}
+            embedded
+          />
         </section>
       ) : null}
 

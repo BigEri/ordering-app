@@ -89,13 +89,13 @@ html {
 }
 
 /* Úvodní stránka: jedna obrazovka bez vertikálního scrollu (padding + 100vh jinak přetéká) */
-html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))),
-html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
+html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDock))),
+html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDock))) body {
   overflow: hidden;
   height: 100%;
 }
 
-.container:has(.welcomePage) {
+.container:has(.welcomePage:not(.welcomePage--preview)) {
   max-width: none;
   margin: 0;
   padding: 0;
@@ -248,6 +248,73 @@ html:has(.welcomePage:not(:has(.welcomeKioskPairingDock))) body {
   max-height: 100%;
   margin: 0;
   overflow: hidden;
+}
+
+/* Admin: živý náhled kiosku (tablet) vedle editoru */
+.welcomeAdminPreview {
+  position: sticky;
+  top: 12px;
+  align-self: start;
+}
+
+.welcomeAdminPreviewLabel {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.welcomeAdminPreviewHint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.welcomeAdminPreviewFrame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: #0b0f18;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.35);
+}
+
+.welcomeAdminPreviewStage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.welcomeAdminPreviewScaler {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1280px;
+  height: 800px;
+  transform-origin: top left;
+  pointer-events: auto;
+}
+
+.welcomeAdminPreviewScaler .welcomePage {
+  width: 1280px;
+  height: 800px;
+}
+
+.welcomeAdminEditorLayout {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr);
+}
+
+@media (min-width: 1100px) {
+  .welcomeAdminEditorLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 440px);
+  }
 }
 
 /* Plné pozadí: fotky přes celou obrazovku */

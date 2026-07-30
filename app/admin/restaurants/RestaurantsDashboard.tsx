@@ -35,7 +35,7 @@ function OnboardingChecklist({ item }: { item: RestaurantOverviewItem }) {
   const steps: { key: keyof RestaurantOverviewItem["onboarding"]; label: string }[] = [
     { key: "dotykacka", label: "Dotykačka + mapa" },
     { key: "device", label: "Tablet spárovaný" },
-    { key: "welcome", label: "Úvodní stránka" },
+    { key: "welcome", label: "Úvodní obrazovka" },
     { key: "menuPhoto", label: "Fotka v menu" },
   ];
   return (
@@ -401,7 +401,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                         disabled={actionsDisabled}
                         style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                       >
-                        {busy ? "…" : "Úvodní"}
+                        {busy ? "…" : "Úvodní obrazovka"}
                       </button>
                       <button
                         type="button"

@@ -93,6 +93,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   actions,
   showcaseImageUrls,
   layoutPreset,
+  previewMode = false,
 }: {
   onSelectLanguage: (code: string) => void;
   navigatingLang: string | null;
@@ -102,6 +103,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   actions?: React.ReactNode;
   showcaseImageUrls: readonly string[];
   layoutPreset: WelcomeLayoutPreset;
+  previewMode?: boolean;
 }) {
   const langCount = availableLocales.length;
   const langCols = Math.max(1, Math.min(3, langCount));
@@ -261,14 +263,14 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   }
 
   return (
-    <main className="welcomePage">
+    <main className={`welcomePage${previewMode ? " welcomePage--preview" : ""}`}>
       <div className={`welcomeFullscreenMedia${effectiveGalleryUrls.length === 0 ? " welcomeFullscreenMedia--fallback" : ""}`} aria-hidden="true">
         {media}
         <div className="welcomeMediaScrim" aria-hidden="true" />
       </div>
 
       <div className="welcomeOverlayStack">
-        <KioskStaffBackButton />
+        {previewMode ? null : <KioskStaffBackButton />}
         {insufficientMsg ? (
           <p className="welcomeLayoutWarn" role="alert">
             {insufficientMsg}
@@ -341,11 +343,14 @@ export function WelcomePage({
   brandName,
   showcaseImageUrls = [],
   layoutPreset = "mosaic",
+  previewMode = false,
 }: {
   brandName: string;
   /** SSR: URL fotek pro aktivní / výchozí provozovnu. */
   showcaseImageUrls?: readonly string[];
   layoutPreset?: WelcomeLayoutPreset;
+  /** Admin náhled — bez párování a bez navigace do menu. */
+  previewMode?: boolean;
 }) {
   const { setLocale, t, availableLocales } = useLanguage();
   const { ready, needsPairing, pairingCode, pairingExpiresAtIso } = usePosTableFields();
@@ -353,18 +358,19 @@ export function WelcomePage({
 
   const onSelectLanguage = React.useCallback(
     (code: string) => {
+      if (previewMode) return;
       setLocale(code);
       if (!ready || needsPairing) return;
       setNavigatingLang(code);
       kioskNavigate(buildKioskMenuUrl());
     },
-    [needsPairing, ready, setLocale],
+    [needsPairing, previewMode, ready, setLocale],
   );
 
   // Important: `ready` starts false and flips after client-side init.
   // If we render the staff/login block before `ready`, it will "flash" briefly on already-paired tablets.
   const actions =
-    !ready || !needsPairing ? null : (
+    previewMode || !ready || !needsPairing ? null : (
       <div className="welcomeKioskPairingDock" role="region" aria-label="Akce">
         <div className="welcomeKioskPairingCard">
           <p className="welcomeKioskPairingTitle">Personál</p>
@@ -423,6 +429,7 @@ export function WelcomePage({
       actions={actions}
       showcaseImageUrls={showcaseImageUrls}
       layoutPreset={layoutPreset}
+      previewMode={previewMode}
     />
   );
 }
