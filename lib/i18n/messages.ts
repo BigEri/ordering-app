@@ -214,10 +214,10 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "Dostupné APK na serveru",
     "admin.devices.apkOnDevice": "APK na tabletu",
     "admin.devices.apkUpdateHint":
-      "U každého tabletu zvlášť: potvrďte dialog, tablet musí být v režimu Host. Po aktualizaci se ověří hlášená verze APK (sloupec „APK na tabletu“). Online stav může krátce zaostávat.",
+      "Native kiosk (Device Owner): u tabletu Aktualizovat APK — tablet musí být v Host režimu. Tablety pod AirDroid MDM: APK neinstalujte odtud; nahrajte stejný soubor do AirDroid App Library → Update → Force Install. Web (menu) se aktualizuje vždy z adminu (Obnovit menu / Vynutit obnovení).",
     "admin.devices.apkUpdateConfirmTitle": "Aktualizovat APK na tabletu?",
     "admin.devices.apkUpdateConfirmBody":
-      "Stůl {table} · zařízení {device}\n\nVerze na tabletu: {current}\nVerze na serveru: {target}\n\nTablet musí běžet v režimu Host u stolu. Po potvrzení počkáme až ~2 minuty na hlášení nové verze z tabletu.",
+      "Stůl {table} · zařízení {device}\n\nVerze na tabletu: {current}\nVerze na serveru: {target}\n\nFunguje jen u tabletů s native Device Owner (Tableflow). U AirDroid MDM použijte App Library → Force Install.\n\nTablet musí běžet v režimu Host. Po potvrzení počkáme až ~2 minuty na hlášení nové verze.",
     "admin.devices.apkUpdateAlreadyCurrent": "Tablet už hlásí stejnou nebo novější verzi — stažení APK pravděpodobně proběhne jen pokud server má vyšší versionCode.",
     "admin.devices.apkUpdateOk":
       "Stůl {table}: tablet hlásí verzi {version} (code {code}) — odpovídá serveru.",
@@ -463,10 +463,10 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "APK available on server",
     "admin.devices.apkOnDevice": "APK on tablet",
     "admin.devices.apkUpdateHint":
-      "One tablet at a time: confirm the dialog; tablet must be in Host mode. After update we verify the reported APK version (column “APK on tablet”). Online status may lag briefly.",
+      "Native kiosk (Device Owner): use Update APK per tablet — Host mode required. AirDroid MDM tablets: do not use this button; upload the same APK to AirDroid App Library → Update → Force Install. Web menu always updates from admin (refresh menu / force reload).",
     "admin.devices.apkUpdateConfirmTitle": "Update APK on this tablet?",
     "admin.devices.apkUpdateConfirmBody":
-      "Table {table} · device {device}\n\nVersion on tablet: {current}\nVersion on server: {target}\n\nTablet must run in Host mode at the table. After confirm we wait up to ~2 minutes for the new version report.",
+      "Table {table} · device {device}\n\nVersion on tablet: {current}\nVersion on server: {target}\n\nOnly works on native Device Owner (Tableflow) tablets. For AirDroid MDM use App Library → Force Install.\n\nTablet must run in Host mode. After confirm we wait up to ~2 minutes for the new version report.",
     "admin.devices.apkUpdateAlreadyCurrent": "Tablet already reports the same or newer version — download only runs if the server has a higher versionCode.",
     "admin.devices.apkUpdateOk":
       "Table {table}: tablet reports {version} (code {code}) — matches server.",
@@ -712,10 +712,10 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "서버 APK",
     "admin.devices.apkOnDevice": "태블릿 APK",
     "admin.devices.apkUpdateHint":
-      "기기마다 개별 확인: 태블릿은 Host 모드여야 합니다. 업데이트 후 보고된 APK 버전을 확인합니다(‘태블릿 APK’ 열). 온라인 상태는 잠시 지연될 수 있습니다.",
+      "네이티브 키오스크(Device Owner): 기기별 APK 업데이트 — Host 모드 필요. AirDroid MDM 태블릿: 여기서 설치하지 말고 AirDroid App Library → Update → Force Install. 웹 메뉴는 항상 관리자에서 갱신.",
     "admin.devices.apkUpdateConfirmTitle": "이 태블릿의 APK를 업데이트할까요?",
     "admin.devices.apkUpdateConfirmBody":
-      "테이블 {table} · 기기 {device}\n\n태블릿 버전: {current}\n서버 버전: {target}\n\n태블릿은 Host 모드여야 합니다. 확인 후 최대 ~2분간 새 버전 보고를 기다립니다.",
+      "테이블 {table} · 기기 {device}\n\n태블릿 버전: {current}\n서버 버전: {target}\n\nTableflow Device Owner 태블릿에서만 동작. AirDroid MDM은 App Library → Force Install.\n\n태블릿은 Host 모드여야 합니다. 확인 후 최대 ~2분간 새 버전 보고를 기다립니다.",
     "admin.devices.apkUpdateAlreadyCurrent": "태블릿이 이미 동일하거나 더 높은 버전을 보고합니다 — 서버 versionCode가 더 높을 때만 다운로드됩니다.",
     "admin.devices.apkUpdateOk":
       "테이블 {table}: 태블릿 {version} (code {code}) 보고 — 서버와 일치.",

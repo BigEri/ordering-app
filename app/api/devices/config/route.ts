@@ -8,6 +8,7 @@ import {
 } from "../../../../lib/server/deviceRegistry";
 import { getKioskAppRelease } from "../../../../lib/server/kioskAppRelease";
 import { ensureKioskDeviceSecret } from "../../../../lib/server/kioskDeviceBindings";
+import { resolveKioskMaintenanceRebootSchedule } from "../../../../lib/server/kioskMaintenanceReboot";
 import { prisma } from "../../../../lib/server/prisma";
 
 /** Konfigurace stolu se mění; bez toho tablety agresivně cachují GET a nevidí změny z adminu. */
@@ -43,19 +44,28 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const [deviceSecret, restaurantPin] = await Promise.all([
+  const [deviceSecret, restaurantRow] = await Promise.all([
     ensureKioskDeviceSecret(deviceId),
     t.restaurantId
       ? prisma.restaurant.findUnique({
           where: { id: t.restaurantId },
-          select: { kioskServicePinSalt: true, kioskServicePinHash: true },
+          select: {
+            kioskServicePinSalt: true,
+            kioskServicePinHash: true,
+            kioskMaintenanceRebootHour: true,
+            kioskMaintenanceRebootMinute: true,
+          },
         })
       : Promise.resolve(null),
   ]);
 
-  const servicePinSalt = restaurantPin?.kioskServicePinSalt?.trim() || null;
-  const servicePinHash = restaurantPin?.kioskServicePinHash?.trim() || null;
+  const servicePinSalt = restaurantRow?.kioskServicePinSalt?.trim() || null;
+  const servicePinHash = restaurantRow?.kioskServicePinHash?.trim() || null;
   const hasServicePin = Boolean(servicePinSalt && servicePinHash);
+  const maintenanceReboot = resolveKioskMaintenanceRebootSchedule(
+    restaurantRow?.kioskMaintenanceRebootHour,
+    restaurantRow?.kioskMaintenanceRebootMinute,
+  );
 
   return NextResponse.json(
     {
@@ -69,6 +79,8 @@ export async function GET(req: NextRequest) {
       reloadNonce,
       apkUpdateNonce,
       appRelease,
+      maintenanceRebootHour: maintenanceReboot.hour,
+      maintenanceRebootMinute: maintenanceReboot.minute,
       ...(hasServicePin ? { servicePinSalt, servicePinHash } : {}),
     },
     { headers: NO_STORE },

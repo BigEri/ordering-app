@@ -26,6 +26,12 @@ export function KioskModeChooserModal({ open, onClose }: KioskModeChooserModalPr
   }, [open]);
 
   const choose = React.useCallback(async (target: "host" | "admin") => {
+    if (target === "host") {
+      const ok = window.confirm(
+        "Opravdu přepnout na Host (kiosk)? Zamkne to tablet — instalace APK z PC pak nepůjde, dokud znovu nezadáte servisní PIN.",
+      );
+      if (!ok) return;
+    }
     setSwitching(target);
     try {
       await navigateToKioskMode(target);

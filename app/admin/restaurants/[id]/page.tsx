@@ -84,6 +84,14 @@ function RestaurantDetailInner() {
   const [pinMsg, setPinMsg] = React.useState<string | null>(null);
   const [pinErr, setPinErr] = React.useState<string | null>(null);
 
+  const [rebootHour, setRebootHour] = React.useState(4);
+  const [rebootMinute, setRebootMinute] = React.useState(0);
+  const [rebootIsDefault, setRebootIsDefault] = React.useState(true);
+  const [rebootLoading, setRebootLoading] = React.useState(false);
+  const [rebootSaving, setRebootSaving] = React.useState(false);
+  const [rebootMsg, setRebootMsg] = React.useState<string | null>(null);
+  const [rebootErr, setRebootErr] = React.useState<string | null>(null);
+
   const load = React.useCallback(async () => {
     if (!id) return;
     setErr(null);
@@ -161,6 +169,84 @@ function RestaurantDetailInner() {
     if (tab !== "overview") return;
     void loadKioskPin();
   }, [tab, loadKioskPin]);
+
+  const loadKioskReboot = React.useCallback(async () => {
+    if (!id) return;
+    setRebootLoading(true);
+    setRebootErr(null);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(id)}/kiosk-maintenance-reboot`, {
+        cache: "no-store",
+      });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        hour?: number;
+        minute?: number;
+        isDefault?: boolean;
+        error?: string;
+      };
+      if (!r.ok || !j.ok) {
+        setRebootErr(j.error ?? "Nelze načíst čas údržbového restartu.");
+        return;
+      }
+      setRebootHour(typeof j.hour === "number" ? j.hour : 4);
+      setRebootMinute(typeof j.minute === "number" ? j.minute : 0);
+      setRebootIsDefault(Boolean(j.isDefault));
+    } catch {
+      setRebootErr("Nepodařilo se načíst čas restartu (připojení).");
+    } finally {
+      setRebootLoading(false);
+    }
+  }, [id]);
+
+  React.useEffect(() => {
+    if (tab !== "overview") return;
+    void loadKioskReboot();
+  }, [tab, loadKioskReboot]);
+
+  const onSaveKioskReboot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+    setRebootMsg(null);
+    setRebootErr(null);
+    if (!Number.isInteger(rebootHour) || rebootHour < 0 || rebootHour > 23) {
+      setRebootErr("Hodina musí být 0–23.");
+      return;
+    }
+    if (!Number.isInteger(rebootMinute) || rebootMinute < 0 || rebootMinute > 59) {
+      setRebootErr("Minuta musí být 0–59.");
+      return;
+    }
+    setRebootSaving(true);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(id)}/kiosk-maintenance-reboot`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ hour: rebootHour, minute: rebootMinute }),
+      });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        hour?: number;
+        minute?: number;
+        isDefault?: boolean;
+        error?: string;
+      };
+      if (!r.ok || !j.ok) {
+        setRebootErr(j.error ?? "Uložení času restartu selhalo.");
+        return;
+      }
+      setRebootHour(typeof j.hour === "number" ? j.hour : rebootHour);
+      setRebootMinute(typeof j.minute === "number" ? j.minute : rebootMinute);
+      setRebootIsDefault(false);
+      setRebootMsg(
+        "Čas údržbového restartu uložen. Spárované tablety ho stáhnou při dalším pollu (~15 s) a naplánují AlarmManager.",
+      );
+    } catch {
+      setRebootErr("Nepodařilo se uložit čas restartu (připojení).");
+    } finally {
+      setRebootSaving(false);
+    }
+  };
 
   const onSaveKioskPin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -618,6 +704,98 @@ function RestaurantDetailInner() {
             {pinErr ? (
               <p role="alert" style={{ margin: "12px 0 0", fontSize: 13, color: "#fecaca" }}>
                 {pinErr}
+              </p>
+            ) : null}
+          </section>
+
+          <section
+            style={{
+              marginTop: 16,
+              border: "1px solid var(--border)",
+              borderRadius: 16,
+              padding: 16,
+              background: "var(--panel)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Údržbový restart tabletu</h2>
+            <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
+              1× týdně v nastaveném <strong>místním čase tabletu</strong> Device Owner tiše restartuje
+              kiosk. Po restartu se vždy vrátí do Host zámku. Pokud byl tablet vypnutý, restart se
+              odloží na další výskyt tohoto času (nikdy dopoledne / přes den). Výchozí:{" "}
+              <code>04:00</code>.
+            </p>
+            {rebootLoading ? (
+              <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
+                …
+              </p>
+            ) : (
+              <p style={{ margin: "0 0 12px", fontSize: 13 }}>
+                Stav:{" "}
+                {rebootIsDefault ? (
+                  <span className="textMuted2">výchozí 04:00</span>
+                ) : (
+                  <strong>
+                    {String(rebootHour).padStart(2, "0")}:{String(rebootMinute).padStart(2, "0")}
+                  </strong>
+                )}
+              </p>
+            )}
+            <form
+              onSubmit={(e) => void onSaveKioskReboot(e)}
+              style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}
+            >
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>Hodina (0–23)</span>
+                <input
+                  className="chip"
+                  type="number"
+                  min={0}
+                  max={23}
+                  step={1}
+                  style={{
+                    padding: "10px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    background: "var(--bg-elevated)",
+                    color: "var(--text)",
+                    width: 96,
+                  }}
+                  value={rebootHour}
+                  onChange={(e) => setRebootHour(Number.parseInt(e.target.value, 10) || 0)}
+                />
+              </label>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span>Minuta (0–59)</span>
+                <input
+                  className="chip"
+                  type="number"
+                  min={0}
+                  max={59}
+                  step={1}
+                  style={{
+                    padding: "10px 12px",
+                    border: "1px solid var(--border)",
+                    borderRadius: 10,
+                    background: "var(--bg-elevated)",
+                    color: "var(--text)",
+                    width: 96,
+                  }}
+                  value={rebootMinute}
+                  onChange={(e) => setRebootMinute(Number.parseInt(e.target.value, 10) || 0)}
+                />
+              </label>
+              <button type="submit" className="btnPrimary" disabled={rebootSaving} style={{ cursor: "pointer" }}>
+                {rebootSaving ? "…" : "Uložit čas"}
+              </button>
+            </form>
+            {rebootMsg ? (
+              <p role="status" style={{ margin: "12px 0 0", fontSize: 13, color: "var(--success, #86efac)" }}>
+                {rebootMsg}
+              </p>
+            ) : null}
+            {rebootErr ? (
+              <p role="alert" style={{ margin: "12px 0 0", fontSize: 13, color: "#fecaca" }}>
+                {rebootErr}
               </p>
             ) : null}
           </section>

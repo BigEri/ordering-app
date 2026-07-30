@@ -155,7 +155,8 @@ export function AdminShell({
     } catch {
       /* ignore */
     }
-    window.location.href = "/kiosk/reset-mode";
+    // Jen odhlášení webu — neresetovat native kiosk režim (to by shodilo Device Owner servis).
+    window.location.href = "/admin/login";
   };
 
   if (isLogin) {

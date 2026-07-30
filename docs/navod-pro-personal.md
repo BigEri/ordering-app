@@ -75,7 +75,7 @@
 
 ---
 
-| **Aktualizace APK tabletů** | Zařízení → u tabletu **Aktualizovat APK** (jeden po druhém). Aktuální verze **1.6** — viz `docs/KIOSK-APK-UPDATE.md` |
+| **Aktualizace APK tabletů** | Native kiosk: Zařízení → **Aktualizovat APK**. AirDroid MDM: v AirDroid App Library → Update → Force Install (ne z adminu). Viz `docs/KIOSK-APK-UPDATE.md` |
 
 ---
 
@@ -86,7 +86,8 @@
 | Nepárovaný tablet | Zařízení → Párování | **Spárovat tablet** |
 | Staré ceny / menu z Dotyce | Zařízení (nahoře) | **Obnovit menu z Dotykačky** |
 | Tablet zaseknutý | Zařízení → řádek tabletu | **Vynutit obnovení** |
-| Nová verze APK tabletu | Zařízení → řádek tabletu | **Aktualizovat APK** (potvrdit dialog) |
+| Nová verze APK (native kiosk) | Zařízení → řádek tabletu | **Aktualizovat APK** (potvrdit dialog) |
+| Nová verze APK (AirDroid MDM) | AirDroid konzole | App Library → Update → Force Install |
 | Objednávka nešla | Dotykačka + WiFi | ručně v Dotyce + případně vynutit obnovení |
 
 ---

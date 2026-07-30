@@ -16,6 +16,10 @@ model Restaurant {
   kioskServicePinSalt String?
   kioskServicePinHash String?
 
+  /** Týdenní údržbový restart tabletu (místní čas). Null = výchozí 4:00. */
+  kioskMaintenanceRebootHour   Int?
+  kioskMaintenanceRebootMinute Int?
+
   memberships         Membership[]
   locales             RestaurantLocale[]
   menuImages          MenuImage[]
