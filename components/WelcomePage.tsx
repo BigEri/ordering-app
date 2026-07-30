@@ -4,7 +4,6 @@ import * as React from "react";
 
 import { KioskAnchor } from "./kiosk/KioskAnchor";
 import { KioskStaffBackButton } from "./kiosk/KioskStaffBackButton";
-import { isKioskWebView } from "../lib/kiosk/isKioskWebView";
 import { buildKioskMenuUrl, kioskNavigate } from "../lib/kiosk/nav";
 import type { WelcomeLayoutPreset } from "../lib/menu/welcomeLayoutPreset";
 import {
@@ -116,11 +115,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   const [failedUrls, setFailedUrls] = React.useState<Set<string>>(() => new Set());
   const [reduceMotion, setReduceMotion] = React.useState(false);
   const [imageIdx, setImageIdx] = React.useState(0);
-  const [kioskUa, setKioskUa] = React.useState(false);
 
-  React.useEffect(() => {
-    setKioskUa(isKioskWebView());
-  }, []);
   React.useEffect(() => {
     setGalleryUrls(shuffleUrls(baseGalleryFromProps(showcaseImageUrls)));
     setFailedUrls(new Set());
@@ -143,8 +138,8 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
     return baseGalleryFromProps(showcaseImageUrls).filter((u) => !failedUrls.has(u));
   }, [failedUrls, galleryUrls, showcaseImageUrls]);
 
-  // Na tabletu (kiosk APK) vždy celá plocha — mozaika tam nechává černé díry.
-  const presetForRender: WelcomeLayoutPreset = kioskUa ? "fade" : layoutPreset;
+  // Respektuj layout z Admin → Úvodní stránka (fade / mosaic / split / grid_four).
+  const presetForRender: WelcomeLayoutPreset = layoutPreset;
 
   React.useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -174,8 +169,7 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
 
   const slotAssignment = assignWelcomeShowcaseSlots(effectiveGalleryUrls, presetForRender, imageIdx);
   const { slots, sufficient, uniqueCount, layoutPreset: renderPreset } = slotAssignment;
-  const insufficientMsg =
-    !kioskUa && !sufficient ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueCount) : null;
+  const insufficientMsg = !sufficient ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueCount) : null;
   const src0 = slots[0] ?? "";
   const src1 = slots[1] ?? "";
   const src2 = slots[2] ?? "";
