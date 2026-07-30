@@ -198,7 +198,7 @@ function KioskPairPageInner() {
             <code style={{ display: "block", marginTop: 8, wordBreak: "break-all", opacity: 0.85 }}>{deviceId || "—"}</code>
           </details>
           <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.45 }}>
-            Tip: Admin párování najdete na <code>/admin/devices/pair-kiosk</code>.
+            Tip: Admin párování najdete v detailu provozovny → Zařízení → párování.
           </p>
         </div>
       </div>

@@ -1,14 +1,53 @@
-import { PairKioskClient } from "./PairKioskClient";
+"use client";
 
-export default async function AdminPairKioskPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ device?: string; deviceId?: string }>;
-}) {
-  const sp = (await searchParams) ?? {};
-  const raw =
-    (typeof sp.deviceId === "string" ? sp.deviceId.trim() : "") ||
-    (typeof sp.device === "string" ? sp.device.trim() : "");
-  const initialDeviceId = raw.length > 0 && raw.length <= 200 ? raw : null;
-  return <PairKioskClient initialDeviceId={initialDeviceId} />;
+import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
+
+function PairKioskRedirectInner() {
+  const searchParams = useSearchParams();
+
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const qs = searchParams?.toString() ?? "";
+      try {
+        const r = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
+        const j = (await r.json()) as { ok?: boolean; activeRestaurantId?: string | null };
+        if (cancelled) return;
+        const rid = r.ok && j.ok ? (j.activeRestaurantId ?? "").trim() : "";
+        if (!rid) {
+          window.location.replace("/admin");
+          return;
+        }
+        const base = `/admin/restaurants/${encodeURIComponent(rid)}/devices/pair`;
+        window.location.replace(qs ? `${base}?${qs}` : base);
+      } catch {
+        if (!cancelled) window.location.replace("/admin");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [searchParams]);
+
+  return (
+    <main className="adminPage">
+      <p className="textMuted">Přesměrování na párování kiosku…</p>
+    </main>
+  );
+}
+
+export default function AdminPairKioskRedirectPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="adminPage">
+          <p className="textMuted">Přesměrování…</p>
+        </main>
+      }
+    >
+      <PairKioskRedirectInner />
+    </Suspense>
+  );
 }

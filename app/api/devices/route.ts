@@ -15,7 +15,11 @@ export async function GET(req: Request) {
   try {
     const cookieHeader = req.headers.get("cookie");
     const session = await requireAdminSession(cookieHeader);
-    const rid = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
+    const url = new URL(req.url);
+    const fromQuery = (url.searchParams.get("restaurantId") ?? "").trim();
+    const fromCookie = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
+    /** Prefer explicit restaurant from URL context (superadmin viewing A while cookie may be B). */
+    const rid = fromQuery || fromCookie;
     if (!rid) {
       return NextResponse.json(
         { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
@@ -28,7 +32,7 @@ export async function GET(req: Request) {
     const devices = await listDeviceRecordsForRestaurant(rid);
     const kioskRelease = getKioskAppRelease();
     return NextResponse.json(
-      { ok: true, devices, kioskRelease },
+      { ok: true, devices, kioskRelease, restaurantId: rid },
       { headers: { "Cache-Control": "private, no-store, no-cache, must-revalidate" } },
     );
   } catch {

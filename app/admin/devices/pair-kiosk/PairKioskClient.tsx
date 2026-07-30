@@ -17,7 +17,17 @@ type MePayload = {
 type RestaurantRow = { id: string; name: string };
 type DotyTable = { id: number; name: string };
 
-export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string | null }) {
+export function PairKioskClient({
+  initialDeviceId,
+  restaurantId: restaurantIdProp,
+  backHref,
+}: {
+  initialDeviceId?: string | null;
+  /** When set (restaurant-scoped pair), lock restaurant and hide superadmin picker. */
+  restaurantId?: string | null;
+  backHref?: string;
+}) {
+  const lockedRestaurantId = (restaurantIdProp ?? "").trim();
   const deviceFromWelcome = React.useMemo(
     () => (typeof initialDeviceId === "string" ? initialDeviceId.trim() : "").slice(0, 200),
     [initialDeviceId],
@@ -101,13 +111,15 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
         setRestaurants(jr.restaurants);
         const active = j.activeRestaurantId?.trim();
         let initialRid = "";
-        if (active && jr.restaurants.some((x) => x.id === active)) {
+        if (lockedRestaurantId && jr.restaurants.some((x) => x.id === lockedRestaurantId)) {
+          initialRid = lockedRestaurantId;
+        } else if (active && jr.restaurants.some((x) => x.id === active)) {
           initialRid = active;
         } else if (jr.restaurants.length === 1) {
           initialRid = jr.restaurants[0].id;
         }
         setRestaurantId(initialRid);
-        if (initialRid && j.session?.globalRole === "SUPER_ADMIN") {
+        if (initialRid && (j.session?.globalRole === "SUPER_ADMIN" || lockedRestaurantId)) {
           await applyActiveRestaurant(initialRid);
         } else if (initialRid || j.session?.globalRole !== "SUPER_ADMIN") {
           await loadTables();
@@ -121,7 +133,7 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
     return () => {
       cancelled = true;
     };
-  }, [applyActiveRestaurant, loadTables]);
+  }, [applyActiveRestaurant, loadTables, lockedRestaurantId]);
 
   /** Po naskenování QR z úvodní stránky tabletu — načíst stejný párovací kód (tablet ho mezitím vygeneruje). */
   React.useEffect(() => {
@@ -204,6 +216,8 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
       };
       if (isSuper && restaurantId.trim()) {
         body.restaurantId = restaurantId.trim();
+      } else if (lockedRestaurantId) {
+        body.restaurantId = lockedRestaurantId;
       }
       const r = await fetch("/api/admin/devices/pair-by-code", {
         method: "POST",
@@ -234,7 +248,15 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
     code.trim().length >= 4 &&
     tableId.trim() &&
     tableLabel.trim() &&
-    (isSuper ? restaurantId.trim() : Boolean(me?.activeRestaurantId));
+    (isSuper || lockedRestaurantId ? restaurantId.trim() : Boolean(me?.activeRestaurantId));
+
+  const devicesBackHref =
+    backHref?.trim() ||
+    (lockedRestaurantId
+      ? `/admin/restaurants/${encodeURIComponent(lockedRestaurantId)}?tab=devices`
+      : restaurantId.trim()
+        ? `/admin/restaurants/${encodeURIComponent(restaurantId.trim())}?tab=devices`
+        : "/admin");
 
   if (meLoading) {
     return (
@@ -246,9 +268,13 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
 
   if (me === null) {
     const nextPair =
-      deviceFromWelcome.length > 0
-        ? `/admin/devices/pair-kiosk?device=${encodeURIComponent(deviceFromWelcome)}`
-        : "/admin/devices/pair-kiosk";
+      lockedRestaurantId
+        ? deviceFromWelcome.length > 0
+          ? `/admin/restaurants/${encodeURIComponent(lockedRestaurantId)}/devices/pair?device=${encodeURIComponent(deviceFromWelcome)}`
+          : `/admin/restaurants/${encodeURIComponent(lockedRestaurantId)}/devices/pair`
+        : deviceFromWelcome.length > 0
+          ? `/admin/devices/pair-kiosk?device=${encodeURIComponent(deviceFromWelcome)}`
+          : "/admin/devices/pair-kiosk";
     const loginHref = `/admin/login?next=${encodeURIComponent(nextPair)}`;
     return (
       <main className="adminPage">
@@ -280,7 +306,7 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
       ) : null}
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <AdminChipLink href="/admin/devices">← {tStaff("admin.devices.title")}</AdminChipLink>
+        <AdminChipLink href={devicesBackHref}>← {tStaff("admin.devices.title")}</AdminChipLink>
         {pairedDeviceId ? (
           <AdminChipLink href={publicMenuUrlFromAdmin({ deviceId: pairedDeviceId })}>
             Otevřít kiosk menu →
@@ -301,7 +327,7 @@ export function PairKioskClient({ initialDeviceId }: { initialDeviceId?: string 
           gap: 16,
         }}
       >
-        {isSuper && restaurants && restaurants.length > 0 ? (
+        {isSuper && !lockedRestaurantId && restaurants && restaurants.length > 0 ? (
           <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="textMuted2" style={{ fontSize: 13 }}>
               {tStaff("admin.devices.pairKioskRestaurant")}

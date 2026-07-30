@@ -1160,9 +1160,8 @@ export function MenuBrowseClient({
           {menuVariant === "editor" && !restaurantId ? (
             <p className="menuEditorHint menuEditorHint--muted" role="status">
               Veřejné menu pro hosty zatím není správně nastavené — dokončete nastavení v{" "}
-              <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor>, nebo párujte tablet v{" "}
-              <KioskAnchor href="/admin/devices">Zařízení</KioskAnchor> /{" "}
-              <KioskAnchor href="/admin/devices/pair-kiosk">párování u stolů</KioskAnchor>.
+              <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor>, nebo párujte tablet v detailu
+              provozovny (Zařízení).
             </p>
           ) : null}
 

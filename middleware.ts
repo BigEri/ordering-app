@@ -66,10 +66,55 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
+  const rid = (req.cookies.get(ACTIVE_RESTAURANT_COOKIE)?.value ?? "").trim();
+
+  // Legacy top-level Devices / Welcome → restaurant-scoped tabs (cookie = active/own restaurant).
+  if (pathname === "/admin/devices" || pathname === "/admin/devices/") {
+    const url = req.nextUrl.clone();
+    if (rid) {
+      url.pathname = `/admin/restaurants/${encodeURIComponent(rid)}`;
+      url.searchParams.set("tab", "devices");
+    } else {
+      url.pathname = "/admin";
+      url.search = "";
+    }
+    return NextResponse.redirect(url);
+  }
+  if (pathname === "/admin/welcome" || pathname === "/admin/welcome/") {
+    const url = req.nextUrl.clone();
+    if (rid) {
+      url.pathname = `/admin/restaurants/${encodeURIComponent(rid)}`;
+      url.searchParams.set("tab", "welcome");
+    } else {
+      url.pathname = "/admin";
+      url.search = "";
+    }
+    return NextResponse.redirect(url);
+  }
+  if (pathname === "/admin/devices/pair-kiosk" || pathname.startsWith("/admin/devices/pair-kiosk/")) {
+    const url = req.nextUrl.clone();
+    if (rid) {
+      url.pathname = `/admin/restaurants/${encodeURIComponent(rid)}/devices/pair`;
+      // preserve ?device= / ?deviceId=
+    } else {
+      url.pathname = "/admin";
+      url.search = "";
+    }
+    return NextResponse.redirect(url);
+  }
+
   // Lightweight guard in Edge runtime: if no active restaurant cookie, push user to /admin
   // (server-side APIs still enforce exact roles & access).
-  const rid = req.cookies.get(ACTIVE_RESTAURANT_COOKIE)?.value;
-  if (!rid && pathname.startsWith("/admin/") && pathname !== ADMIN_LOGIN_PATH && pathname !== "/admin") {
+  // Restaurant detail/list may be opened before cookie sync (manager hub / superadmin list).
+  const restaurantScopedOk =
+    pathname === "/admin/restaurants" || pathname.startsWith("/admin/restaurants/");
+  if (
+    !rid &&
+    pathname.startsWith("/admin/") &&
+    pathname !== ADMIN_LOGIN_PATH &&
+    pathname !== "/admin" &&
+    !restaurantScopedOk
+  ) {
     const url = req.nextUrl.clone();
     url.pathname = "/admin";
     return NextResponse.redirect(url);

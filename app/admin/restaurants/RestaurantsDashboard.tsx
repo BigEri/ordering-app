@@ -358,7 +358,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                       <button
                         type="button"
                         className="chip"
-                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}`)}
+                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}?tab=dotykacka`)}
                         disabled={actionsDisabled}
                         style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                         title="Nastavit aktivní a otevřít Dotykačku / nastavení"
@@ -368,7 +368,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                       <button
                         type="button"
                         className="chip"
-                        onClick={() => void onOpen(r.id, "/admin/devices/pair-kiosk")}
+                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}/devices/pair`)}
                         disabled={actionsDisabled}
                         style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                         title="Nastavit aktivní a párovat kiosk"
@@ -388,7 +388,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                       <button
                         type="button"
                         className="chip"
-                        onClick={() => void onOpen(r.id, "/admin/devices")}
+                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}?tab=devices`)}
                         disabled={actionsDisabled}
                         style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                       >
@@ -397,7 +397,16 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                       <button
                         type="button"
                         className="chip"
-                        onClick={() => void onOpen(r.id, "/admin/users")}
+                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}?tab=welcome`)}
+                        disabled={actionsDisabled}
+                        style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
+                      >
+                        {busy ? "…" : "Úvodní"}
+                      </button>
+                      <button
+                        type="button"
+                        className="chip"
+                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}?tab=users`)}
                         disabled={actionsDisabled}
                         style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                       >

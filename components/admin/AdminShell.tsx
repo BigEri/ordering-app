@@ -88,31 +88,35 @@ export function AdminShell({
     if (pathname === "/admin" || pathname === "/admin/login") return items;
 
     if (pathname.startsWith("/admin/restaurants")) {
-      items.push({ label: "Provozovny", href: "/admin/restaurants" });
+      if (isSuper) {
+        items.push({ label: "Provozovny", href: "/admin/restaurants" });
+      } else {
+        items.push({ label: "Moje provozovna", href: undefined });
+      }
       const m = /^\/admin\/restaurants\/([^/]+)/.exec(pathname);
-      if (m?.[1]) {
+      if (m?.[1] && isSuper) {
         const id = m[1];
         const name = restaurantNameById[id];
         items.push({ label: name ?? "Detail", href: undefined });
+      } else if (m?.[1] && !isSuper) {
+        const id = m[1];
+        const name = restaurantNameById[id];
+        if (name) items[items.length - 1] = { label: name, href: undefined };
       }
     } else if (pathname.startsWith("/admin/menu")) {
       items.push({ label: "Menu (úpravy)", href: "/admin/menu" });
       if (pathname.startsWith("/admin/menu/translations")) {
         items.push({ label: "Překlady", href: undefined });
       }
-    } else if (pathname.startsWith("/admin/welcome")) {
-      items.push({ label: "Úvodní stránka", href: undefined });
     } else if (pathname.startsWith("/admin/users")) {
       items.push({ label: "Uživatelé", href: undefined });
-    } else if (pathname.startsWith("/admin/devices")) {
-      items.push({ label: "Zařízení", href: undefined });
     }
     return items;
-  }, [pathname, restaurantNameById]);
+  }, [pathname, restaurantNameById, isSuper]);
 
   React.useEffect(() => {
-    if (!isSuper || isLogin) return;
-    const m = /^\/admin\/restaurants\/([^/]+)\/?$/.exec(pathname);
+    if (isLogin) return;
+    const m = /^\/admin\/restaurants\/([^/]+)/.exec(pathname);
     const id = m?.[1];
     if (!id) return;
     if (restaurantNameById[id]) return;
@@ -130,7 +134,7 @@ export function AdminShell({
     return () => {
       cancelled = true;
     };
-  }, [pathname, isSuper, isLogin, restaurantNameById]);
+  }, [pathname, isLogin, restaurantNameById]);
 
   const onBack = () => {
     if (pathname === "/admin" || pathname === "/admin/login") {
@@ -138,7 +142,7 @@ export function AdminShell({
       return;
     }
     if (pathname.startsWith("/admin/restaurants/") && pathname !== "/admin/restaurants") {
-      window.location.href = "/admin/restaurants";
+      window.location.href = isSuper ? "/admin/restaurants" : "/admin";
       return;
     }
     if (window.history.length > 1) {
@@ -175,6 +179,12 @@ export function AdminShell({
           <AdminNavLink href="/admin" label="Přehled" active={pathname === "/admin"} />
           {isSuper ? (
             <AdminNavLink href="/admin/restaurants" label="Provozovny" active={pathname.startsWith("/admin/restaurants")} />
+          ) : me?.ok && me.activeRestaurantId ? (
+            <AdminNavLink
+              href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}`}
+              label="Moje provozovna"
+              active={pathname.startsWith("/admin/restaurants/")}
+            />
           ) : null}
           <AdminNavLink
             href="/admin/menu"
@@ -182,9 +192,7 @@ export function AdminShell({
             active={pathname.startsWith("/admin/menu") && !pathname.startsWith("/admin/menu/translations")}
           />
           <AdminNavLink href="/admin/menu/translations" label="Překlady menu" active={pathname.startsWith("/admin/menu/translations")} />
-          <AdminNavLink href="/admin/welcome" label="Úvodní stránka" active={pathname.startsWith("/admin/welcome")} />
           <AdminNavLink href="/admin/users" label="Uživatelé" active={pathname.startsWith("/admin/users")} />
-          <AdminNavLink href="/admin/devices" label="Zařízení" active={pathname.startsWith("/admin/devices")} />
           <a className="adminNavLink" href={publicMenuUrlFromAdmin()} style={{ textDecoration: "none" }}>
             Veřejné menu ↗
           </a>

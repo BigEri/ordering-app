@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 
 import { type AdminSession, requireAdminSession } from "../../../../../lib/server/adminGuard";
+import { userHasRestaurantAccess } from "../../../../../lib/server/auth";
 import { deleteRestaurantBySuperAdmin } from "../../../../../lib/server/deleteRestaurant";
 import type { MembershipRole } from "../../../../../lib/server/db";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
+
+async function canViewRestaurant(session: AdminSession, restaurantId: string): Promise<boolean> {
+  if (session.globalRole === "SUPER_ADMIN") return true;
+  return (await userHasRestaurantAccess(session.userId, restaurantId)).ok;
+}
 
 async function canUpdateRestaurantName(session: AdminSession, restaurantId: string): Promise<boolean> {
   if (session.globalRole === "SUPER_ADMIN") return true;
@@ -19,14 +25,14 @@ async function canUpdateRestaurantName(session: AdminSession, restaurantId: stri
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
     const session = await requireAdminSession(req.headers.get("cookie"));
-    if (session.globalRole !== "SUPER_ADMIN") {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-    }
-
     const { id } = await ctx.params;
     const restaurantId = typeof id === "string" ? id.trim() : "";
     if (!restaurantId) {
       return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
+    }
+
+    if (!(await canViewRestaurant(session, restaurantId))) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
     const row = await prisma.restaurant.findUnique({

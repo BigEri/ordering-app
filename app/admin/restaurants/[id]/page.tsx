@@ -3,6 +3,8 @@
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
+import { DevicesAdminClient } from "../../../../components/admin/DevicesAdminClient";
+import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
 import { Suspense } from "react";
 import * as React from "react";
 
@@ -34,7 +36,7 @@ type RestaurantLocalesResponse =
   | { ok: true; hasConfig: boolean; locales: { code: string; label: string; enabled: boolean }[] }
   | { ok: false; error: string };
 
-const TABS = ["overview", "users", "dotykacka"] as const;
+const TABS = ["overview", "users", "devices", "welcome", "dotykacka"] as const;
 type TabId = (typeof TABS)[number];
 
 function tabFromSearch(raw: string | null): TabId {
@@ -52,6 +54,7 @@ function RestaurantDetailInner() {
   const [detail, setDetail] = React.useState<RestaurantDetailResponse | null>(null);
   const [users, setUsers] = React.useState<RestaurantUsersResponse | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
+  const [isSuper, setIsSuper] = React.useState(false);
   const [nameDraft, setNameDraft] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
   const [contextSync, setContextSync] = React.useState<"idle" | "syncing" | "done" | "err">("idle");
@@ -166,9 +169,9 @@ function RestaurantDetailInner() {
   }, [id]);
 
   React.useEffect(() => {
-    if (tab !== "overview") return;
+    if (tab !== "overview" || !isSuper) return;
     void loadKioskPin();
-  }, [tab, loadKioskPin]);
+  }, [tab, loadKioskPin, isSuper]);
 
   const loadKioskReboot = React.useCallback(async () => {
     if (!id) return;
@@ -200,9 +203,9 @@ function RestaurantDetailInner() {
   }, [id]);
 
   React.useEffect(() => {
-    if (tab !== "overview") return;
+    if (tab !== "overview" || !isSuper) return;
     void loadKioskReboot();
-  }, [tab, loadKioskReboot]);
+  }, [tab, loadKioskReboot, isSuper]);
 
   const onSaveKioskReboot = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -354,11 +357,16 @@ function RestaurantDetailInner() {
       setContextSync("syncing");
       try {
         const meR = await fetch("/api/admin/me", { cache: "no-store" });
-        const meJ = (await meR.json()) as { ok?: boolean; activeRestaurantId?: string | null };
+        const meJ = (await meR.json()) as {
+          ok?: boolean;
+          activeRestaurantId?: string | null;
+          session?: { globalRole?: string };
+        };
         if (!meR.ok || !meJ.ok) {
           if (!cancelled) setContextSync("err");
           return;
         }
+        if (!cancelled) setIsSuper(meJ.session?.globalRole === "SUPER_ADMIN");
         if (meJ.activeRestaurantId === id) {
           if (!cancelled) setContextSync("done");
           return;
@@ -527,7 +535,8 @@ function RestaurantDetailInner() {
       ) : null}
       {contextSync === "done" ? (
         <div className="adminRestaurantContextBar">
-          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Sekce Uživatelé a Zařízení v levém menu se vztahují k vaší restauraci (shodné s názvem nahoře).
+          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Zařízení, úvodní stránka a uživatelé níže platí
+          pro tuto provozovnu.
         </div>
       ) : null}
       {contextSync === "err" ? (
@@ -570,6 +579,26 @@ function RestaurantDetailInner() {
             aria-selected={tab === "users"}
           >
             Uživatelé
+          </a>
+        </li>
+        <li style={{ display: "contents" }}>
+          <a
+            href={tabHref("devices")}
+            className={`adminTab${tab === "devices" ? " adminTab--active" : ""}`}
+            role="tab"
+            aria-selected={tab === "devices"}
+          >
+            Zařízení
+          </a>
+        </li>
+        <li style={{ display: "contents" }}>
+          <a
+            href={tabHref("welcome")}
+            className={`adminTab${tab === "welcome" ? " adminTab--active" : ""}`}
+            role="tab"
+            aria-selected={tab === "welcome"}
+          >
+            Úvodní
           </a>
         </li>
         <li style={{ display: "contents" }}>
@@ -623,6 +652,7 @@ function RestaurantDetailInner() {
             </form>
           </section>
 
+          {isSuper ? (
           <section
             style={{
               marginTop: 16,
@@ -707,7 +737,9 @@ function RestaurantDetailInner() {
               </p>
             ) : null}
           </section>
+          ) : null}
 
+          {isSuper ? (
           <section
             style={{
               marginTop: 16,
@@ -799,6 +831,7 @@ function RestaurantDetailInner() {
               </p>
             ) : null}
           </section>
+          ) : null}
 
           <section
             style={{
@@ -822,29 +855,11 @@ function RestaurantDetailInner() {
               >
                 Přehled admin
               </button>
-              <button
-                type="button"
-                className="chip"
-                disabled={contextSync !== "done"}
-                onClick={() => {
-                  window.location.href = "/admin/users";
-                }}
-                style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
-              >
-                Uživatelé vaší restaurace
-              </button>
-              <button
-                type="button"
-                className="chip"
-                disabled={contextSync !== "done"}
-                onClick={() => {
-                  window.location.href = "/admin/devices";
-                }}
-                style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
-              >
-                Zařízení vaší restaurace
-              </button>
-              <AdminChipLink href="/admin/restaurants">← Seznam restaurací</AdminChipLink>
+              <AdminChipLink href={tabHref("users")}>Uživatelé</AdminChipLink>
+              <AdminChipLink href={tabHref("devices")}>Zařízení</AdminChipLink>
+              <AdminChipLink href={tabHref("welcome")}>Úvodní stránka</AdminChipLink>
+              <AdminChipLink href={tabHref("dotykacka")}>Dotykačka</AdminChipLink>
+              {isSuper ? <AdminChipLink href="/admin/restaurants">← Seznam restaurací</AdminChipLink> : null}
             </div>
             <p className="textMuted2" style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.5 }}>
               Při otevření nastavení se automaticky načte vaše restaurace, abyste věděli, co právě upravujete.
@@ -968,7 +983,7 @@ function RestaurantDetailInner() {
             ) : null}
           </section>
 
-          {detail && detail.ok ? (
+          {detail && detail.ok && isSuper ? (
             <section
               style={{
                 marginTop: 24,
@@ -1040,6 +1055,23 @@ function RestaurantDetailInner() {
             </a>{" "}
             (pro vaši restauraci).
           </p>
+        </section>
+      ) : null}
+
+      {tab === "devices" && id ? (
+        <section style={{ marginTop: 16 }}>
+          <DevicesAdminClient
+            restaurantId={id}
+            restaurantName={detail && detail.ok ? detail.restaurant.name : null}
+            embedded
+            pairHref={`/admin/restaurants/${encodeURIComponent(id)}/devices/pair`}
+          />
+        </section>
+      ) : null}
+
+      {tab === "welcome" && id ? (
+        <section style={{ marginTop: 16 }}>
+          <WelcomeSettingsClient restaurantId={id} embedded />
         </section>
       ) : null}
 
@@ -1257,7 +1289,7 @@ function RestaurantDetailFallback() {
   );
 }
 
-export default function SuperAdminRestaurantDetailPage() {
+export default function RestaurantDetailPage() {
   return (
     <Suspense fallback={<RestaurantDetailFallback />}>
       <RestaurantDetailInner />

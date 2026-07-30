@@ -298,9 +298,22 @@ export default function AdminHomePage() {
           {me && me.ok && me.session.globalRole === "SUPER_ADMIN" ? (
             <AdminChipLink href="/admin/restaurants">Restaurace (superadmin)</AdminChipLink>
           ) : null}
+          {me && me.ok && me.activeRestaurantId && me.session.globalRole !== "SUPER_ADMIN" ? (
+            <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}`}>
+              Moje provozovna
+            </AdminChipLink>
+          ) : null}
           <AdminChipLink href="/admin/menu">Menu (úpravy)</AdminChipLink>
-          <AdminChipLink href="/admin/welcome">Úvodní stránka</AdminChipLink>
-          <AdminChipLink href="/admin/devices">Zařízení</AdminChipLink>
+          {me && me.ok && me.activeRestaurantId ? (
+            <>
+              <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}?tab=welcome`}>
+                Úvodní stránka
+              </AdminChipLink>
+              <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}?tab=devices`}>
+                Zařízení
+              </AdminChipLink>
+            </>
+          ) : null}
           <AdminChipLink href="/admin/users">Uživatelé</AdminChipLink>
           <AdminChipLink href="/admin/account">Můj účet</AdminChipLink>
         </div>

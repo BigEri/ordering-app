@@ -64,7 +64,13 @@ function findDuplicateUrlRows(urls: string[]): string[] {
   return lines;
 }
 
-export function WelcomeSettingsClient() {
+export function WelcomeSettingsClient({
+  restaurantId: restaurantIdProp,
+  embedded = false,
+}: {
+  restaurantId?: string;
+  embedded?: boolean;
+} = {}) {
   const [me, setMe] = React.useState<MeOk | null>(null);
   const [loadErr, setLoadErr] = React.useState<string | null>(null);
   const [saveErr, setSaveErr] = React.useState<string | null>(null);
@@ -91,7 +97,8 @@ export function WelcomeSettingsClient() {
   const dirtyRef = React.useRef(false);
   const welcomeLoadGenRef = React.useRef(0);
 
-  const rid = me?.ok ? me.activeRestaurantId : null;
+  const ridFromProp = restaurantIdProp?.trim() || "";
+  const rid = ridFromProp || (me?.ok ? me.activeRestaurantId : null);
   const canEdit =
     me?.ok &&
     (me.session.globalRole === "SUPER_ADMIN" ||
@@ -127,7 +134,7 @@ export function WelcomeSettingsClient() {
         }
         setMe(meJ);
         setPageReady(true);
-        if (!meJ.activeRestaurantId?.trim()) {
+        if (!ridFromProp && !meJ.activeRestaurantId?.trim()) {
           setLoadErr("Nejdřív dokončete nastavení v Přehledu administrace.");
           setWelcomeLoading(false);
         }
@@ -137,7 +144,7 @@ export function WelcomeSettingsClient() {
         setWelcomeLoading(false);
       }
     })();
-  }, []);
+  }, [ridFromProp]);
 
   React.useEffect(() => {
     const active = rid?.trim() ?? "";
@@ -417,23 +424,33 @@ export function WelcomeSettingsClient() {
 
   if (!pageReady) {
     return (
-      <main className="adminPage">
+      <div className={embedded ? undefined : "adminPage"}>
         <p className="textMuted2">Načítám…</p>
-      </main>
+      </div>
     );
   }
 
   const formBusy = saving || uploadingIdx != null;
+  const Root = embedded ? "div" : "main";
 
   return (
-    <main className="adminPage">
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>Úvodní stránka (welcome)</h1>
-      <p className="textMuted2" style={{ margin: "0 0 12px", maxWidth: 720 }}>
-        Max. velikost pro nahrání: <strong>10 MB</strong> na obrázek. Po nahrání se změny <strong>ukládají automaticky</strong> — tlačítkem Uložit potvrdíte i ručně zadané URL.
-      </p>
-      <p className="textMuted2" style={{ margin: "0 0 20px", maxWidth: 720, lineHeight: 1.55 }}>
-        Nastavte fotky pro hosty na úvodní stránce. Maximum <strong>6 obrázků</strong>. Externí HTTPS odkazy lze zkontrolovat tlačítkem níže (nepřidává se při každém otevření stránky).
-      </p>
+    <Root className={embedded ? undefined : "adminPage"}>
+      {embedded ? null : (
+        <>
+          <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>Úvodní stránka (welcome)</h1>
+          <p className="textMuted2" style={{ margin: "0 0 12px", maxWidth: 720 }}>
+            Max. velikost pro nahrání: <strong>10 MB</strong> na obrázek. Po nahrání se změny <strong>ukládají automaticky</strong> — tlačítkem Uložit potvrdíte i ručně zadané URL.
+          </p>
+          <p className="textMuted2" style={{ margin: "0 0 20px", maxWidth: 720, lineHeight: 1.55 }}>
+            Nastavte fotky pro hosty na úvodní stránce. Maximum <strong>6 obrázků</strong>. Externí HTTPS odkazy lze zkontrolovat tlačítkem níže (nepřidává se při každém otevření stránky).
+          </p>
+        </>
+      )}
+      {embedded ? (
+        <p className="textMuted2" style={{ margin: "0 0 16px", maxWidth: 720, lineHeight: 1.55 }}>
+          Max. <strong>10 MB</strong> na obrázek · max. <strong>6 fotek</strong>. Po nahrání se změny ukládají automaticky.
+        </p>
+      ) : null}
 
       <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <button type="button" className="chip" disabled={!rid || healthChecking} onClick={() => void runHealthCheck()}>
@@ -728,6 +745,6 @@ export function WelcomeSettingsClient() {
           </div>
         </div>
       ) : null}
-    </main>
+    </Root>
   );
 }
