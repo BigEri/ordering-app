@@ -2,9 +2,7 @@
 
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 
-import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 import { DevicesAdminClient } from "../../../../components/admin/DevicesAdminClient";
-import { RestaurantAdminTabs } from "../../../../components/admin/RestaurantAdminTabs";
 import { UsersAdminClient } from "../../../../components/admin/UsersAdminClient";
 import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
 import { Suspense } from "react";
@@ -542,15 +540,9 @@ function RestaurantDetailInner() {
           <span className="textMuted2">Načítám nastavení vaší restaurace…</span>
         </div>
       ) : null}
-      {contextSync === "done" ? (
-        <div className="adminRestaurantContextBar">
-          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Menu, zařízení, úvodní obrazovka a uživatelé níže
-          platí pro tuto provozovnu.
-        </div>
-      ) : null}
       {contextSync === "err" ? (
         <div className="adminRestaurantContextBar adminRestaurantContextBar--warn" role="alert">
-          Nepodařilo se načíst nastavení vaší restaurace. Zkuste obnovit stránku nebo přejít do Přehledu.
+          Nepodařilo se načíst nastavení vaší restaurace. Zkuste obnovit stránku.
         </div>
       ) : null}
 
@@ -568,8 +560,6 @@ function RestaurantDetailInner() {
           Obnovit
         </button>
       </div>
-
-      <RestaurantAdminTabs restaurantId={id} />
 
       {err ? (
         <p role="alert" style={{ marginTop: 12, color: "#fecaca" }}>
@@ -590,7 +580,7 @@ function RestaurantDetailInner() {
           >
             <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Název restaurace</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
-              Stejný text se ukazuje hostům na úvodní stránce, v menu a v záhlaví (viz také Přehled admin).
+              Stejný text se ukazuje hostům na úvodní stránce, v menu a v záhlaví.
             </p>
             <form onSubmit={(e) => void onSaveRestaurantName(e)} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
               <label style={{ display: "grid", gap: 6, flex: "1 1 220px" }}>
@@ -790,40 +780,6 @@ function RestaurantDetailInner() {
             ) : null}
           </section>
           ) : null}
-
-          <section
-            style={{
-              marginTop: 16,
-              border: "1px solid var(--border)",
-              borderRadius: 16,
-              padding: 16,
-              background: "var(--panel)",
-            }}
-          >
-            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Rychlé odkazy</h2>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                className="chip"
-                disabled={contextSync !== "done"}
-                onClick={() => {
-                  window.location.href = "/admin";
-                }}
-                style={{ cursor: contextSync === "done" ? "pointer" : "not-allowed" }}
-              >
-                Přehled admin
-              </button>
-              <AdminChipLink href={tabHref("menu")}>Menu</AdminChipLink>
-              <AdminChipLink href={tabHref("users")}>Uživatelé</AdminChipLink>
-              <AdminChipLink href={tabHref("devices")}>Zařízení</AdminChipLink>
-              <AdminChipLink href={tabHref("welcome")}>Úvodní obrazovka</AdminChipLink>
-              <AdminChipLink href={tabHref("dotykacka")}>Dotykačka</AdminChipLink>
-              {isSuper ? <AdminChipLink href="/admin/restaurants">← Seznam restaurací</AdminChipLink> : null}
-            </div>
-            <p className="textMuted2" style={{ margin: "10px 0 0", fontSize: 13, lineHeight: 1.5 }}>
-              Při otevření nastavení se automaticky načte vaše restaurace, abyste věděli, co právě upravujete.
-            </p>
-          </section>
 
           {detail && detail.ok ? (
             <section style={{ marginTop: 16 }}>

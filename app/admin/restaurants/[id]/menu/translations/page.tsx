@@ -1,6 +1,3 @@
-import { Suspense } from "react";
-
-import { RestaurantAdminTabs } from "../../../../../../components/admin/RestaurantAdminTabs";
 import { SyncActiveRestaurantCookie } from "../../../../../../components/admin/SyncActiveRestaurantCookie";
 import { fetchDotykackaProductsForMenu } from "../../../../../../lib/dotykacka/fetchProducts";
 import { applyMenuItemOverrides } from "../../../../../../lib/dotykacka/menuItemOverrides";
@@ -66,9 +63,6 @@ export default async function RestaurantMenuTranslationsPage({
   return (
     <main className="adminPage" style={{ paddingTop: 0 }}>
       <SyncActiveRestaurantCookie restaurantId={restaurantId} />
-      <Suspense fallback={null}>
-        <RestaurantAdminTabs restaurantId={restaurantId} active="menu" />
-      </Suspense>
       <div style={{ marginTop: 8 }}>
         <MenuTranslationsClient
           restaurantId={restaurantId}

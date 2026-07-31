@@ -1,7 +1,5 @@
 import { cookies } from "next/headers";
-import { Suspense } from "react";
 
-import { RestaurantAdminTabs } from "../../../../../components/admin/RestaurantAdminTabs";
 import { SyncActiveRestaurantCookie } from "../../../../../components/admin/SyncActiveRestaurantCookie";
 import { fetchDotykackaProductsForMenuCached } from "../../../../../lib/dotykacka/fetchProductsCached";
 import { applyMenuItemOverrides } from "../../../../../lib/dotykacka/menuItemOverrides";
@@ -41,7 +39,7 @@ export default async function RestaurantMenuEditorPage({
         <p style={{ lineHeight: 1.5 }}>{body}</p>
         <p>
           <a href="/admin" className="adminBreadcrumb__link">
-            ← Přehled admin
+            ← Zpět do adminu
           </a>
         </p>
       </main>
@@ -88,9 +86,6 @@ export default async function RestaurantMenuEditorPage({
   return (
     <main className="adminPage" style={{ paddingTop: 0 }}>
       <SyncActiveRestaurantCookie restaurantId={restaurantId} />
-      <Suspense fallback={null}>
-        <RestaurantAdminTabs restaurantId={restaurantId} active="menu" />
-      </Suspense>
       <div style={{ marginTop: 12 }}>{editor}</div>
     </main>
   );
