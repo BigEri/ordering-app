@@ -53,13 +53,6 @@ function RestaurantDetailInner() {
     window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}/menu`);
   }, [tab, id]);
 
-  /** Přehled je jen pro SUPER_ADMIN — vedoucí pryč na Menu. */
-  React.useEffect(() => {
-    if (!roleKnown || !id || isSuper) return;
-    if (tab !== "overview") return;
-    window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}/menu`);
-  }, [roleKnown, isSuper, tab, id]);
-
   const [detail, setDetail] = React.useState<RestaurantDetailResponse | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [isSuper, setIsSuper] = React.useState(false);
@@ -67,6 +60,13 @@ function RestaurantDetailInner() {
   const [nameDraft, setNameDraft] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
   const [contextSync, setContextSync] = React.useState<"idle" | "syncing" | "done" | "err">("idle");
+
+  /** Přehled je jen pro SUPER_ADMIN — vedoucí pryč na Menu. */
+  React.useEffect(() => {
+    if (!roleKnown || !id || isSuper) return;
+    if (tab !== "overview") return;
+    window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}/menu`);
+  }, [roleKnown, isSuper, tab, id]);
 
   const [dotyk, setDotyk] = React.useState<DotykackaSettingsResponse | null>(null);
   const [dotykLoading, setDotykLoading] = React.useState(false);
