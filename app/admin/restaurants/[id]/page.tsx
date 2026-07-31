@@ -53,9 +53,17 @@ function RestaurantDetailInner() {
     window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}/menu`);
   }, [tab, id]);
 
+  /** Přehled je jen pro SUPER_ADMIN — vedoucí pryč na Menu. */
+  React.useEffect(() => {
+    if (!roleKnown || !id || isSuper) return;
+    if (tab !== "overview") return;
+    window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}/menu`);
+  }, [roleKnown, isSuper, tab, id]);
+
   const [detail, setDetail] = React.useState<RestaurantDetailResponse | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [isSuper, setIsSuper] = React.useState(false);
+  const [roleKnown, setRoleKnown] = React.useState(false);
   const [nameDraft, setNameDraft] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
   const [contextSync, setContextSync] = React.useState<"idle" | "syncing" | "done" | "err">("idle");
@@ -358,10 +366,16 @@ function RestaurantDetailInner() {
           session?: { globalRole?: string };
         };
         if (!meR.ok || !meJ.ok) {
-          if (!cancelled) setContextSync("err");
+          if (!cancelled) {
+            setRoleKnown(true);
+            setContextSync("err");
+          }
           return;
         }
-        if (!cancelled) setIsSuper(meJ.session?.globalRole === "SUPER_ADMIN");
+        if (!cancelled) {
+          setIsSuper(meJ.session?.globalRole === "SUPER_ADMIN");
+          setRoleKnown(true);
+        }
         if (meJ.activeRestaurantId === id) {
           if (!cancelled) setContextSync("done");
           return;
@@ -379,7 +393,10 @@ function RestaurantDetailInner() {
         window.dispatchEvent(new Event("oa-restaurant-updated"));
         if (!cancelled) setContextSync("done");
       } catch {
-        if (!cancelled) setContextSync("err");
+        if (!cancelled) {
+          setRoleKnown(true);
+          setContextSync("err");
+        }
       }
     })();
     return () => {
@@ -529,6 +546,14 @@ function RestaurantDetailInner() {
     return (
       <main className="adminPage">
         <p className="textMuted">Přesměrování na menu provozovny…</p>
+      </main>
+    );
+  }
+
+  if (tab === "overview" && (!roleKnown || !isSuper)) {
+    return (
+      <main className="adminPage">
+        <p className="textMuted">Přesměrování…</p>
       </main>
     );
   }

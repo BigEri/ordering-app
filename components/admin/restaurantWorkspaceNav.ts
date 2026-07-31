@@ -15,6 +15,16 @@ export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; label: 
   { id: "dotykacka", label: "Dotykačka" },
 ];
 
+/** Vedoucí nevidí Přehled (název, jazyky, PIN, restart, mazání) — jen SUPER_ADMIN. */
+export function workspaceNavForRole(isSuperAdmin: boolean): typeof RESTAURANT_WORKSPACE_NAV {
+  if (isSuperAdmin) return RESTAURANT_WORKSPACE_NAV;
+  return RESTAURANT_WORKSPACE_NAV.filter((x) => x.id !== "overview");
+}
+
+export function managerRestaurantHomeHref(restaurantId: string): string {
+  return restaurantWorkspaceHref(restaurantId, "menu");
+}
+
 export function restaurantWorkspaceHref(restaurantId: string, section: RestaurantWorkspaceSection): string {
   const base = `/admin/restaurants/${encodeURIComponent(restaurantId)}`;
   if (section === "overview") return base;

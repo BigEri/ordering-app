@@ -12,7 +12,7 @@ export default async function SuperAdminRestaurantsPage() {
   }
   if (data.kind === "forbidden") {
     const rid = data.activeRestaurantId?.trim();
-    if (rid) redirect(`/admin/restaurants/${encodeURIComponent(rid)}`);
+    if (rid) redirect(`/admin/restaurants/${encodeURIComponent(rid)}/menu`);
     redirect("/admin");
   }
   return <RestaurantsDashboard pageData={data} />;

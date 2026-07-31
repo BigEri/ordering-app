@@ -47,7 +47,7 @@ export default function AdminHomeRedirectPage() {
           me.memberships[0]?.restaurantId?.trim() ||
           "";
         if (rid) {
-          window.location.replace(`/admin/restaurants/${encodeURIComponent(rid)}`);
+          window.location.replace(`/admin/restaurants/${encodeURIComponent(rid)}/menu`);
           return;
         }
         setMsg("Nemáte přiřazenou provozovnu. Kontaktujte administrátora.");

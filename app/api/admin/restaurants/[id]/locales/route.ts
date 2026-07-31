@@ -7,7 +7,6 @@ import {
   listRestaurantLocalesWithLabels,
   restaurantHasLocaleConfig,
   setRestaurantLocaleAllowlist,
-  updateRestaurantLocalesEnabled,
 } from "../../../../../../lib/server/restaurantLocales";
 
 export const dynamic = "force-dynamic";
@@ -19,6 +18,10 @@ async function canManageRestaurantLocales(
   if (session.globalRole === "SUPER_ADMIN") return true;
   const access = await userHasRestaurantAccess(session.userId, restaurantId);
   return access.ok && access.role === "RESTAURANT_ADMIN";
+}
+
+async function canEditRestaurantLocales(session: { globalRole: string }): Promise<boolean> {
+  return session.globalRole === "SUPER_ADMIN";
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -72,7 +75,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     if (!restaurantId) {
       return NextResponse.json({ ok: false, error: "Missing id" }, { status: 400 });
     }
-    if (!(await canManageRestaurantLocales(session, restaurantId))) {
+    if (!(await canEditRestaurantLocales(session))) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 
@@ -89,12 +92,7 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
     const enabledLocales = Array.isArray(o.enabledLocales) ? (o.enabledLocales as unknown[]) : [];
     const codes = enabledLocales.map((x) => (typeof x === "string" ? x : "")).filter(Boolean);
 
-    if (session.globalRole === "SUPER_ADMIN") {
-      await setRestaurantLocaleAllowlist({ restaurantId, allowedLocales: codes, updatedByUserId: session.userId });
-    } else {
-      // Vedoucí může jen zapnout/vypnout už povolené jazyky (nesmí přidat nový).
-      await updateRestaurantLocalesEnabled({ restaurantId, enabledLocales: codes, updatedByUserId: session.userId });
-    }
+    await setRestaurantLocaleAllowlist({ restaurantId, allowedLocales: codes, updatedByUserId: session.userId });
     return NextResponse.json({ ok: true });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";

@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { type AdminSession, requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { userHasRestaurantAccess } from "../../../../../lib/server/auth";
 import { deleteRestaurantBySuperAdmin } from "../../../../../lib/server/deleteRestaurant";
-import type { MembershipRole } from "../../../../../lib/server/db";
 import { prisma } from "../../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -13,13 +12,8 @@ async function canViewRestaurant(session: AdminSession, restaurantId: string): P
   return (await userHasRestaurantAccess(session.userId, restaurantId)).ok;
 }
 
-async function canUpdateRestaurantName(session: AdminSession, restaurantId: string): Promise<boolean> {
-  if (session.globalRole === "SUPER_ADMIN") return true;
-  const row = await prisma.membership.findUnique({
-    where: { userId_restaurantId: { userId: session.userId, restaurantId } },
-    select: { role: true },
-  });
-  return (row?.role as MembershipRole | undefined) === "RESTAURANT_ADMIN";
+async function canUpdateRestaurantName(session: AdminSession, _restaurantId: string): Promise<boolean> {
+  return session.globalRole === "SUPER_ADMIN";
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {

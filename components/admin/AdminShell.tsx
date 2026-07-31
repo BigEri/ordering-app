@@ -13,6 +13,7 @@ import {
   resolveRestaurantWorkspaceSection,
   restaurantWorkspaceHref,
   swapRestaurantIdInPath,
+  workspaceNavForRole,
 } from "./restaurantWorkspaceNav";
 import { TableflowBrand } from "./TableflowBrand";
 import { useAdminRestaurantBootstrap } from "./useAdminRestaurantBootstrap";
@@ -187,7 +188,11 @@ export function AdminShell({
       return;
     }
     if (pathname.includes("/menu") && workspaceRid) {
-      window.location.href = restaurantWorkspaceHref(workspaceRid, "overview");
+      if (isSuper) {
+        window.location.href = restaurantWorkspaceHref(workspaceRid, "overview");
+      } else if (window.history.length > 1) {
+        router.back();
+      }
       return;
     }
     if (window.history.length > 1) {
@@ -249,7 +254,7 @@ export function AdminShell({
 
             {navRestaurantId ? (
               <>
-                {RESTAURANT_WORKSPACE_NAV.map((item) => {
+                {workspaceNavForRole(isSuper).map((item) => {
                   const href = restaurantWorkspaceHref(navRestaurantId, item.id);
                   const active =
                     inWorkspace &&
