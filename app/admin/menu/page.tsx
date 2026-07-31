@@ -1,80 +1,35 @@
-import { cookies } from "next/headers";
+"use client";
 
-import { fetchDotykackaProductsForMenuCached } from "../../../lib/dotykacka/fetchProductsCached";
-import { applyMenuItemOverrides } from "../../../lib/dotykacka/menuItemOverrides";
-import { getAdminMenuRestaurantId } from "../../../lib/server/adminMenuRestaurantContext";
-import {
-  readAllMenuUiBundlesForRestaurantCached,
-  readMenuOverridesForRestaurantCached,
-  readMenuUiBundleForLocaleCached,
-} from "../../../lib/server/menuOverridesCached";
-import { isEnabledLocale } from "../../../lib/server/menuTextOverrides";
-import { getPublicRestaurantDisplayName } from "../../../lib/server/publicRestaurantName";
-import { MenuBrowseClient } from "../../menu/MenuBrowseClient";
+import * as React from "react";
 
-export default async function AdminMenuPage() {
-  const [restaurantName, restaurantId] = await Promise.all([
-    getPublicRestaurantDisplayName(),
-    getAdminMenuRestaurantId(),
-  ]);
-  if (!restaurantId) {
-    return (
-      <main style={{ padding: "2rem", maxWidth: 560 }}>
-        <h1 style={{ fontSize: "1.25rem", marginBottom: "0.75rem" }}>Editor menu</h1>
-        <p style={{ lineHeight: 1.5 }}>
-          Není nastavená vaše restaurace. Otevřete Přehled v administraci (/admin) a dokončete nastavení, pak můžete menu upravovat.
-        </p>
-      </main>
-    );
-  }
-  const cookieStore = await cookies();
-  const localeRaw = cookieStore.get("ordering-locale")?.value?.trim() ?? "cs";
-  const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.toLowerCase() : "cs";
+/**
+ * Legacy /admin/menu — middleware redirects when cookie is set.
+ * Client fallback resolves restaurant from /api/admin/me.
+ */
+export default function AdminMenuRedirectPage() {
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
+        const j = (await r.json()) as { ok?: boolean; activeRestaurantId?: string | null };
+        if (cancelled) return;
+        const rid = r.ok && j.ok ? (j.activeRestaurantId ?? "").trim() : "";
+        window.location.replace(
+          rid ? `/admin/restaurants/${encodeURIComponent(rid)}/menu` : "/admin",
+        );
+      } catch {
+        if (!cancelled) window.location.replace("/admin");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const [result, menuOverrides, initialMenuUiByLocale] = await Promise.all([
-    fetchDotykackaProductsForMenuCached(restaurantId),
-    readMenuOverridesForRestaurantCached(restaurantId),
-    readAllMenuUiBundlesForRestaurantCached(restaurantId),
-  ]);
-  const activeUi = initialMenuUiByLocale[locale] ?? (await readMenuUiBundleForLocaleCached(restaurantId, locale));
-
-  if (!result.ok) {
-    return (
-      <MenuBrowseClient
-        sections={[]}
-        loadError={result.error}
-        restaurantName={restaurantName}
-        restaurantId={restaurantId}
-        menuVariant="editor"
-        initialMenuOverrides={menuOverrides}
-        initialMenuUiByLocale={initialMenuUiByLocale}
-        initialMenuUi={{
-          locale,
-          text: activeUi.text,
-          ingredients: activeUi.ingredients,
-          dotykacka: activeUi.dotykacka,
-        }}
-      />
-    );
-  }
   return (
-    <MenuBrowseClient
-      sections={result.sections.map((s) => ({
-        ...s,
-        items: s.items.map(applyMenuItemOverrides),
-      }))}
-      loadError={null}
-      restaurantName={restaurantName}
-      restaurantId={restaurantId}
-      menuVariant="editor"
-      initialMenuOverrides={menuOverrides}
-      initialMenuUiByLocale={initialMenuUiByLocale}
-      initialMenuUi={{
-        locale,
-        text: activeUi.text,
-        ingredients: activeUi.ingredients,
-        dotykacka: activeUi.dotykacka,
-      }}
-    />
+    <main className="adminPage">
+      <p className="textMuted">Přesměrování na menu provozovny…</p>
+    </main>
   );
 }

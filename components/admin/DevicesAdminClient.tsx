@@ -428,7 +428,7 @@ export function DevicesAdminClient({
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ bumpDevices: true }),
+        body: JSON.stringify({ bumpDevices: true, restaurantId: rid }),
       });
       const data = (await r.json()) as {
         ok?: boolean;

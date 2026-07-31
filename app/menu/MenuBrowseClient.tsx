@@ -359,7 +359,7 @@ export function MenuBrowseClient({
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "same-origin",
-        body: JSON.stringify({ bumpDevices: true }),
+        body: JSON.stringify({ bumpDevices: true, restaurantId }),
       });
       const j = (await r.json()) as {
         ok?: boolean;
@@ -1101,7 +1101,15 @@ export function MenuBrowseClient({
         <header className="menuPageHero">
           {menuVariant === "guest" && adminPreview ? (
             <div style={{ marginBottom: 12, display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
-              <KioskAnchor href="/admin/menu" className="chip" style={{ textDecoration: "none", display: "inline-flex" }}>
+              <KioskAnchor
+                href={
+                  restaurantId
+                    ? `/admin/restaurants/${encodeURIComponent(restaurantId)}/menu`
+                    : "/admin/menu"
+                }
+                className="chip"
+                style={{ textDecoration: "none", display: "inline-flex" }}
+              >
                 ← Zpět do administrace
               </KioskAnchor>
               <span className="menuPageMetaChip" style={{ fontSize: 13 }}>
@@ -1192,13 +1200,21 @@ export function MenuBrowseClient({
 
           {menuVariant === "editor" && canEditMenu ? (
             <div className="menuEditorBar">
-              <KioskAnchor href={publicMenuUrlFromAdmin()} className="chip" style={{ textDecoration: "none" }}>
+              <KioskAnchor href={publicMenuUrlFromAdmin(restaurantId ? { rid: restaurantId } : undefined)} className="chip" style={{ textDecoration: "none" }}>
                 Náhled pro zákazníka ↗
               </KioskAnchor>
               <KioskAnchor href="/admin" className="chip" style={{ textDecoration: "none" }}>
                 Přehled admin ↗
               </KioskAnchor>
-              <KioskAnchor href="/admin/menu/translations" className="chip" style={{ textDecoration: "none" }}>
+              <KioskAnchor
+                href={
+                  restaurantId
+                    ? `/admin/restaurants/${encodeURIComponent(restaurantId)}/menu/translations`
+                    : "/admin/menu/translations"
+                }
+                className="chip"
+                style={{ textDecoration: "none" }}
+              >
                 Překlady jazyků ↗
               </KioskAnchor>
               <button

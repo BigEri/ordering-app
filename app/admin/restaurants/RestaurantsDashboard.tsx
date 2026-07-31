@@ -378,7 +378,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                       <button
                         type="button"
                         className="chip"
-                        onClick={() => void onOpen(r.id, "/admin/menu")}
+                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}/menu`)}
                         disabled={actionsDisabled}
                         style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
                         title="Nastavit aktivní a otevřít úpravy menu"

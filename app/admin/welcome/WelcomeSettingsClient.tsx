@@ -804,7 +804,8 @@ export function WelcomeSettingsClient({
             ) : null}
             {!menuPickerLoading && !menuPickerErr && menuImages.length === 0 ? (
               <p className="textMuted2" style={{ marginTop: 12 }}>
-                V menu zatím nejsou žádné uložené fotky. Nahrajte fotky u položek v <a href="/admin/menu">Úpravy menu</a>.
+                V menu zatím nejsou žádné uložené fotky. Nahrajte fotky u položek v{" "}
+                <a href={rid ? `/admin/restaurants/${encodeURIComponent(rid)}/menu` : "/admin/menu"}>Úpravy menu</a>.
               </p>
             ) : null}
 

@@ -1,23 +1,17 @@
 import type { AdminSession } from "./adminGuard";
-import { activeRestaurantCookieName, userHasRestaurantAccess } from "./auth";
+import { userHasRestaurantAccess } from "./auth";
 
-function cookieValue(cookieHeader: string | null | undefined, name: string): string {
-  const raw = typeof cookieHeader === "string" ? cookieHeader : "";
-  if (!raw) return "";
-  const parts = raw.split(";").map((p) => p.trim());
-  const hit = parts.find((p) => p.startsWith(`${name}=`));
-  if (!hit) return "";
-  return hit.slice(`${name}=`.length);
-}
-
-/** Úpravy menu jen pro aktivní restauraci v cookie a s oprávněním (vedoucí/personál/superadmin). */
+/**
+ * Úpravy menu pro danou provozovnu — `restaurantId` z URL/těla má přednost před cookie.
+ * Superadmin: jakákoli restaurace. Ostatní: membership (cookie nemusí sedět 1:1).
+ */
 export async function canEditMenuForRestaurant(
   session: AdminSession,
-  cookieHeader: string | null | undefined,
+  _cookieHeader: string | null | undefined,
   restaurantId: string,
 ): Promise<boolean> {
-  const rid = cookieValue(cookieHeader, activeRestaurantCookieName());
-  if (rid !== restaurantId) return false;
+  const rid = restaurantId.trim();
+  if (!rid) return false;
   if (session.globalRole === "SUPER_ADMIN") return true;
-  return (await userHasRestaurantAccess(session.userId, restaurantId)).ok;
+  return (await userHasRestaurantAccess(session.userId, rid)).ok;
 }

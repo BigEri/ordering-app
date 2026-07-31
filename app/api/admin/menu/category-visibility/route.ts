@@ -30,7 +30,7 @@ export async function PATCH(req: Request) {
     if (!restaurantId || !categoryKey) {
       return NextResponse.json({ ok: false, error: "Missing restaurantId/categoryKey" }, { status: 400 });
     }
-    if (!canEditMenuForRestaurant(session, cookieHeader, restaurantId)) {
+    if (!(await canEditMenuForRestaurant(session, cookieHeader, restaurantId))) {
       return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
     }
 

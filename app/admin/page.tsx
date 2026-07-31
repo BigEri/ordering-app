@@ -303,9 +303,11 @@ export default function AdminHomePage() {
               Moje provozovna
             </AdminChipLink>
           ) : null}
-          <AdminChipLink href="/admin/menu">Menu (úpravy)</AdminChipLink>
           {me && me.ok && me.activeRestaurantId ? (
             <>
+              <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}/menu`}>
+                Menu
+              </AdminChipLink>
               <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(me.activeRestaurantId)}?tab=welcome`}>
                 Úvodní obrazovka
               </AdminChipLink>

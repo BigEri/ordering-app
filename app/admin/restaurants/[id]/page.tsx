@@ -4,6 +4,7 @@ import { useParams, usePathname, useSearchParams } from "next/navigation";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 import { DevicesAdminClient } from "../../../../components/admin/DevicesAdminClient";
+import { RestaurantAdminTabs } from "../../../../components/admin/RestaurantAdminTabs";
 import { UsersAdminClient } from "../../../../components/admin/UsersAdminClient";
 import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
 import { Suspense } from "react";
@@ -33,7 +34,7 @@ type RestaurantLocalesResponse =
   | { ok: true; hasConfig: boolean; locales: { code: string; label: string; enabled: boolean }[] }
   | { ok: false; error: string };
 
-const TABS = ["overview", "users", "devices", "welcome", "dotykacka"] as const;
+const TABS = ["overview", "menu", "users", "devices", "welcome", "dotykacka"] as const;
 type TabId = (typeof TABS)[number];
 
 function tabFromSearch(raw: string | null): TabId {
@@ -47,6 +48,12 @@ function RestaurantDetailInner() {
   const searchParams = useSearchParams();
   const id = params?.id ?? "";
   const tab = tabFromSearch(searchParams.get("tab"));
+
+  /** Legacy ?tab=menu → dedicated menu route (SSR editor). */
+  React.useEffect(() => {
+    if (tab !== "menu" || !id) return;
+    window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}/menu`);
+  }, [tab, id]);
 
   const [detail, setDetail] = React.useState<RestaurantDetailResponse | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
@@ -514,7 +521,19 @@ function RestaurantDetailInner() {
 
   const name = detail && detail.ok ? detail.restaurant.name : id;
 
-  const tabHref = (t: TabId) => (t === "overview" ? pathname : `${pathname}?tab=${t}`);
+  const tabHref = (t: TabId) => {
+    if (t === "overview") return pathname;
+    if (t === "menu") return `${pathname}/menu`;
+    return `${pathname}?tab=${t}`;
+  };
+
+  if (tab === "menu") {
+    return (
+      <main className="adminPage">
+        <p className="textMuted">Přesměrování na menu provozovny…</p>
+      </main>
+    );
+  }
 
   return (
     <main className="adminPage">
@@ -525,8 +544,8 @@ function RestaurantDetailInner() {
       ) : null}
       {contextSync === "done" ? (
         <div className="adminRestaurantContextBar">
-          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Zařízení, úvodní obrazovka a uživatelé níže platí
-          pro tuto provozovnu.
+          <strong>Pracujete s restaurací</strong> <strong>{name}</strong>. Menu, zařízení, úvodní obrazovka a uživatelé níže
+          platí pro tuto provozovnu.
         </div>
       ) : null}
       {contextSync === "err" ? (
@@ -550,58 +569,7 @@ function RestaurantDetailInner() {
         </button>
       </div>
 
-      <ul className="adminTabs" role="tablist" aria-label="Sekce detailu restaurace">
-        <li style={{ display: "contents" }}>
-          <a
-            href={tabHref("overview")}
-            className={`adminTab${tab === "overview" ? " adminTab--active" : ""}`}
-            role="tab"
-            aria-selected={tab === "overview"}
-          >
-            Přehled
-          </a>
-        </li>
-        <li style={{ display: "contents" }}>
-          <a
-            href={tabHref("users")}
-            className={`adminTab${tab === "users" ? " adminTab--active" : ""}`}
-            role="tab"
-            aria-selected={tab === "users"}
-          >
-            Uživatelé
-          </a>
-        </li>
-        <li style={{ display: "contents" }}>
-          <a
-            href={tabHref("devices")}
-            className={`adminTab${tab === "devices" ? " adminTab--active" : ""}`}
-            role="tab"
-            aria-selected={tab === "devices"}
-          >
-            Zařízení
-          </a>
-        </li>
-        <li style={{ display: "contents" }}>
-          <a
-            href={tabHref("welcome")}
-            className={`adminTab${tab === "welcome" ? " adminTab--active" : ""}`}
-            role="tab"
-            aria-selected={tab === "welcome"}
-          >
-            Úvodní obrazovka
-          </a>
-        </li>
-        <li style={{ display: "contents" }}>
-          <a
-            href={tabHref("dotykacka")}
-            className={`adminTab${tab === "dotykacka" ? " adminTab--active" : ""}`}
-            role="tab"
-            aria-selected={tab === "dotykacka"}
-          >
-            Dotykačka
-          </a>
-        </li>
-      </ul>
+      <RestaurantAdminTabs restaurantId={id} />
 
       {err ? (
         <p role="alert" style={{ marginTop: 12, color: "#fecaca" }}>
@@ -845,6 +813,7 @@ function RestaurantDetailInner() {
               >
                 Přehled admin
               </button>
+              <AdminChipLink href={tabHref("menu")}>Menu</AdminChipLink>
               <AdminChipLink href={tabHref("users")}>Uživatelé</AdminChipLink>
               <AdminChipLink href={tabHref("devices")}>Zařízení</AdminChipLink>
               <AdminChipLink href={tabHref("welcome")}>Úvodní obrazovka</AdminChipLink>
@@ -876,11 +845,24 @@ function RestaurantDetailInner() {
           >
             <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Jazyky pro hosty</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
-              Nastavení platí pro vaši restauraci. Ovlivňuje přepínač jazyka v menu. Překlady menu upravíte v{" "}
-              <a href="/admin/menu/translations" className="adminBreadcrumb__link">
-                Admin → Menu → Překlady
-              </a>
-              .
+              Nastavení platí pro vaši restauraci. Ovlivňuje přepínač jazyka v menu. Překlady menu upravíte v záložce{" "}
+              <a href={tabHref("menu")} className="adminBreadcrumb__link">
+                Menu
+              </a>{" "}
+              → Překlady.
+              {id ? (
+                <>
+                  {" "}
+                  (
+                  <a
+                    href={`/admin/restaurants/${encodeURIComponent(id)}/menu/translations`}
+                    className="adminBreadcrumb__link"
+                  >
+                    otevřít překlady
+                  </a>
+                  ).
+                </>
+              ) : null}
             </p>
 
             {localesLoading ? <p className="textMuted">Načítání…</p> : null}

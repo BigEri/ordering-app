@@ -103,10 +103,16 @@ export function AdminShell({
         const name = restaurantNameById[id];
         if (name) items[items.length - 1] = { label: name, href: undefined };
       }
-    } else if (pathname.startsWith("/admin/menu")) {
-      items.push({ label: "Menu (úpravy)", href: "/admin/menu" });
-      if (pathname.startsWith("/admin/menu/translations")) {
-        items.push({ label: "Překlady", href: undefined });
+      if (/\/admin\/restaurants\/[^/]+\/menu/.test(pathname)) {
+        const m2 = /^\/admin\/restaurants\/([^/]+)/.exec(pathname);
+        const rid = m2?.[1] ?? "";
+        items.push({
+          label: "Menu",
+          href: rid ? `/admin/restaurants/${encodeURIComponent(rid)}/menu` : undefined,
+        });
+        if (pathname.includes("/menu/translations")) {
+          items.push({ label: "Překlady", href: undefined });
+        }
       }
     }
     return items;
@@ -137,6 +143,11 @@ export function AdminShell({
   const onBack = () => {
     if (pathname === "/admin" || pathname === "/admin/login") {
       window.location.href = "/";
+      return;
+    }
+    const menuScoped = /^\/admin\/restaurants\/([^/]+)\/menu/.exec(pathname);
+    if (menuScoped?.[1]) {
+      window.location.href = `/admin/restaurants/${encodeURIComponent(menuScoped[1])}`;
       return;
     }
     if (pathname.startsWith("/admin/restaurants/") && pathname !== "/admin/restaurants") {
@@ -184,13 +195,13 @@ export function AdminShell({
               active={pathname.startsWith("/admin/restaurants/")}
             />
           ) : null}
-          <AdminNavLink
-            href="/admin/menu"
-            label="Menu (úpravy)"
-            active={pathname.startsWith("/admin/menu") && !pathname.startsWith("/admin/menu/translations")}
-          />
-          <AdminNavLink href="/admin/menu/translations" label="Překlady menu" active={pathname.startsWith("/admin/menu/translations")} />
-          <a className="adminNavLink" href={publicMenuUrlFromAdmin()} style={{ textDecoration: "none" }}>
+          <a
+            className="adminNavLink"
+            href={publicMenuUrlFromAdmin(
+              me?.ok && me.activeRestaurantId ? { rid: me.activeRestaurantId } : undefined,
+            )}
+            style={{ textDecoration: "none" }}
+          >
             Veřejné menu ↗
           </a>
         </nav>

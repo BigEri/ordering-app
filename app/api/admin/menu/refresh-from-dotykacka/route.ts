@@ -2,15 +2,17 @@ import { NextResponse } from "next/server";
 
 import { fetchDotykackaProductsForMenuCached } from "../../../../../lib/dotykacka/fetchProductsCached";
 import { invalidateDotykackaMenuCache } from "../../../../../lib/dotykacka/menuCache";
-import { requireAdminSession, requireActiveRestaurantId } from "../../../../../lib/server/adminGuard";
+import { requireAdminSession } from "../../../../../lib/server/adminGuard";
+import { activeRestaurantCookieName, userHasRestaurantAccess } from "../../../../../lib/server/auth";
 import { bumpDeviceReloadNonce } from "../../../../../lib/server/deviceRegistry";
+import { cookieValueFromHeader } from "../../../../../lib/server/httpCookie";
 import { listAllKioskDeviceBindings } from "../../../../../lib/server/kioskDeviceBindings";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Admin: zruší cache menu z Dotykačky a volitelně vynutí obnovení všech tabletů provozovny.
- * Body: { bumpDevices?: boolean } — výchozí true.
+ * Body: { restaurantId?: string, bumpDevices?: boolean } — restaurantId z URL kontextu má přednost před cookie.
  */
 export async function POST(req: Request) {
   const cookieHeader = req.headers.get("cookie");
@@ -21,15 +23,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  let restaurantId: string;
+  let bumpDevices = true;
+  let fromBody = "";
   try {
-    restaurantId = (await requireActiveRestaurantId(session, cookieHeader)).trim();
+    const body = (await req.json()) as { bumpDevices?: boolean; restaurantId?: string };
+    if (body && typeof body.bumpDevices === "boolean") bumpDevices = body.bumpDevices;
+    if (body && typeof body.restaurantId === "string") fromBody = body.restaurantId.trim();
   } catch {
-    return NextResponse.json(
-      { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
-      { status: 400 },
-    );
+    /* prázdné tělo = výchozí bumpDevices true */
   }
+
+  const fromCookie = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
+  const restaurantId = fromBody || fromCookie;
   if (!restaurantId) {
     return NextResponse.json(
       { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
@@ -37,12 +42,11 @@ export async function POST(req: Request) {
     );
   }
 
-  let bumpDevices = true;
-  try {
-    const body = (await req.json()) as { bumpDevices?: boolean };
-    if (body && typeof body.bumpDevices === "boolean") bumpDevices = body.bumpDevices;
-  } catch {
-    /* prázdné tělo = výchozí bumpDevices true */
+  if (session.globalRole !== "SUPER_ADMIN") {
+    const access = await userHasRestaurantAccess(session.userId, restaurantId);
+    if (!access.ok) {
+      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+    }
   }
 
   invalidateDotykackaMenuCache(restaurantId);

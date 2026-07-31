@@ -5,7 +5,6 @@ import * as React from "react";
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 import { publicMenuUrlFromAdmin } from "../../../../lib/admin/publicMenuPreviewUrl";
 
-import { usePathname } from "next/navigation";
 import type { DotykackaMenuSection } from "../../../../lib/dotykacka/dotykackaMenuSections";
 import { menuSectionCategoryKey } from "../../../../lib/menu/menuSectionKey";
 import type { MenuTextOverridesForLocale } from "../../../../lib/menu/menuTextOverridesTypes";
@@ -107,7 +106,6 @@ type MenuTranslationsClientProps = {
 };
 
 export function MenuTranslationsClient({ restaurantId, restaurantName, sections, loadError }: MenuTranslationsClientProps) {
-  const pathname = usePathname();
   const [locales, setLocales] = React.useState<AdminLocale[]>([
     { code: "cs", label: "Čeština", enabled: true },
     { code: "en", label: "English", enabled: true },
@@ -718,6 +716,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       if (!href) return;
       if (href.startsWith("#")) return;
       if (href.startsWith("/admin/menu/translations")) return;
+      if (/\/admin\/restaurants\/[^/]+\/menu\/translations/.test(href)) return;
 
       const dirty = lastSavedKeyRef.current != null && autoSaveKey !== lastSavedKeyRef.current;
       if (!dirty && !savingRef.current && !hasMissingIngredientTranslations) return;
@@ -782,7 +781,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
   if (!restaurantId) {
     return (
-      <div className="adminPage" style={{ padding: 24, maxWidth: 720 }}>
+      <div style={{ padding: 24, maxWidth: 720 }}>
         <h1 style={{ marginTop: 0, fontSize: 26, fontWeight: 700 }}>
           Překlady menu
         </h1>
@@ -797,7 +796,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
   }
 
   return (
-    <div className="adminPage" style={{ padding: 24, maxWidth: 960 }}>
+    <div style={{ padding: "8px 0 24px", maxWidth: 960 }}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "baseline", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ marginTop: 0, fontSize: 26, fontWeight: 700 }}>
@@ -808,8 +807,10 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <AdminChipLink href="/admin/menu">Úpravy menu (pořadí, foto) ↗</AdminChipLink>
-          <AdminChipLink href={publicMenuUrlFromAdmin()}>Veřejné menu ↗</AdminChipLink>
+          <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(restaurantId)}/menu`}>
+            Úpravy menu (pořadí, foto) ↗
+          </AdminChipLink>
+          <AdminChipLink href={publicMenuUrlFromAdmin({ rid: restaurantId })}>Veřejné menu ↗</AdminChipLink>
         </div>
       </div>
 

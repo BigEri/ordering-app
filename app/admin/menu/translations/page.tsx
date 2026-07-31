@@ -1,49 +1,37 @@
-import { fetchDotykackaProductsForMenu } from "../../../../lib/dotykacka/fetchProducts";
-import { applyMenuItemOverrides } from "../../../../lib/dotykacka/menuItemOverrides";
-import { orderMenuSectionsLikeKiosk } from "../../../../lib/menu/menuSectionsDisplayOrder";
-import { getAdminMenuRestaurantId } from "../../../../lib/server/adminMenuRestaurantContext";
-import { readMenuOverridesForRestaurant } from "../../../../lib/server/menuOverridesRead";
-import { getPublicRestaurantDisplayName } from "../../../../lib/server/publicRestaurantName";
-import { MenuTranslationsClient } from "./MenuTranslationsClient";
+"use client";
 
-export default async function MenuTranslationsPage() {
-  const restaurantName = await getPublicRestaurantDisplayName();
-  const restaurantId = await getAdminMenuRestaurantId();
-  if (!restaurantId) {
-    return (
-      <main style={{ padding: "2rem", maxWidth: 560 }}>
-        <h1 style={{ fontSize: "1.25rem", marginBottom: "0.75rem" }}>Překlady menu</h1>
-        <p style={{ lineHeight: 1.5 }}>
-          Nejdřív dokončete nastavení v Přehledu administrace (/admin).
-        </p>
-      </main>
-    );
-  }
-  const [result, menuOverrides] = await Promise.all([
-    fetchDotykackaProductsForMenu(restaurantId),
-    readMenuOverridesForRestaurant(restaurantId),
-  ]);
-  const sections = result.ok
-    ? orderMenuSectionsLikeKiosk(
-        result.sections.map((s) => ({
-          ...s,
-          items: s.items.map(applyMenuItemOverrides),
-        })),
-        {
-          orderByCategory: menuOverrides.orderByCategory,
-          images: menuOverrides.images,
-          hiddenCategoryKeys: menuOverrides.hiddenCategoryKeys,
-          hiddenItemIds: menuOverrides.hiddenItemIds,
-        },
-      )
-    : [];
+import * as React from "react";
+
+/**
+ * Legacy /admin/menu/translations — middleware redirects when cookie is set.
+ * Client fallback resolves restaurant from /api/admin/me.
+ */
+export default function AdminMenuTranslationsRedirectPage() {
+  React.useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
+        const j = (await r.json()) as { ok?: boolean; activeRestaurantId?: string | null };
+        if (cancelled) return;
+        const rid = r.ok && j.ok ? (j.activeRestaurantId ?? "").trim() : "";
+        window.location.replace(
+          rid
+            ? `/admin/restaurants/${encodeURIComponent(rid)}/menu/translations`
+            : "/admin",
+        );
+      } catch {
+        if (!cancelled) window.location.replace("/admin");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   return (
-    <MenuTranslationsClient
-      restaurantId={restaurantId}
-      restaurantName={restaurantName}
-      sections={sections}
-      loadError={result.ok ? null : result.error}
-    />
+    <main className="adminPage">
+      <p className="textMuted">Přesměrování na překlady menu provozovny…</p>
+    </main>
   );
 }
