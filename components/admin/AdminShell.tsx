@@ -103,7 +103,8 @@ export function AdminShell({
   const workspaceRid = workspaceIdFromPath(pathname);
   const inWorkspace = Boolean(workspaceRid);
   const onRestaurantList = pathname === "/admin/restaurants" || pathname === "/admin/restaurants/";
-  /** Superadmin platform: only the restaurant list (and redirects to it). */
+  const onSuperAccounts = pathname.startsWith("/admin/super-accounts");
+  /** Superadmin platform: restaurant list or SUPER accounts (not inside a venue workspace). */
   const showPlatformNav = isSuper && !inWorkspace;
   const navRestaurantId =
     workspaceRid ?? (me?.ok && !isSuper ? me.activeRestaurantId : null);
@@ -238,17 +239,34 @@ export function AdminShell({
             <span className="adminShell__brandSub">
               {inWorkspace && workspaceName
                 ? workspaceName
-                : showPlatformNav
-                  ? "Všechny provozovny"
-                  : "Správa vaší restaurace"}
+                : onSuperAccounts
+                  ? "SUPER účty"
+                  : showPlatformNav
+                    ? "Všechny provozovny"
+                    : "Správa vaší restaurace"}
             </span>
           </div>
           <nav className="adminShell__nav">
             {showPlatformNav ? (
+              <>
+                <AdminNavLink
+                  href="/admin/restaurants"
+                  label="Provozovny"
+                  active={onRestaurantList || pathname === "/admin"}
+                />
+                <AdminNavLink
+                  href="/admin/super-accounts"
+                  label="SUPER účty"
+                  active={pathname.startsWith("/admin/super-accounts")}
+                />
+              </>
+            ) : null}
+
+            {isSuper && inWorkspace ? (
               <AdminNavLink
-                href="/admin/restaurants"
-                label="Provozovny"
-                active={onRestaurantList || pathname === "/admin"}
+                href="/admin/super-accounts"
+                label="SUPER účty"
+                active={pathname.startsWith("/admin/super-accounts")}
               />
             ) : null}
 

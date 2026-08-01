@@ -141,7 +141,12 @@ export async function middleware(req: NextRequest) {
   // (server-side APIs still enforce exact roles & access).
   // Restaurant detail/list may be opened before cookie sync (manager hub / superadmin list).
   const restaurantScopedOk =
-    pathname === "/admin/restaurants" || pathname.startsWith("/admin/restaurants/");
+    pathname === "/admin/restaurants" ||
+    pathname.startsWith("/admin/restaurants/") ||
+    pathname === "/admin/account" ||
+    pathname.startsWith("/admin/account/") ||
+    pathname === "/admin/super-accounts" ||
+    pathname.startsWith("/admin/super-accounts/");
   if (
     !rid &&
     pathname.startsWith("/admin/") &&
