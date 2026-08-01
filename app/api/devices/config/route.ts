@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   getDeviceApkUpdateNonce,
+  getDeviceRebootNonce,
   getDeviceReloadNonce,
   getEffectiveTable,
   recordKioskApkVersion,
@@ -30,16 +31,17 @@ export async function GET(req: NextRequest) {
 
   // Strict mode: binding exists only if it's stored in DB (kiosk_device_bindings).
   // Presence fallback would make "removed device" still look paired.
-  const [t, reloadNonce, apkUpdateNonce] = await Promise.all([
+  const [t, reloadNonce, apkUpdateNonce, rebootNonce] = await Promise.all([
     getEffectiveTable(deviceId, { allowFallback: false }),
     getDeviceReloadNonce(deviceId),
     getDeviceApkUpdateNonce(deviceId),
+    getDeviceRebootNonce(deviceId),
   ]);
   const appRelease = getKioskAppRelease();
 
   if (!t) {
     return NextResponse.json(
-      { ok: true, binding: null, reloadNonce, apkUpdateNonce, appRelease },
+      { ok: true, binding: null, reloadNonce, apkUpdateNonce, rebootNonce, appRelease },
       { headers: NO_STORE },
     );
   }
@@ -78,6 +80,7 @@ export async function GET(req: NextRequest) {
       },
       reloadNonce,
       apkUpdateNonce,
+      rebootNonce,
       appRelease,
       maintenanceRebootHour: maintenanceReboot.hour,
       maintenanceRebootMinute: maintenanceReboot.minute,

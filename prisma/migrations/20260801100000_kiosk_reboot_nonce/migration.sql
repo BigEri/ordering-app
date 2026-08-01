@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "KioskDeviceBinding" ADD COLUMN IF NOT EXISTS "rebootNonce" INTEGER NOT NULL DEFAULT 0;

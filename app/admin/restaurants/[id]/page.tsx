@@ -103,6 +103,9 @@ function RestaurantDetailInner() {
   const [rebootSaving, setRebootSaving] = React.useState(false);
   const [rebootMsg, setRebootMsg] = React.useState<string | null>(null);
   const [rebootErr, setRebootErr] = React.useState<string | null>(null);
+  const [rebootNowing, setRebootNowing] = React.useState(false);
+  const [rebootNowMsg, setRebootNowMsg] = React.useState<string | null>(null);
+  const [rebootNowErr, setRebootNowErr] = React.useState<string | null>(null);
 
   const load = React.useCallback(async () => {
     if (!id) return;
@@ -251,6 +254,38 @@ function RestaurantDetailInner() {
       setRebootErr("Nepodařilo se uložit čas restartu (připojení).");
     } finally {
       setRebootSaving(false);
+    }
+  };
+
+  const onRebootTabletsNow = async () => {
+    if (!id) return;
+    const ok = window.confirm(
+      "Restartovat teď všechny spárované tablety této provozovny? Tablety s Device Owner a APK ≥ 1.20 se do ~15 s tiše restartují a vrátí do Host kiosku.",
+    );
+    if (!ok) return;
+    setRebootNowMsg(null);
+    setRebootNowErr(null);
+    setRebootNowing(true);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(id)}/kiosk-reboot-now`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const j = (await r.json()) as { ok?: boolean; devicesSignaled?: number; error?: string };
+      if (!r.ok || !j.ok) {
+        setRebootNowErr(j.error ?? "Požadavek na restart selhal.");
+        return;
+      }
+      const n = typeof j.devicesSignaled === "number" ? j.devicesSignaled : 0;
+      setRebootNowMsg(
+        n > 0
+          ? `Signál odeslán na ${n} tablet(ů). Restart do ~15 s (vyžaduje APK 1.20+).`
+          : "Žádná spárovaná zařízení — není co restartovat.",
+      );
+    } catch {
+      setRebootNowErr("Nepodařilo se odeslat požadavek (připojení).");
+    } finally {
+      setRebootNowing(false);
     }
   };
 
@@ -803,6 +838,39 @@ function RestaurantDetailInner() {
                 {rebootErr}
               </p>
             ) : null}
+            <div
+              style={{
+                marginTop: 16,
+                paddingTop: 16,
+                borderTop: "1px solid var(--border)",
+                display: "grid",
+                gap: 10,
+              }}
+            >
+              <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
+                Manuální restart (test / údržba): pošle signál všem spárovaným tabletům. Ignoruje týdenní interval.
+                Vyžaduje Device Owner a APK 1.20+.
+              </p>
+              <button
+                type="button"
+                className="chip"
+                disabled={rebootNowing}
+                onClick={() => void onRebootTabletsNow()}
+                style={{ cursor: rebootNowing ? "wait" : "pointer", justifySelf: "start" }}
+              >
+                {rebootNowing ? "…" : "Restartovat tablety teď"}
+              </button>
+              {rebootNowMsg ? (
+                <p role="status" style={{ margin: 0, fontSize: 13, color: "var(--success, #86efac)" }}>
+                  {rebootNowMsg}
+                </p>
+              ) : null}
+              {rebootNowErr ? (
+                <p role="alert" style={{ margin: 0, fontSize: 13, color: "#fecaca" }}>
+                  {rebootNowErr}
+                </p>
+              ) : null}
+            </div>
           </section>
           ) : null}
 

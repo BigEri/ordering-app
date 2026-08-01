@@ -25,6 +25,7 @@ function isLegacyAdminApi(pathname: string) {
     pathname.startsWith("/api/devices/bind") ||
     pathname.startsWith("/api/devices/reload") ||
     pathname.startsWith("/api/devices/apk-update") ||
+    pathname.startsWith("/api/devices/reboot") ||
     pathname === "/api/pos/virtual-log" ||
     pathname.startsWith("/api/pos/virtual-log/")
   );

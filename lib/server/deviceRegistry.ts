@@ -5,9 +5,11 @@
 import { getDefaultPublicMenuRestaurantIdFromEnv } from "./publicRestaurantName";
 import {
   bumpKioskDeviceApkUpdateNonce,
+  bumpKioskDeviceRebootNonce,
   bumpKioskDeviceReloadNonce,
   getKioskDeviceBinding,
   getKioskDeviceApkUpdateNonce,
+  getKioskDeviceRebootNonce,
   getKioskDeviceReloadNonce,
   listAllKioskDeviceBindings,
   touchKioskDeviceTelemetry,
@@ -56,6 +58,14 @@ export async function bumpDeviceApkUpdateNonce(deviceId: string): Promise<number
 
 export async function getDeviceApkUpdateNonce(deviceId: string): Promise<number> {
   return getKioskDeviceApkUpdateNonce(deviceId);
+}
+
+export async function bumpDeviceRebootNonce(deviceId: string): Promise<number> {
+  return bumpKioskDeviceRebootNonce(deviceId);
+}
+
+export async function getDeviceRebootNonce(deviceId: string): Promise<number> {
+  return getKioskDeviceRebootNonce(deviceId);
 }
 
 export function recordKioskApkVersion(deviceId: string, versionCode: number) {
