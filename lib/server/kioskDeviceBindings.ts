@@ -167,6 +167,17 @@ export async function bumpAllKioskDeviceRebootNoncesForRestaurant(restaurantId: 
   return result.count;
 }
 
+/** Zvýší reloadNonce u všech tabletů provozovny (admin „vynutit obnovení všech“). */
+export async function bumpAllKioskDeviceReloadNoncesForRestaurant(restaurantId: string): Promise<number> {
+  const rid = restaurantId.trim();
+  if (!rid) return 0;
+  const result = await prisma.kioskDeviceBinding.updateMany({
+    where: { restaurantId: rid },
+    data: { reloadNonce: { increment: 1 }, updatedAtIso: nowIso() },
+  });
+  return result.count;
+}
+
 export async function setKioskDevicePairingLocked(deviceId: string, locked: boolean): Promise<void> {
   const id = deviceId.trim();
   if (!id) return;

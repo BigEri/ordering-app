@@ -90,6 +90,7 @@ export function DevicesAdminClient({
   const [menuRefreshOk, setMenuRefreshOk] = React.useState<string | null>(null);
   const [menuRefreshErr, setMenuRefreshErr] = React.useState(false);
   const [menuRefreshErrDetail, setMenuRefreshErrDetail] = React.useState<string | null>(null);
+  const [reloadAllLoading, setReloadAllLoading] = React.useState(false);
   const [apkUpdateErr, setApkUpdateErr] = React.useState(false);
   const [apkUpdateErrDetail, setApkUpdateErrDetail] = React.useState<string | null>(null);
   const [apkUpdatingId, setApkUpdatingId] = React.useState<string | null>(null);
@@ -418,6 +419,32 @@ export function DevicesAdminClient({
     }
   };
 
+  const onForceReloadAll = async () => {
+    if (!rid) return;
+    setReloadErr(false);
+    setReloadErrDetail(null);
+    setReloadOk(null);
+    setReloadAllLoading(true);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(rid)}/kiosk-reload-all`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const data = (await r.json()) as { ok?: boolean; devicesSignaled?: number; error?: string };
+      if (!r.ok || !data.ok) {
+        setReloadErr(true);
+        setReloadErrDetail(data.error ?? null);
+        return;
+      }
+      const n = typeof data.devicesSignaled === "number" ? data.devicesSignaled : 0;
+      setReloadOk(tStaff("admin.devices.reloadAllOk").replace("{devices}", String(n)));
+    } catch {
+      setReloadErr(true);
+    } finally {
+      setReloadAllLoading(false);
+    }
+  };
+
   const onRefreshMenuFromDotykacka = async () => {
     setMenuRefreshErr(false);
     setMenuRefreshErrDetail(null);
@@ -521,6 +548,16 @@ export function DevicesAdminClient({
           title={tStaff("admin.devices.refreshAllHint")}
         >
           {listRefreshing ? "…" : tStaff("admin.devices.refresh")}
+        </button>
+        <button
+          type="button"
+          className="chip"
+          disabled={reloadAllLoading || !activeRestaurantId}
+          onClick={() => void onForceReloadAll()}
+          style={{ cursor: reloadAllLoading || !activeRestaurantId ? "not-allowed" : "pointer" }}
+          title={tStaff("admin.devices.reloadAllHint")}
+        >
+          {reloadAllLoading ? "…" : tStaff("admin.devices.reloadAll")}
         </button>
         <button
           type="button"

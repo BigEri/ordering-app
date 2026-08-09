@@ -200,6 +200,11 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.reloadOk":
       "{device} — tablet obnoví menu do ~15 s (musí být online v režimu host). Cache Dotykačky zrušena. Nonce: {nonce}",
     "admin.devices.reloadErr": "Požadavek na obnovení se nezdařil.",
+    "admin.devices.reloadAll": "Vynutit obnovení všech tabletů",
+    "admin.devices.reloadAllHint":
+      "Všechny tablety provozovny obnoví stránku do ~15 s (musí být online v režimu host). Zároveň zruší cache menu z Dotykačky — bez stahování nového menu z Dotykačky.",
+    "admin.devices.reloadAllOk":
+      "{devices} tablet(ů) dostane signál k obnovení do ~15 s (online, režim host). Cache Dotykačky zrušena.",
     "admin.devices.refreshMenuFromDotykacka": "Obnovit menu z Dotykačky",
     "admin.devices.refreshMenuFromDotykackaHint":
       "Stáhne aktuální menu z Dotykačky (zruší server cache) a vynutí obnovení všech tabletů vaší provozovny.",
@@ -449,6 +454,11 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.reloadOk":
       "{device} — tablet reloads menu within ~15 s (host mode, online). Dotykacka cache cleared. Nonce: {nonce}",
     "admin.devices.reloadErr": "Reload request failed.",
+    "admin.devices.reloadAll": "Force reload all tablets",
+    "admin.devices.reloadAllHint":
+      "All venue tablets reload within ~15 s (must be online in host mode). Also clears Dotykacka menu cache — without fetching a new menu from Dotykacka.",
+    "admin.devices.reloadAllOk":
+      "{devices} tablet(s) notified to reload within ~15 s (online, host mode). Dotykacka cache cleared.",
     "admin.devices.refreshMenuFromDotykacka": "Refresh menu from Dotykacka",
     "admin.devices.refreshMenuFromDotykackaHint":
       "Fetches current Dotykacka menu (clears server cache) and signals all tablets for your venue to reload.",
@@ -698,6 +708,11 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.reloadOk":
       "{device} — 태블릿이 ~15초 안에 메뉴를 새로 고칩니다(호스트 모드, 온라인). Dotykacka 캐시 삭제됨. Nonce: {nonce}",
     "admin.devices.reloadErr": "새로 고침 요청에 실패했습니다.",
+    "admin.devices.reloadAll": "모든 태블릿 강제 새로 고침",
+    "admin.devices.reloadAllHint":
+      "매장의 모든 태블릿이 ~15초 안에 새로 고칩니다(호스트 모드, 온라인 필요). Dotykacka 메뉴 캐시도 지웁니다 — Dotykacka에서 새 메뉴를 가져오지는 않습니다.",
+    "admin.devices.reloadAllOk":
+      "{devices}대 태블릿에 ~15초 내 새로 고침 신호(온라인, 호스트 모드). Dotykacka 캐시 삭제됨.",
     "admin.devices.refreshMenuFromDotykacka": "Dotykacka에서 메뉴 새로 고침",
     "admin.devices.refreshMenuFromDotykackaHint":
       "Dotykacka에서 최신 메뉴를 가져옵니다(서버 캐시 삭제)하고 해당 매장의 모든 태블릿에 새로 고침 신호를 보냅니다.",

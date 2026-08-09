@@ -4,9 +4,8 @@ import { fetchDotykackaProductsForMenuCached } from "../../../../../lib/dotykack
 import { invalidateDotykackaMenuCache } from "../../../../../lib/dotykacka/menuCache";
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { activeRestaurantCookieName, userHasRestaurantAccess } from "../../../../../lib/server/auth";
-import { bumpDeviceReloadNonce } from "../../../../../lib/server/deviceRegistry";
 import { cookieValueFromHeader } from "../../../../../lib/server/httpCookie";
-import { listAllKioskDeviceBindings } from "../../../../../lib/server/kioskDeviceBindings";
+import { bumpAllKioskDeviceReloadNoncesForRestaurant } from "../../../../../lib/server/kioskDeviceBindings";
 
 export const dynamic = "force-dynamic";
 
@@ -55,12 +54,7 @@ export async function POST(req: Request) {
 
   let devicesNotified = 0;
   if (bumpDevices) {
-    const bindings = await listAllKioskDeviceBindings();
-    for (const b of bindings) {
-      if (b.restaurantId.trim() !== restaurantId) continue;
-      await bumpDeviceReloadNonce(b.deviceId);
-      devicesNotified += 1;
-    }
+    devicesNotified = await bumpAllKioskDeviceReloadNoncesForRestaurant(restaurantId);
   }
 
   if (!prefetch.ok) {
