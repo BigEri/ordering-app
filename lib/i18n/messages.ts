@@ -152,7 +152,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.title": "Zařízení u stolů",
     "admin.devices.subtitle":
       "Zde vidíte tablety u stolů a jejich stav. Po přiřazení stolu se změna do tabletu propíše při synchronizaci.",
-    "admin.devices.refresh": "Obnovit",
+    "admin.devices.refresh": "Obnovit seznam",
     "admin.devices.backMenu": "Zpět do menu",
     "admin.devices.col.device": "Zařízení (ID)",
     "admin.devices.col.table": "Stůl",
@@ -239,7 +239,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.editTableCancel": "Zrušit",
     "admin.devices.editTableOk": "Stůl uložen. Tablet se může sám obnovit.",
     "admin.devices.editTableErr": "Uložení stolu se nezdařilo.",
-    "admin.devices.refreshAllHint": "Obnoví seznam zařízení i kontrolu API.",
+    "admin.devices.refreshAllHint": "Obnoví seznam zařízení i kontrolu API v adminu — na tablety nic neposílá.",
     "admin.devices.pairKioskTitle": "Párování u stolů (kiosk)",
     "admin.devices.pairKioskSubtitle":
       "Zadejte kód z tabletu a vyberte stůl z Dotykačky. ID i název se vyplní automaticky. Pokud stoly nevidíte, nejdřív u vaší restaurace dokončete propojení s Dotykačkou.",
@@ -406,7 +406,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.title": "Table devices",
     "admin.devices.subtitle":
       "Tablets send heartbeats; online = active in the last 2 minutes. Table assignment overrides the tablet after sync.",
-    "admin.devices.refresh": "Refresh",
+    "admin.devices.refresh": "Refresh list",
     "admin.devices.backMenu": "Back to menu",
     "admin.devices.col.device": "Device ID",
     "admin.devices.col.table": "Table",
@@ -493,7 +493,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.editTableCancel": "Cancel",
     "admin.devices.editTableOk": "Table saved. The tablet may reload automatically.",
     "admin.devices.editTableErr": "Could not save the table.",
-    "admin.devices.refreshAllHint": "Refreshes the device list and API check.",
+    "admin.devices.refreshAllHint": "Refreshes the device list and API check in admin — does not signal tablets.",
     "admin.devices.pairKioskTitle": "Kiosk pairing (tables)",
     "admin.devices.pairKioskSubtitle":
       "Enter the 6-character code from the tablet (/menu after scanning the QR) and pick a table from Dotykacka — ID and label fill in automatically. Finish Dotykacka OAuth for the venue first.",
@@ -660,7 +660,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.title": "테이블 기기",
     "admin.devices.subtitle":
       "태블릿이 하트비트를 보냅니다. 온라인 = 최근 2분 내 활동. 테이블 지정은 동기화 후 태블릿에 반영됩니다.",
-    "admin.devices.refresh": "새로 고침",
+    "admin.devices.refresh": "목록 새로 고침",
     "admin.devices.backMenu": "메뉴로",
     "admin.devices.col.device": "기기 ID",
     "admin.devices.col.table": "테이블",
@@ -747,7 +747,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.editTableCancel": "취소",
     "admin.devices.editTableOk": "테이블이 저장되었습니다. 태블릿이 자동으로 새로 고칠 수 있습니다.",
     "admin.devices.editTableErr": "테이블 저장에 실패했습니다.",
-    "admin.devices.refreshAllHint": "기기 목록과 API 확인을 모두 새로 고칩니다.",
+    "admin.devices.refreshAllHint": "관리자에서 기기 목록과 API 확인을 새로 고칩니다 — 태블릿에는 신호를 보내지 않습니다.",
     "admin.devices.pairKioskTitle": "테이블 키오스크 연결",
     "admin.devices.pairKioskSubtitle":
       "태블릿 화면(/menu, QR 스캔 후)의 6자 코드를 입력하고 Dotykacka 테이블을 선택하세요. ID와 이름이 자동으로 채워집니다. 먼저 매장에서 Dotykacka OAuth를 완료하세요.",

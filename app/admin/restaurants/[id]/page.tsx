@@ -616,9 +616,11 @@ function RestaurantDetailInner() {
             ID: {id}
           </p>
         </div>
-        <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
-          Obnovit
-        </button>
+        {tab === "overview" || tab === "dotykacka" ? (
+          <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
+            Obnovit
+          </button>
+        ) : null}
       </div>
 
       {err ? (
