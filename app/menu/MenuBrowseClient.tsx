@@ -1203,9 +1203,6 @@ export function MenuBrowseClient({
               <KioskAnchor href={publicMenuUrlFromAdmin(restaurantId ? { rid: restaurantId } : undefined)} className="chip" style={{ textDecoration: "none" }}>
                 Náhled pro zákazníka ↗
               </KioskAnchor>
-              <KioskAnchor href="/admin" className="chip" style={{ textDecoration: "none" }}>
-                Přehled admin ↗
-              </KioskAnchor>
               <KioskAnchor
                 href={
                   restaurantId
