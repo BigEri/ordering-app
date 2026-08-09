@@ -14,7 +14,8 @@ import { usePosTableFields } from "./DeviceTableProvider";
 import { LocaleFlag, type FlagCode } from "./LocaleFlag";
 import { useLanguage } from "./LanguageProvider";
 
-const SHOWCASE_IMAGE_MS = 15_000;
+/** Společný interval pro slideshow fotek i střídání jazyků na úvodní stránce. */
+const SHOWCASE_ROTATE_MS = 15_000;
 
 function GlobeIcon({ className }: { className?: string }) {
   return (
@@ -82,12 +83,15 @@ function ShowcaseFillImage({
 }
 
 /**
- * Texty úvodní stránky jsou záměrně česky; výběr jazyka ukládá preferenci pro veřejné menu (`/menu`).
+ * Úvodní stránka: texty podle aktivního jazyka (rotace + výběr).
+ * Klepnutí na jazyk uloží preferenci a přejde do veřejného menu (`/menu`).
  */
 const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   onSelectLanguage,
   navigatingLang,
   brandName,
+  locale,
+  setLocale,
   t,
   availableLocales,
   actions,
@@ -98,6 +102,8 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
   onSelectLanguage: (code: string) => void;
   navigatingLang: string | null;
   brandName: string;
+  locale: string;
+  setLocale: (code: string) => void;
   t: (key: string) => string;
   availableLocales: Array<{ code: string; label: string }>;
   actions?: React.ReactNode;
@@ -155,19 +161,35 @@ const WelcomeShowcaseInner = React.memo(function WelcomeShowcaseInner({
     return () => mq.removeListener(sync);
   }, []);
 
-  React.useEffect(() => {
-    const nImg = effectiveGalleryUrls.length;
-    const imgId =
-      nImg <= 1
-        ? null
-        : window.setInterval(() => {
-            setImageIdx((j) => (j + 1) % nImg);
-          }, SHOWCASE_IMAGE_MS);
+  const localeCodes = React.useMemo(
+    () => availableLocales.map((l) => l.code.trim().toLowerCase()).filter(Boolean),
+    [availableLocales],
+  );
+  const localeRef = React.useRef(locale);
+  localeRef.current = locale;
 
-    return () => {
-      if (imgId !== null) window.clearInterval(imgId);
-    };
-  }, [effectiveGalleryUrls.length]);
+  React.useEffect(() => {
+    // Po volbě jazyka (odchod do menu) už nestrídat.
+    if (navigatingLang !== null) return;
+
+    const nImg = effectiveGalleryUrls.length;
+    const nLang = localeCodes.length;
+    if (nImg <= 1 && nLang <= 1) return;
+
+    const id = window.setInterval(() => {
+      if (nImg > 1) {
+        setImageIdx((j) => (j + 1) % nImg);
+      }
+      if (nLang > 1) {
+        const cur = localeRef.current.trim().toLowerCase();
+        const i = localeCodes.indexOf(cur);
+        const next = localeCodes[(i < 0 ? 0 : i + 1) % nLang]!;
+        setLocale(next);
+      }
+    }, SHOWCASE_ROTATE_MS);
+
+    return () => window.clearInterval(id);
+  }, [effectiveGalleryUrls.length, localeCodes, navigatingLang, setLocale]);
 
   const slotAssignment = assignWelcomeShowcaseSlots(effectiveGalleryUrls, presetForRender, imageIdx);
   const { slots, sufficient, uniqueCount, layoutPreset: renderPreset } = slotAssignment;
@@ -352,7 +374,7 @@ export function WelcomePage({
   /** Admin náhled — bez párování a bez navigace do menu. */
   previewMode?: boolean;
 }) {
-  const { setLocale, t, availableLocales } = useLanguage();
+  const { locale, setLocale, t, availableLocales } = useLanguage();
   const { ready, needsPairing, pairingCode, pairingExpiresAtIso } = usePosTableFields();
   const [navigatingLang, setNavigatingLang] = React.useState<string | null>(null);
 
@@ -424,6 +446,8 @@ export function WelcomePage({
       onSelectLanguage={onSelectLanguage}
       navigatingLang={navigatingLang}
       brandName={brandName}
+      locale={locale}
+      setLocale={setLocale}
       t={t}
       availableLocales={availableLocales}
       actions={actions}
