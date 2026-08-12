@@ -12,6 +12,12 @@ import {
 } from "./syncOrderMerge";
 import { cancelPosActionWebhook, waitForPosActionWebhook } from "../server/posActionWebhookRegistry";
 import { formatRestaurantLocalHhmm } from "../restaurantLocalTime";
+import {
+  DOTYKACKA_STAFF_CALL_PRINT_TAG,
+  DOTYKACKA_STAFF_CALL_PRODUCT_MAP_KEY,
+  buildStaffCallItemNote,
+  resolveStaffCallProductId,
+} from "./staffCallProduct";
 
 export type DotykackaSyncMeta = {
   action?: string;
@@ -79,33 +85,6 @@ function mergeOrderNoteWithOaBillLine(existingNote: unknown, billLine: string): 
   if (!replaced) {
     // nahoře kvůli viditelnosti v Dotyce
     next.unshift(billLine);
-  }
-  return next.join("\n");
-}
-
-function mergeOrderNoteWithOaStaffLine(existingNote: unknown, staffLine: string): string {
-  const raw = typeof existingNote === "string" ? existingNote : "";
-  const lines = raw
-    .split(/\r?\n/)
-    .map((l) => l.trimEnd())
-    .filter((l) => l !== "");
-
-  const prefix = "VOLÁ OBSLUHU:";
-  const next: string[] = [];
-  let replaced = false;
-  for (const l of lines) {
-    if (l.startsWith(prefix)) {
-      if (!replaced) {
-        next.push(staffLine);
-        replaced = true;
-      }
-      continue;
-    }
-    next.push(l);
-  }
-  if (!replaced) {
-    // nahoře kvůli viditelnosti v Dotyce
-    next.unshift(staffLine);
   }
   return next.join("\n");
 }
@@ -560,8 +539,9 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
 }
 
 /**
- * Přivolání personálu: doplní poznámku k otevřenému účtu na stole.
- * Používá jen `order/update` (bez `order/issue`), aby se neměnil stav účtu v Dotypos.
+ * Přivolání personálu: skrytá položka (0 Kč) přes `order/add-item` / `order/create`,
+ * aby Dotykačka vytiskla bon (notifikaci). Na účtence hosta ji vyfiltrujte štítkem
+ * {@link DOTYKACKA_STAFF_CALL_PRINT_TAG} v nastavení tisku Dotykačky.
  */
 export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaConfig): Promise<DotykackaSyncResult> {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -580,90 +560,45 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
     return { ok: false, error: "Chybí nebo neplatné tableId (očekává se ID stolu v Dotyce)", meta: {} };
   }
 
+  const productId = resolveStaffCallProductId(cfg.productMap);
+  if (productId === undefined) {
+    return {
+      ok: false,
+      error:
+        `Chybí produkt pro přivolání obsluhy — v mapě produktů nastavte klíč "${DOTYKACKA_STAFF_CALL_PRODUCT_MAP_KEY}" ` +
+        `(nebo DOTYKACKA_STAFF_CALL_PRODUCT_ID v .env) na ID skryté 0 Kč položky v Dotykačce.`,
+      meta: { tableId, action: "staff_call_missing_product" },
+    };
+  }
+
   const sessionExternalId = buildDotykackaTableSessionExternalId(cfg, o);
   const accessToken = await getDotykackaAccessTokenForCloud(cfg);
   const pre = await preflightDotykackaPosActions(cfg, accessToken);
   if (!pre.ok) return { ok: false, error: pre.error, meta: { tableId, sessionExternalId, action: "order/hello" } };
 
-  const listResult = await listOpenDotykackaOrdersForTable(cfg, accessToken, tableId);
-  if (!listResult.ok) {
-    return {
-      ok: false,
-      error: listResult.message,
-      meta: {
-        tableId,
-        sessionExternalId,
-        action: "order/list",
-        httpStatus: listResult.httpStatus,
-      },
-    };
-  }
   const rawLabel = typeof o.tableLabel === "string" ? o.tableLabel.trim() : "";
-  const humanTableNumber = rawLabel ? (rawLabel.match(/\d+/)?.[0] ?? rawLabel) : String(tableId);
-  const staffLine = [`VOLÁ OBSLUHU: ${formatRestaurantLocalHhmm()}`, `STŮL - ${humanTableNumber}`].join(" · ");
-
-  // Pokud účet na stole ještě neexistuje, založíme ho jen kvůli poznámce (bez `issue`).
-  // Pozor: některé konfigurace Dotypos nemusí povolit účet bez položek; v tom případě vracíme chybu z API.
-  if (listResult.orders.length === 0) {
-    const created = await postDotykackaPosAction(cfg, accessToken, {
-      action: "order/create",
-      "table-id": tableId,
-      "external-id": sessionExternalId,
-      note: staffLine,
-      items: [],
-    });
-    if (!created.ok) {
-      return {
-        ok: false,
-        error: formatPosActionsHttpError(cfg, created.status, created.text),
-        meta: { tableId, sessionExternalId, action: "order/create", httpStatus: created.status },
-      };
-    }
-    const createdData = created.data;
-    if (createdData && typeof createdData === "object") {
-      const code = (createdData as { code?: unknown }).code;
-      if (typeof code === "number" && code !== 0) {
-        return {
-          ok: false,
-          error: `Dotykačka order/create selhal (code ${code})`,
-          meta: { tableId, sessionExternalId, action: "order/create" },
-        };
-      }
-    }
-    return { ok: true, meta: { tableId, sessionExternalId, action: "staff_call_create_note" } };
-  }
-
-  const ours = listResult.orders.filter((x) => x.externalId === sessionExternalId);
-  const targets = ours.length > 0 ? ours : listResult.orders;
-
-  for (const ord of targets) {
-    const note = mergeOrderNoteWithOaStaffLine(ord.note, staffLine);
-    const upd = await postDotykackaPosAction(cfg, accessToken, {
-      action: "order/update",
-      "order-id": ord.orderId,
+  const note = buildStaffCallItemNote(rawLabel || String(tableId));
+  const items: OrderPosItem[] = [
+    {
+      id: productId,
+      qty: 1,
       note,
-    });
-    if (!upd.ok) {
-      return {
-        ok: false,
-        error: formatPosActionsHttpError(cfg, upd.status, upd.text),
-        meta: { tableId, sessionExternalId, action: "order/update", httpStatus: upd.status },
-      };
-    }
-    const updData = upd.data;
-    if (updData && typeof updData === "object") {
-      const code = (updData as { code?: unknown }).code;
-      if (typeof code === "number" && code !== 0) {
-        return {
-          ok: false,
-          error: `Dotykačka order/update selhal (code ${code})`,
-          meta: { tableId, sessionExternalId, action: "order/update" },
-        };
-      }
-    }
-  }
+      tags: [DOTYKACKA_STAFF_CALL_PRINT_TAG],
+    },
+  ];
 
-  return { ok: true, meta: { tableId, sessionExternalId, action: "staff_call_note" } };
+  const result = await submitOrderItemsToDotykackaTable(
+    cfg,
+    accessToken,
+    tableId,
+    sessionExternalId,
+    items,
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    meta: { ...result.meta, action: result.meta.action ?? "staff_call_add_item" },
+  };
 }
 
 /**
@@ -702,6 +637,8 @@ type OrderPosItem = {
   id: number;
   qty: number;
   note?: string;
+  /** Štítky řádku (filtry tisku v Dotykačce). */
+  tags?: string[];
   customizations?: Array<{
     "product-customization-id": number;
     "product-id": number;

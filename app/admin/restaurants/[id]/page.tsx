@@ -72,6 +72,7 @@ function RestaurantDetailInner() {
   const [dotykLoading, setDotykLoading] = React.useState(false);
   const [branchDraft, setBranchDraft] = React.useState("");
   const [mapDraft, setMapDraft] = React.useState("{}");
+  const [staffCallProductIdDraft, setStaffCallProductIdDraft] = React.useState("");
   const [apiBaseDraft, setApiBaseDraft] = React.useState("");
   const [dotykSaving, setDotykSaving] = React.useState(false);
   const [dotykMsg, setDotykMsg] = React.useState<string | null>(null);
@@ -338,10 +339,21 @@ function RestaurantDetailInner() {
       if (r.ok && j.ok) {
         setBranchDraft(String(j.branchId || ""));
         try {
-          const pretty = JSON.stringify(JSON.parse(j.productMapJson || "{}") as object, null, 2);
-          setMapDraft(pretty);
+          const parsed = JSON.parse(j.productMapJson || "{}") as Record<string, unknown>;
+          const staffRaw = parsed["oa-staff-call"];
+          const staffId =
+            typeof staffRaw === "number"
+              ? staffRaw
+              : typeof staffRaw === "string" && staffRaw.trim()
+                ? Number(staffRaw)
+                : NaN;
+          setStaffCallProductIdDraft(Number.isFinite(staffId) ? String(staffId) : "");
+          const rest = { ...parsed };
+          delete rest["oa-staff-call"];
+          setMapDraft(JSON.stringify(rest, null, 2));
         } catch {
           setMapDraft(j.productMapJson || "{}");
+          setStaffCallProductIdDraft("");
         }
         setApiBaseDraft(j.apiBase || "");
       }
@@ -450,14 +462,33 @@ function RestaurantDetailInner() {
     setDotykMsg(null);
     try {
       const branchId = Number.parseInt(branchDraft.trim(), 10);
-      let productMapJson = mapDraft.trim();
+      let mapObj: Record<string, unknown>;
       try {
-        productMapJson = JSON.stringify(JSON.parse(productMapJson || "{}") as object);
+        const parsed = JSON.parse(mapDraft.trim() || "{}") as unknown;
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          setDotykMsg("Mapa produktů musí být platný JSON objekt.");
+          setDotykSaving(false);
+          return;
+        }
+        mapObj = { ...(parsed as Record<string, unknown>) };
       } catch {
         setDotykMsg("Mapa produktů musí být platný JSON objekt.");
         setDotykSaving(false);
         return;
       }
+      const staffCallRaw = staffCallProductIdDraft.trim();
+      if (staffCallRaw) {
+        const staffCallId = Number(staffCallRaw);
+        if (!Number.isFinite(staffCallId)) {
+          setDotykMsg("ID produktu pro přivolání obsluhy musí být číslo (product id z Dotykačky).");
+          setDotykSaving(false);
+          return;
+        }
+        mapObj["oa-staff-call"] = staffCallId;
+      } else {
+        delete mapObj["oa-staff-call"];
+      }
+      const productMapJson = JSON.stringify(mapObj);
       const r = await fetch(`/api/admin/restaurants/${id}/dotykacka`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
@@ -1222,6 +1253,22 @@ function RestaurantDetailInner() {
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
                     Cloud ID je výše u OAuth; sem patří jen číslo pobočky, kam má chodit objednávka (pos-actions).
+                  </span>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Produkt „Přivolání obsluhy“ (product ID v Dotykačce)</span>
+                  <input
+                    className="chip"
+                    style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
+                    value={staffCallProductIdDraft}
+                    onChange={(e) => setStaffCallProductIdDraft(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="např. 123456789 — skrytá položka 0 Kč"
+                  />
+                  <span className="textMuted2" style={{ fontSize: 12 }}>
+                    V Dotykačce založte skrytý produkt 0 Kč se štítkem <code>oa-volani</code>. Tisk objednávek
+                    (bon) filtrujte na tento štítek; tisk účtenek ho vynechte, ať se nepřidá na doklad hosta.
+                    Uloží se do mapy jako klíč <code>oa-staff-call</code>.
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>

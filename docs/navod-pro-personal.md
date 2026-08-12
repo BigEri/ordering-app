@@ -25,7 +25,21 @@
 
 ---
 
-## 2. Změnili jsme cenu nebo jídlo v Dotykačce — na tabletu je pořád staré menu
+## 2. Přivolání obsluhy z tabletu (bon, ne poznámka)
+
+Host stiskne **Přivolat personál** → do Dotykačky se přidá skrytá položka 0 Kč a má se vytisknout **bon** (notifikace) se stolem.
+
+**Jednorázové nastavení (správce + Dotykačka Cloud):**
+
+1. V Dotykačce založte produkt např. **Přivolání obsluhy**, cena **0 Kč**, skrytý z nabídky, štítek **`oa-volani`**.
+2. V naší administraci → restaurace → Dotykačka zadejte **product ID** tohoto produktu (pole „Přivolání obsluhy“).
+3. V Dotykačce u tiskáren: **tisk objednávek** jen pro štítek `oa-volani` (bon pro obsluhu); **tisk účtenek** bez tohoto štítku, ať položka není na dokladu hosta.
+
+Bez nastaveného product ID přivolání do Dotykačky neodejde.
+
+---
+
+## 3. Změnili jsme cenu nebo jídlo v Dotykačce — na tabletu je pořád staré menu
 
 **Změna v Dotykačce se na tablet sama hned nepropsala.**
 
@@ -40,7 +54,7 @@
 
 ---
 
-## 3. Tablet „zaseklý“, nereaguje, divné menu
+## 4. Tablet „zaseklý“, nereaguje, divné menu
 
 **Co udělat (v tomto pořadí):**
 
@@ -54,7 +68,7 @@
 
 ---
 
-## 4. Host říká, že objednávka nešla / nic se nestalo
+## 5. Host říká, že objednávka nešla / nic se nestalo
 
 **Co zkontrolovat:**
 
