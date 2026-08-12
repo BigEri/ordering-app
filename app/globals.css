@@ -2770,6 +2770,16 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   background: rgba(30, 27, 75, 0.35);
 }
 
+.menuEditorLangLabel {
+  font-size: 13px;
+  font-weight: 600;
+  color: #c7d2fe;
+}
+
+.menuEditorBar .langMenu {
+  position: relative;
+}
+
 .menuEditorToggle {
   display: inline-flex;
   align-items: center;

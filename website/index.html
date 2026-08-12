@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tableflow — Objednávka přímo u stolu</title>
+    <meta
+      name="description"
+      content="Tableflow přináší objednávání z tabletu u stolu. Menu se načte z vašeho POS, úpravy jsou snadné v pokladně i v administraci."
+    />
+    <meta property="og:title" content="Tableflow — Objednávka přímo u stolu" />
+    <meta
+      property="og:description"
+      content="Menu ze stávajícího pokladního systému. Objednávky z tabletu u stolu přímo do POS."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="assets/tableflow-icon.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="top">
+      <a class="top__brand" href="#top" aria-label="Tableflow">
+        <img src="assets/tableflow-icon.png" alt="" width="36" height="36" />
+        <span>Tableflow</span>
+      </a>
+      <nav class="top__nav" aria-label="Hlavní">
+        <a href="#jak">Jak to funguje</a>
+        <a href="#provozovny">Pro provozovny</a>
+        <a href="#pro-koho">Pro koho</a>
+        <a class="top__cta" href="#kontakt">Domluvit ukázku</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero__media" aria-hidden="true">
+          <img
+            class="hero__img"
+            src="assets/hero-food.png"
+            alt=""
+            width="1600"
+            height="1067"
+          />
+          <div class="hero__veil"></div>
+        </div>
+
+        <div class="hero__content">
+          <div class="hero__brand">
+            <img
+              class="hero__mark"
+              src="assets/tableflow-icon.png"
+              alt=""
+              width="120"
+              height="120"
+            />
+            <p class="hero__wordmark">Tableflow</p>
+          </div>
+          <h1 id="hero-title">Objednávka přímo u stolu</h1>
+          <p class="hero__lead">
+            Hosté si na tabletu sami prohlédnou menu a odešlou objednávku.
+            Menu si Tableflow načte z vašeho stávajícího POS — kuchyně a platby zůstávají tam, kde už je máte.
+          </p>
+          <div class="hero__actions">
+            <a class="btn btn--primary" href="#kontakt">Domluvit ukázku</a>
+            <a class="btn btn--ghost" href="#jak">Jak to funguje</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="section how" id="jak" aria-labelledby="how-title">
+        <p class="section__eyebrow">Průběh</p>
+        <h2 id="how-title">Tři kroky od stolu ke kuchyni</h2>
+        <p class="section__lead">
+          Bez aplikace v telefonu hosta. Tablet je u stolu, napojený na váš pokladní systém —
+          menu se načte automaticky, objednávky se vrací zpět do POS.
+        </p>
+
+        <ol class="steps">
+          <li class="steps__item">
+            <span class="steps__num" aria-hidden="true">01</span>
+            <h3>Tablet u stolu</h3>
+            <p>Každý stůl má svůj tablet — host začne objednávat hned, bez čekání na obsluhu.</p>
+          </li>
+          <li class="steps__item">
+            <span class="steps__num" aria-hidden="true">02</span>
+            <h3>Výběr a odeslání</h3>
+            <p>Jazyky, alergeny, přílohy. Objednávka odchází jedním potvrzením.</p>
+          </li>
+          <li class="steps__item">
+            <span class="steps__num" aria-hidden="true">03</span>
+            <h3>Do pokladny</h3>
+            <p>Kuchyně a účet běží ve vašem POS. Host může přivolat personál nebo požádat o účet.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="section venue" id="provozovny" aria-labelledby="venue-title">
+        <div class="venue__copy">
+          <p class="section__eyebrow">Pro provozovny</p>
+          <h2 id="venue-title">Snadné nastavení, menu ze stávající pokladny</h2>
+          <p class="section__lead">
+            Tableflow si přečte menu z vašeho pokladního systému — nemusíte ho zakládat znovu.
+            Úpravy pak děláte tam, kde vám to vyhovuje: přímo v POS, nebo u nás v administraci.
+            Tablety, stoly i úvodní obrazovku nastavíte ve webu během chvilky. Se vším Vám rádi pomůžeme.
+          </p>
+          <ul class="venue__list">
+            <li>Menu se načte ze stávajícího POS</li>
+            <li>Úpravy položek v pokladně i v naší aplikaci</li>
+            <li>Fotky, překlady a viditelnost jídel bez složitého nastavování</li>
+            <li>Párování tabletů ke stolům a volání personálu ze stolu</li>
+          </ul>
+          <p class="venue__note">
+            Postaveno pro restaurace, které chtějí obsloužit více hostů bez navyšování personálu.
+            Kompatibilní s moderními POS systémy.
+          </p>
+        </div>
+        <div class="venue__visual" aria-hidden="true">
+          <figure class="venue__frame venue__frame--main">
+            <img src="assets/detail-starter.png" alt="" width="800" height="600" />
+          </figure>
+          <figure class="venue__frame venue__frame--accent">
+            <img src="assets/detail-drink.png" alt="" width="600" height="600" />
+          </figure>
+        </div>
+      </section>
+
+      <section class="section audience" id="pro-koho" aria-labelledby="audience-title">
+        <p class="section__eyebrow">Pro koho</p>
+        <h2 id="audience-title">Restaurace jsou různé</h2>
+        <p class="section__lead">My se přizpůsobíme všem potřebám.</p>
+        <p class="audience__ideal">Ideální pro:</p>
+        <ul class="audience__list">
+          <li>Velké i malé restaurace — všude, kde chcete rychlejší obsluhu a spokojenější hosty</li>
+          <li>Pivnice, bary, kavárny</li>
+          <li>Burgery, kebab, palačinky a podobné street food — zkrátka všude, kde si zákazník může upravit jídlo přesně podle svých představ</li>
+        </ul>
+      </section>
+
+      <section class="section contact" id="kontakt" aria-labelledby="contact-title">
+        <h2 id="contact-title">Máte zájem? Kontaktujte nás</h2>
+        <p class="section__lead">
+          Domluvíme krátkou ukázku — napojení na váš POS, načtení menu a nastavení tabletů u stolů.
+        </p>
+        <div class="contact__actions">
+          <a class="btn btn--primary" href="mailto:info@tableflow.cz">Napsat na info@tableflow.cz</a>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="foot__brand">
+        <img src="assets/tableflow-icon.png" alt="" width="28" height="28" />
+        <span>Tableflow</span>
+      </div>
+      <p>Objednávka přímo u stolu.</p>
+    </footer>
+
+    <script>
+      const reveal = document.querySelectorAll(".section, .steps__item, .venue__frame");
+      const io = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("is-in");
+              io.unobserve(entry.target);
+            }
+          }
+        },
+        { threshold: 0.16, rootMargin: "0px 0px -6% 0px" }
+      );
+      reveal.forEach((el) => io.observe(el));
+    </script>
+  </body>
+</html>

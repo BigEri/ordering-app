@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { FilePickButton } from "../../components/FilePickButton";
 import { KioskAnchor } from "../../components/kiosk/KioskAnchor";
+import { LanguageMenu } from "../../components/LanguageMenu";
 
 import { MenuItemOrderModal } from "../../components/MenuItemOrderModal";
 import { MenuItem, type MenuItemData } from "../../components/MenuItem";
@@ -1198,31 +1199,37 @@ export function MenuBrowseClient({
             </p>
           ) : null}
 
-          {menuVariant === "editor" && canEditMenu ? (
+          {menuVariant === "editor" ? (
             <div className="menuEditorBar">
-              <KioskAnchor href={publicMenuUrlFromAdmin(restaurantId ? { rid: restaurantId } : undefined)} className="chip" style={{ textDecoration: "none" }}>
-                Náhled pro zákazníka ↗
-              </KioskAnchor>
-              <KioskAnchor
-                href={
-                  restaurantId
-                    ? `/admin/restaurants/${encodeURIComponent(restaurantId)}/menu/translations`
-                    : "/admin/menu/translations"
-                }
-                className="chip"
-                style={{ textDecoration: "none" }}
-              >
-                Překlady jazyků ↗
-              </KioskAnchor>
-              <button
-                type="button"
-                className="chip"
-                disabled={dotykackaRefreshLoading}
-                onClick={() => void onRefreshDotykackaMenu()}
-                title="Stáhne aktuální menu z Dotykačky a obnoví tablety provozovny."
-              >
-                {dotykackaRefreshLoading ? "Obnovuji…" : "Obnovit z Dotykačky"}
-              </button>
+              <span className="menuEditorLangLabel">Jazyk náhledu</span>
+              <LanguageMenu />
+              {canEditMenu ? (
+                <>
+                  <KioskAnchor href={publicMenuUrlFromAdmin(restaurantId ? { rid: restaurantId } : undefined)} className="chip" style={{ textDecoration: "none" }}>
+                    Náhled pro zákazníka ↗
+                  </KioskAnchor>
+                  <KioskAnchor
+                    href={
+                      restaurantId
+                        ? `/admin/restaurants/${encodeURIComponent(restaurantId)}/menu/translations`
+                        : "/admin/menu/translations"
+                    }
+                    className="chip"
+                    style={{ textDecoration: "none" }}
+                  >
+                    Překlady jazyků ↗
+                  </KioskAnchor>
+                  <button
+                    type="button"
+                    className="chip"
+                    disabled={dotykackaRefreshLoading}
+                    onClick={() => void onRefreshDotykackaMenu()}
+                    title="Stáhne aktuální menu z Dotykačky a obnoví tablety provozovny."
+                  >
+                    {dotykackaRefreshLoading ? "Obnovuji…" : "Obnovit z Dotykačky"}
+                  </button>
+                </>
+              ) : null}
             </div>
           ) : null}
 
