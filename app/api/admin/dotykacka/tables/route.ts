@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { getDotykackaAccessTokenForCloud } from "../../../../../lib/dotykacka/accessToken";
 import { getDotykackaConfig } from "../../../../../lib/dotykacka/config";
+import { resolveSignalTableId } from "../../../../../lib/dotykacka/staffSignalTable";
 import { requireActiveRestaurantId, requireAdminSession } from "../../../../../lib/server/adminGuard";
 
 export const dynamic = "force-dynamic";
@@ -66,8 +67,10 @@ export async function GET(req: Request) {
         });
       }
     }
+    const signalTableId = resolveSignalTableId(cfg.productMap);
     tables.sort((a, b) => a.name.localeCompare(b.name, "cs") || a.id - b.id);
-    return NextResponse.json({ ok: true, tables });
+    const forPairing = signalTableId === undefined ? tables : tables.filter((t) => t.id !== signalTableId);
+    return NextResponse.json({ ok: true, tables: forPairing });
   } catch {
     return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
   }

@@ -25,17 +25,13 @@
 
 ---
 
-## 2. Přivolání obsluhy z tabletu (bon, ne poznámka)
+## 2. Přivolání obsluhy a žádost o účet (mimo účet hosta)
 
-Host stiskne **Přivolat personál** → do Dotykačky se přidá skrytá položka 0 Kč a má se vytisknout **bon** (notifikace) se stolem.
+Tablet **nepřidává** položku na účet stolu hosta. 0 Kč řádek (Přivolání obsluhy / Žádost o platbu) jde na **účet mimo stoly** (nebo na stůl **Tableflow obsluha**, pokud ho máte založený). V poznámce řádku je číslo stolu hosta.
 
-**Jednorázové nastavení (správce + Dotykačka Cloud):**
+**Co dělat v pokladně:** otevřít účty **mimo stůl** (nezařazené / bez stolu) — tam je fronta volání. Účet hosta zůstane jen s jídlem.
 
-1. V Dotykačce založte produkt např. **Přivolání obsluhy**, cena **0 Kč**, skrytý z nabídky, štítek **`oa-volani`**.
-2. V naší administraci → restaurace → Dotykačka zadejte **product ID** tohoto produktu (pole „Přivolání obsluhy“).
-3. V Dotykačce u tiskáren: **tisk objednávek** jen pro štítek `oa-volani` (bon pro obsluhu); **tisk účtenek** bez tohoto štítku, ať položka není na dokladu hosta.
-
-Bez nastaveného product ID přivolání do Dotykačky neodejde.
+Žádost o účet navíc potřebuje už otevřený účet u stolu hosta.
 
 ---
 

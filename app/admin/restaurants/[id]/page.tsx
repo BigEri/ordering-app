@@ -73,6 +73,8 @@ function RestaurantDetailInner() {
   const [branchDraft, setBranchDraft] = React.useState("");
   const [mapDraft, setMapDraft] = React.useState("{}");
   const [staffCallProductIdDraft, setStaffCallProductIdDraft] = React.useState("");
+  const [billRequestProductIdDraft, setBillRequestProductIdDraft] = React.useState("");
+  const [signalTableIdDraft, setSignalTableIdDraft] = React.useState("");
   const [apiBaseDraft, setApiBaseDraft] = React.useState("");
   const [dotykSaving, setDotykSaving] = React.useState(false);
   const [dotykMsg, setDotykMsg] = React.useState<string | null>(null);
@@ -348,12 +350,32 @@ function RestaurantDetailInner() {
                 ? Number(staffRaw)
                 : NaN;
           setStaffCallProductIdDraft(Number.isFinite(staffId) ? String(staffId) : "");
+          const billRaw = parsed["oa-bill-request"];
+          const billId =
+            typeof billRaw === "number"
+              ? billRaw
+              : typeof billRaw === "string" && billRaw.trim()
+                ? Number(billRaw)
+                : NaN;
+          setBillRequestProductIdDraft(Number.isFinite(billId) ? String(billId) : "");
+          const signalRaw = parsed["oa-signal-table"];
+          const signalId =
+            typeof signalRaw === "number"
+              ? signalRaw
+              : typeof signalRaw === "string" && signalRaw.trim()
+                ? Number(signalRaw)
+                : NaN;
+          setSignalTableIdDraft(Number.isFinite(signalId) ? String(signalId) : "");
           const rest = { ...parsed };
           delete rest["oa-staff-call"];
+          delete rest["oa-bill-request"];
+          delete rest["oa-signal-table"];
           setMapDraft(JSON.stringify(rest, null, 2));
         } catch {
           setMapDraft(j.productMapJson || "{}");
           setStaffCallProductIdDraft("");
+          setBillRequestProductIdDraft("");
+          setSignalTableIdDraft("");
         }
         setApiBaseDraft(j.apiBase || "");
       }
@@ -487,6 +509,30 @@ function RestaurantDetailInner() {
         mapObj["oa-staff-call"] = staffCallId;
       } else {
         delete mapObj["oa-staff-call"];
+      }
+      const billRequestRaw = billRequestProductIdDraft.trim();
+      if (billRequestRaw) {
+        const billRequestId = Number(billRequestRaw);
+        if (!Number.isFinite(billRequestId)) {
+          setDotykMsg("ID produktu pro žádost o platbu musí být číslo (product id z Dotykačky).");
+          setDotykSaving(false);
+          return;
+        }
+        mapObj["oa-bill-request"] = billRequestId;
+      } else {
+        delete mapObj["oa-bill-request"];
+      }
+      const signalTableRaw = signalTableIdDraft.trim();
+      if (signalTableRaw) {
+        const signalTableId = Number(signalTableRaw);
+        if (!Number.isFinite(signalTableId)) {
+          setDotykMsg("ID stolu pro volání obsluhy musí být číslo (table id z Dotykačky).");
+          setDotykSaving(false);
+          return;
+        }
+        mapObj["oa-signal-table"] = signalTableId;
+      } else {
+        delete mapObj["oa-signal-table"];
       }
       const productMapJson = JSON.stringify(mapObj);
       const r = await fetch(`/api/admin/restaurants/${id}/dotykacka`, {
@@ -1266,9 +1312,38 @@ function RestaurantDetailInner() {
                     placeholder="např. 123456789 — skrytá položka 0 Kč"
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    V Dotykačce založte skrytý produkt 0 Kč se štítkem <code>oa-volani</code>. Tisk objednávek
-                    (bon) filtrujte na tento štítek; tisk účtenek ho vynechte, ať se nepřidá na doklad hosta.
-                    Uloží se do mapy jako klíč <code>oa-staff-call</code>.
+                    V Dotykačce založte skrytý produkt 0 Kč se štítkem <code>oa-volani</code>. Položka nejde
+                    na účet hosta, ale na stůl „Tableflow obsluha“. Uloží se jako <code>oa-staff-call</code>.
+                  </span>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Produkt „Žádost o platbu“ (product ID v Dotykačce)</span>
+                  <input
+                    className="chip"
+                    style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
+                    value={billRequestProductIdDraft}
+                    onChange={(e) => setBillRequestProductIdDraft(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="např. 123456789 — skrytá položka 0 Kč"
+                  />
+                  <span className="textMuted2" style={{ fontSize: 12 }}>
+                    Stejný princip a stejný štítek <code>oa-volani</code>. Položka jde na stůl „Tableflow obsluha“.
+                    Uloží se jako <code>oa-bill-request</code>.
+                  </span>
+                </label>
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span>Stůl „Tableflow obsluha“ (table ID v Dotykačce)</span>
+                  <input
+                    className="chip"
+                    style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
+                    value={signalTableIdDraft}
+                    onChange={(e) => setSignalTableIdDraft(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="ID stolu mimo účty hostů"
+                  />
+                  <span className="textMuted2" style={{ fontSize: 12 }}>
+                    Přivolání a žádost o platbu sem, ne na účet hosta. Prázdné = účet mimo stoly (nezařazené).
+                    Uloží se jako <code>oa-signal-table</code>.
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
