@@ -10,6 +10,12 @@ import {
 } from "./dotykackaMenuSections";
 import { priceCzkFromDotykackaProduct } from "./posItemPrice";
 import { productCategoryId, resolveProductExcludedCategoryIds } from "./menuCategoryFilter";
+import {
+  collectRecipeGraphFromIngredientRows,
+  emptyRecipeGraph,
+  shouldHideStandaloneDotykackaProduct,
+  type RecipeGraph,
+} from "./menuProductFilter";
 
 export type { DotykackaMenuSection } from "./dotykackaMenuSections";
 
@@ -139,6 +145,66 @@ async function fetchPagedCategories(
   } while (page <= lastPage);
 
   return { ok: true, rows: collected };
+}
+
+/** Receptury: které produkty jsou suroviny a které mají složení. */
+async function fetchPagedProductIngredients(
+  cfg: { apiBase: string; cloudId: number },
+  accessToken: string,
+): Promise<{ ok: true; rows: Record<string, unknown>[] } | { ok: false; error: string }> {
+  const collected: Record<string, unknown>[] = [];
+  let page = 1;
+  let lastPage = 1;
+  do {
+    const filter = encodeURIComponent("deleted|eq|false");
+    const url = `${cfg.apiBase}/v2/clouds/${cfg.cloudId}/product-ingredients?page=${page}&limit=100&filter=${filter}`;
+    const res = await fetchWithRetry(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        Accept: "application/json",
+      },
+    });
+    const text = await res.text();
+    if (!res.ok) {
+      return {
+        ok: false,
+        error: `Dotykačka product-ingredients ${res.status}: ${text.slice(0, 400)}`,
+      };
+    }
+    let json: unknown;
+    try {
+      json = text ? (JSON.parse(text) as unknown) : null;
+    } catch {
+      return { ok: false, error: "Dotykačka product-ingredients: neplatné JSON tělo odpovědi." };
+    }
+
+    if (Array.isArray(json)) {
+      for (const row of json) {
+        if (row && typeof row === "object") collected.push(row as Record<string, unknown>);
+      }
+      break;
+    }
+
+    const env = json as PaginatedEnvelope<Record<string, unknown>>;
+    const rows = Array.isArray(env.data) ? env.data : [];
+    for (const row of rows) {
+      if (row && typeof row === "object") collected.push(row as Record<string, unknown>);
+    }
+    const last = num(env.lastPage) ?? page;
+    lastPage = last;
+    page += 1;
+  } while (page <= lastPage);
+
+  return { ok: true, rows: collected };
+}
+
+async function loadRecipeGraph(
+  cfg: { apiBase: string; cloudId: number },
+  accessToken: string,
+): Promise<RecipeGraph> {
+  const fetched = await fetchPagedProductIngredients(cfg, accessToken);
+  if (!fetched.ok) return emptyRecipeGraph();
+  return collectRecipeGraphFromIngredientRows(fetched.rows);
 }
 
 /** Plné záznamy customizací (název / překlady jako ve správě položek — u produktu bývá v include oříznuté). */
@@ -412,15 +478,19 @@ export async function fetchDotykackaProductsForMenu(
   try {
     const accessToken = await getDotykackaAccessTokenForCloud(cfg);
 
-    const main = await fetchPagedProducts(
-      cfg,
-      accessToken,
-      "&include=customizations&filter=" + encodeURIComponent("display|eq|true"),
-    );
+    const [main, custFull, cats, recipeGraph] = await Promise.all([
+      fetchPagedProducts(
+        cfg,
+        accessToken,
+        "&include=customizations&filter=" + encodeURIComponent("display|eq|true"),
+      ),
+      fetchPagedProductCustomizations(cfg, accessToken),
+      fetchPagedCategories(cfg, accessToken),
+      loadRecipeGraph(cfg, accessToken),
+    ]);
     if (!main.ok) return main;
 
     const customizationById = new Map<number, Record<string, unknown>>();
-    const custFull = await fetchPagedProductCustomizations(cfg, accessToken);
     if (custFull.ok) {
       for (const cr of custFull.rows) {
         const cid = num(cr.id);
@@ -428,7 +498,6 @@ export async function fetchDotykackaProductsForMenu(
       }
     }
 
-    const cats = await fetchPagedCategories(cfg, accessToken);
     const excludedCategoryIds = cats.ok ? resolveProductExcludedCategoryIds(cats.rows) : new Set<number>();
     const categoryById = cats.ok ? buildCategoryById(cats.rows) : new Map<number, Record<string, unknown>>();
 
@@ -458,6 +527,7 @@ export async function fetchDotykackaProductsForMenu(
     for (const row of main.rows) {
       const pCat = productCategoryId(row);
       if (pCat != null && excludedCategoryIds.has(pCat)) continue;
+      if (shouldHideStandaloneDotykackaProduct(row, recipeGraph)) continue;
 
       const item = mapApiProductToMenuItem(row, optionsByCategoryId, customizationById, categoryById);
       if (!item) continue;

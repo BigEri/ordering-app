@@ -1,9 +1,10 @@
 /**
  * Skrýt z kioskového menu produkty z interních kategorií Dotykačky (ne samostatné jídlo na tabletu):
- * ingredience, přílohy jako pool pro customizace u hlavních jídel, atd.
+ * ingredience, sklad, přílohy jako pool pro customizace u hlavních jídel, atd.
  */
 
 import { pickDotykackaLocalizedName } from "./dotykackaLocalizedName";
+import { foldDotykackaText, recordHasInternalHideTag } from "./menuProductFilter";
 
 function num(v: unknown): number | null {
   if (typeof v === "number" && Number.isFinite(v)) return v;
@@ -14,9 +15,37 @@ function num(v: unknown): number | null {
   return null;
 }
 
-/** Výchozí: přesný název kategorie (bez ohledu na velikost písmen). */
-const DEFAULT_HIDE_NAME_RE =
-  /^\s*(ingredience|ingredients|ingredient|suroviny|surovina|přílohy|příloha|prilohy|priloha|sides|side\s*dishes?|garniture|garnitura)\s*$/i;
+/**
+ * Interní / skladové / pool kategorie — shoda v názvu, ne jen přesný celý název
+ * (chytí i „Přílohy burger“, „Sklad suroviny“).
+ */
+const INTERNAL_CATEGORY_NAME_RES: readonly RegExp[] = [
+  /\bingredien/,
+  /\bsurovin/,
+  /\bpriloh/,
+  /\bsides?\b/,
+  /\bside\s+dishes?\b/,
+  /\bgarnitur/,
+  /\bsklad/,
+  /\bwarehouse\b/,
+  /\binternal\b/,
+  /\bintern\b/,
+  /\bintern[ei](ch|mi|ho|m|mu)?\b/,
+  /\bpomocn/,
+  /\bobal(y|u|em|ech|um)?\b/,
+  /\bspotrebn/,
+  /\bdroger/,
+  /\buklid/,
+  /\bchemi/,
+  /\breceptur/,
+  /\bstock\b/,
+];
+
+export function isInternalDotykackaCategoryName(name: string): boolean {
+  const folded = foldDotykackaText(name);
+  if (!folded) return false;
+  return INTERNAL_CATEGORY_NAME_RES.some((re) => re.test(folded));
+}
 
 function parseEnvCategoryIds(raw: string | undefined): Set<number> {
   const set = new Set<number>();
@@ -55,17 +84,23 @@ export function resolveHiddenMenuCategoryIds(categoryRows: Record<string, unknow
     if (row.deleted === true) continue;
     const id = num(row.id);
     if (id == null) continue;
+    if (recordHasInternalHideTag(row)) {
+      hidden.add(id);
+      continue;
+    }
     const name = pickDotykackaLocalizedName(row as Record<string, unknown>) ?? "";
-    if (!name) continue;
-    const match = customRe ? customRe.test(name) : DEFAULT_HIDE_NAME_RE.test(name);
-    if (match) hidden.add(id);
+    if (name && isInternalDotykackaCategoryName(name)) {
+      hidden.add(id);
+      continue;
+    }
+    if (name && customRe?.test(name)) hidden.add(id);
   }
 
   return hidden;
 }
 
 /**
- * Kategorie, jejichž produkty se v menu nezobrazí: ingredience / přílohy (pool) / env. skryté,
+ * Kategorie, jejichž produkty se v menu nezobrazí: ingredience / sklad / přílohy (pool) / env. skryté,
  * smazané kategorie a kategorie se zákazem zobrazení v Dotyce (`display === false`).
  */
 export function resolveProductExcludedCategoryIds(categoryRows: Record<string, unknown>[]): Set<number> {
