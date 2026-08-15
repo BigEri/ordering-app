@@ -24,7 +24,6 @@ import {
   buildStaffCallItemNote,
   resolveStaffCallProductId,
 } from "./staffCallProduct";
-import { buildSignalSessionExternalId, resolveSignalTableId } from "./staffSignalTable";
 
 export type DotykackaSyncMeta = {
   action?: string;
@@ -62,15 +61,6 @@ export function buildDotykackaTableSessionExternalId(
     return `ordering-app-${cfg.cloudId}-${cfg.branchId}-table-${tid}`;
   }
   return `ordering-app-${cfg.cloudId}-${cfg.branchId}-fallback`;
-}
-
-function staffSignalTarget(
-  cfg: DotykackaConfig,
-): { tableId: number | null; sessionExternalId: string } {
-  return {
-    tableId: resolveSignalTableId(cfg.productMap) ?? null,
-    sessionExternalId: buildSignalSessionExternalId(cfg),
-  };
 }
 
 function posActionsUrl(cfg: DotykackaConfig): string {
@@ -413,8 +403,7 @@ async function listOpenDotykackaOrdersForTable(
 
 /**
  * Zápis "žádost o účet" do Dotykačky.
- * Skrytá položka 0 Kč mimo účet hosta (stůl `oa-signal-table`, jinak účet bez stolu).
- * Host ji na účtu neuvidí; obsluha ji má ihned na bonu (štítek `oa-volani`).
+ * Položka 0 Kč na otevřený účet stolu hosta (viditelné v pokladně). Štítek `oa-volani` může tisknout bon.
  */
 export async function syncBillRequestToDotykacka(payload: unknown, cfg: DotykackaConfig): Promise<DotykackaSyncResult> {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -494,12 +483,11 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
       tags: [DOTYKACKA_BILL_REQUEST_PRINT_TAG],
     },
   ];
-  const target = staffSignalTarget(cfg);
   const result = await submitOrderItemsToDotykackaTable(
     cfg,
     accessToken,
-    target.tableId,
-    target.sessionExternalId,
+    tableId,
+    sessionExternalId,
     items,
   );
   if (!result.ok) return result;
@@ -507,16 +495,15 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
     ok: true,
     meta: {
       ...result.meta,
+      tableId,
       action: result.meta.action ?? "bill_request_add_item",
-      ...(target.tableId != null ? { tableId: target.tableId } : {}),
     },
   };
 }
 
 /**
- * Přivolání personálu: skrytá položka (0 Kč) přes `order/add-item` / `order/create`.
- * Když je nastavený stůl `oa-signal-table`, položka jde tam.
- * Jinak na účet mimo stoly hostů (`table-id` null). Nikdy na účet stolu tabletu.
+ * Přivolání personálu: položka 0 Kč na účet stolu hosta (`order/add-item` / `order/create`).
+ * Štítek `oa-volani` může tisknout bon.
  */
 export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaConfig): Promise<DotykackaSyncResult> {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -546,7 +533,7 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
     };
   }
 
-  const target = staffSignalTarget(cfg);
+  const sessionExternalId = buildDotykackaTableSessionExternalId(cfg, o);
   const accessToken = await getDotykackaAccessTokenForCloud(cfg);
   const pre = await preflightDotykackaPosActions(cfg, accessToken);
   if (!pre.ok) {
@@ -554,8 +541,8 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
       ok: false,
       error: pre.error,
       meta: {
-        tableId: target.tableId ?? undefined,
-        sessionExternalId: target.sessionExternalId,
+        tableId: guestTableId,
+        sessionExternalId,
         action: "order/hello",
       },
     };
@@ -575,8 +562,8 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
   const result = await submitOrderItemsToDotykackaTable(
     cfg,
     accessToken,
-    target.tableId,
-    target.sessionExternalId,
+    guestTableId,
+    sessionExternalId,
     items,
   );
   if (!result.ok) return result;
@@ -584,8 +571,8 @@ export async function syncStaffCallToDotykacka(payload: unknown, cfg: DotykackaC
     ok: true,
     meta: {
       ...result.meta,
+      tableId: guestTableId,
       action: result.meta.action ?? "staff_call_add_item",
-      ...(target.tableId != null ? { tableId: target.tableId } : {}),
     },
   };
 }

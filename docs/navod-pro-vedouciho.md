@@ -118,9 +118,9 @@ Propojení s pokladnou. Bez něj tablety nenačtou stoly ani nepošlou objednáv
 1. **Připojit Dotykačku (OAuth)** — přihlášení k účtu Dotypos.
 2. Vybrat **pobočku** ze seznamu (ne Cloud ID — to je účet, pobočka je konkrétní provozovna).
 3. Vyplnit, pokud používáte přivolání / účet (bez toho tlačítka na tabletu neodešlou nic):
-   - produkt **Přivolání obsluhy** (skrytá položka 0 Kč v Dotyce, štítek `oa-volani` — tisk bonu)
-   - produkt **Žádost o platbu** (stejný princip; ne do poznámky u účtu hosta)
-   - stůl **Tableflow obsluha** — sem jdou volání, ne na účet hosta; prázdné = účty mimo stoly
+   - produkt **Přivolání obsluhy** (položka 0 Kč v Dotyce, jde na účet stolu hosta)
+   - produkt **Žádost o platbu** (stejný princip)
+   - stůl **Tableflow obsluha** — teď se nepoužívá (volání jdou na účet hosta)
 4. **Uložit pobočku a mapu**.
 
 **Odpojit / Zapnout** — dočasně vypne odesílání do Dotyky. **Mapa produktů** a **API base** neměňte, pokud k tomu nemáte pokyn od technika.

@@ -1,5 +1,5 @@
 /**
- * Skrytá položka Dotykačky pro žádost o účet / platbu (tisk bonu, mimo účet hosta).
+ * Položka 0 Kč v Dotykačce pro žádost o účet / platbu (na účet hosta; štítek může tisknout bon).
  * V mapě produktů: klíč → product id. Na položku posíláme štítek pro filtry tisku.
  */
 

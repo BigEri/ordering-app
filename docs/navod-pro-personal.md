@@ -25,11 +25,11 @@
 
 ---
 
-## 2. Přivolání obsluhy a žádost o účet (mimo účet hosta)
+## 2. Přivolání obsluhy a žádost o účet
 
-Tablet **nepřidává** položku na účet stolu hosta a **nezapisuje** to do poznámky u účtu. 0 Kč řádek (Přivolání obsluhy / Žádost o platbu) jde na **účet mimo stoly** (nebo na stůl **Tableflow obsluha**, pokud ho máte založený) a tiskne se **bon** se štítkem `oa-volani`. Na bonu je číslo stolu hosta.
+Na účet stolu hosta přibude řádek **0 Kč** (Přivolání obsluhy / Žádost o platbu) s poznámkou. V pokladně ho uvidíte u daného stolu. Může se i vytisknout bon (štítek `oa-volani`).
 
-**Co dělat:** bon u tiskárny obsluhy — podle čísla stolu jít k hostovi. Účet hosta zůstane jen s jídlem.
+**Co dělat:** otevřít účet stolu v Dotypos — nahoře je 0 Kč řádek. Jít k hostovi. Řádek na účtu hosta klidně nechte, je za 0 Kč.
 
 Žádost o účet navíc potřebuje už otevřený účet u stolu hosta.
 

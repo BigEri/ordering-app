@@ -1,5 +1,5 @@
 /**
- * Skrytá položka Dotykačky pro přivolání obsluhy (bon / notifikace).
+ * Položka 0 Kč v Dotykačce pro přivolání obsluhy (na účet hosta; štítek může tisknout bon).
  * V mapě produktů: klíč → product id. Na položku posíláme štítek pro filtry tisku.
  */
 

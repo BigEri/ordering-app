@@ -1312,8 +1312,8 @@ function RestaurantDetailInner() {
                     placeholder="např. 123456789 — skrytá položka 0 Kč"
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    V Dotykačce založte skrytý produkt 0 Kč se štítkem <code>oa-volani</code>. Položka nejde
-                    na účet hosta, ale na stůl „Tableflow obsluha“. Uloží se jako <code>oa-staff-call</code>.
+                    V Dotykačce založte produkt 0 Kč se štítkem <code>oa-volani</code>. Položka se zaúčtuje
+                    na účet stolu hosta (viditelné v pokladně). Uloží se jako <code>oa-staff-call</code>.
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
@@ -1327,9 +1327,8 @@ function RestaurantDetailInner() {
                     placeholder="např. 123456789 — skrytá položka 0 Kč"
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Stejný princip a stejný štítek <code>oa-volani</code> (tisk bonu). Položka jde na stůl
-                    „Tableflow obsluha“, ne do poznámky u účtu hosta. Bez tohoto ID žádost o účet neodejde.
-                    Uloží se jako <code>oa-bill-request</code>.
+                    Stejný princip: 0 Kč na účet stolu hosta, štítek <code>oa-volani</code>. Bez tohoto ID
+                    žádost o účet neodejde. Uloží se jako <code>oa-bill-request</code>.
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
@@ -1343,8 +1342,8 @@ function RestaurantDetailInner() {
                     placeholder="ID stolu mimo účty hostů"
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Přivolání a žádost o platbu sem, ne na účet hosta. Prázdné = účet mimo stoly (nezařazené).
-                    Uloží se jako <code>oa-signal-table</code>.
+                    Teď se nepoužívá — volání jdou na účet hosta. Pole nechte prázdné, nebo vyplňte až při
+                    pozdějším přepnutí. Uloží se jako <code>oa-signal-table</code>.
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>

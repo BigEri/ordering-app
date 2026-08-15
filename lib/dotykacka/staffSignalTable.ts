@@ -1,6 +1,6 @@
 /**
- * Oddělený stůl v Dotykačce pro přivolání obsluhy a žádost o platbu.
- * Položky 0 Kč jdou sem, ne na účet stolu hosta.
+ * Rezerva: oddělený stůl v Dotykačce pro přivolání / žádost o platbu.
+ * Teď se nepoužívá — 0 Kč položky jdou na účet stolu hosta.
  */
 
 /** Klíč v `productMap` / `DOTYKACKA_PRODUCT_MAP_JSON`. */
