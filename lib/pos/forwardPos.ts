@@ -197,9 +197,7 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
   // nechceme vracet "ok" a potichu ztratit položky v pokladně.
   // Lze explicitně vypnout přes DOTYKACKA_FAIL_ON_ERROR=0.
   const failOnDotykacka = process.env.DOTYKACKA_FAIL_ON_ERROR !== "0";
-  // `STAFF_CALL` je best-effort: když sync selže (není účet / zamčeno / POS nestíhá),
-  // nechceme zablokovat hosta chybou.
-  if (dotykacka && !dotykacka.ok && failOnDotykacka && eventType !== "STAFF_CALL") {
+  if (dotykacka && !dotykacka.ok && failOnDotykacka) {
     return NextResponse.json(
       {
         ok: false,

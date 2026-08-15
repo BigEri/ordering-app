@@ -6,6 +6,7 @@ import { requestTableBillSyncBurst } from "../lib/client/tableBillSync";
 import { buildOrderLineName } from "../lib/menu/orderLineLabel";
 import { localeTag } from "../lib/i18n/messages";
 import { flushPendingPosQueue, POS_QUEUE_FLUSH_DETAIL } from "../lib/pos/pendingPosQueue";
+import { isDotykackaAccountLockedError } from "../lib/pos/dotykackaGuestError";
 import { postPosJsonResilient } from "../lib/pos/postPosJsonResilient";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
@@ -131,8 +132,14 @@ export function Topbar({ previewMode = false }: TopbarProps) {
         setTopbarError({ messageKey: "pos.error.queued", kind: "staff" });
         return;
       }
+      const staffKey =
+        r.kind === "network"
+          ? "pos.error.network"
+          : isDotykackaAccountLockedError(r.detail)
+            ? "pos.error.staffLocked"
+            : "pos.error.staff";
       setTopbarError({
-        messageKey: r.kind === "network" ? "pos.error.network" : "pos.error.http",
+        messageKey: staffKey,
         kind: "staff",
         ...(r.kind === "http" && r.detail ? { detail: r.detail } : {}),
       });

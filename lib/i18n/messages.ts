@@ -56,6 +56,10 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "Požadavek se nepodařilo dokončit. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
     "pos.error.order":
       "Objednávku se nepodařilo odeslat. Zkuste to prosím znovu tlačítkem Potvrdit objednávku. Když to nepomůže, přivolejte obsluhu.",
+    "pos.error.staff":
+      "Přivolání obsluhy se nepodařilo odeslat. Zkuste to prosím znovu tlačítkem Přivolat personál.",
+    "pos.error.staffLocked":
+      "Přivolání obsluhy se nepodařilo odeslat, protože účet u stolu je teď otevřený v pokladně. Zkuste to za chvíli znovu.",
     "pos.error.billDotykacka":
       "Žádost o účet se nepodařilo odeslat. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
     "pos.error.tableId": "Zařízení nemá platné číslo stolu pro pokladnu. V adminu zkontrolujte přiřazení tabletu ke stolu a zkuste to znovu.",
@@ -310,6 +314,10 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "We could not complete the request. Please try again, or call a staff member.",
     "pos.error.order":
       "We could not send your order. Tap Confirm order to try again. If it still fails, please call a staff member.",
+    "pos.error.staff":
+      "We could not send the staff call. Tap Call staff to try again.",
+    "pos.error.staffLocked":
+      "We could not send the staff call because this table’s check is currently open on the till. Please try again in a moment.",
     "pos.error.billDotykacka":
       "We could not send your bill request. Please try again, or call a staff member.",
     "pos.error.tableId": "This device does not have a valid POS table number. Check the tablet-to-table binding in admin and try again.",
@@ -564,6 +572,10 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "요청을 완료하지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
     "pos.error.order":
       "주문을 보내지 못했습니다. 주문 확인 버튼으로 다시 시도해 주세요. 계속 안 되면 직원을 호출해 주세요.",
+    "pos.error.staff":
+      "직원 호출을 보내지 못했습니다. 직원 호출 버튼으로 다시 시도해 주세요.",
+    "pos.error.staffLocked":
+      "포스에서 이 테이블 계산서가 열려 있어 직원 호출을 보내지 못했습니다. 잠시 후 다시 시도해 주세요.",
     "pos.error.billDotykacka":
       "계산서 요청을 보내지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
     "pos.error.tableId": "이 기기에 POS 테이블 번호가 올바르게 설정되어 있지 않습니다. 관리자에서 테이블 연결을 확인한 뒤 다시 시도하세요.",
