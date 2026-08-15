@@ -1327,7 +1327,8 @@ function RestaurantDetailInner() {
                     placeholder="např. 123456789 — skrytá položka 0 Kč"
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Stejný princip a stejný štítek <code>oa-volani</code>. Položka jde na stůl „Tableflow obsluha“.
+                    Stejný princip a stejný štítek <code>oa-volani</code> (tisk bonu). Položka jde na stůl
+                    „Tableflow obsluha“, ne do poznámky u účtu hosta. Bez tohoto ID žádost o účet neodejde.
                     Uloží se jako <code>oa-bill-request</code>.
                   </span>
                 </label>

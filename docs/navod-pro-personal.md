@@ -27,9 +27,9 @@
 
 ## 2. Přivolání obsluhy a žádost o účet (mimo účet hosta)
 
-Tablet **nepřidává** položku na účet stolu hosta. 0 Kč řádek (Přivolání obsluhy / Žádost o platbu) jde na **účet mimo stoly** (nebo na stůl **Tableflow obsluha**, pokud ho máte založený). V poznámce řádku je číslo stolu hosta.
+Tablet **nepřidává** položku na účet stolu hosta a **nezapisuje** to do poznámky u účtu. 0 Kč řádek (Přivolání obsluhy / Žádost o platbu) jde na **účet mimo stoly** (nebo na stůl **Tableflow obsluha**, pokud ho máte založený) a tiskne se **bon** se štítkem `oa-volani`. Na bonu je číslo stolu hosta.
 
-**Co dělat v pokladně:** otevřít účty **mimo stůl** (nezařazené / bez stolu) — tam je fronta volání. Účet hosta zůstane jen s jídlem.
+**Co dělat:** bon u tiskárny obsluhy — podle čísla stolu jít k hostovi. Účet hosta zůstane jen s jídlem.
 
 Žádost o účet navíc potřebuje už otevřený účet u stolu hosta.
 

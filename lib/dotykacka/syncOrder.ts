@@ -14,6 +14,7 @@ import { cancelPosActionWebhook, waitForPosActionWebhook } from "../server/posAc
 import { formatRestaurantLocalHhmm } from "../restaurantLocalTime";
 import {
   DOTYKACKA_BILL_REQUEST_PRINT_TAG,
+  DOTYKACKA_BILL_REQUEST_PRODUCT_MAP_KEY,
   buildBillRequestItemNote,
   resolveBillRequestProductId,
 } from "./billRequestProduct";
@@ -70,33 +71,6 @@ function staffSignalTarget(
     tableId: resolveSignalTableId(cfg.productMap) ?? null,
     sessionExternalId: buildSignalSessionExternalId(cfg),
   };
-}
-
-function mergeOrderNoteWithOaBillLine(existingNote: unknown, billLine: string): string {
-  const raw = typeof existingNote === "string" ? existingNote : "";
-  const lines = raw
-    .split(/\r?\n/)
-    .map((l) => l.trimEnd())
-    .filter((l) => l !== "");
-
-  const prefixes = ["CHCE ZAPLATIT:", "OA_BILL:"];
-  const next: string[] = [];
-  let replaced = false;
-  for (const l of lines) {
-    if (prefixes.some((p) => l.startsWith(p))) {
-      if (!replaced) {
-        next.push(billLine);
-        replaced = true;
-      }
-      continue;
-    }
-    next.push(l);
-  }
-  if (!replaced) {
-    // nahoře kvůli viditelnosti v Dotyce
-    next.unshift(billLine);
-  }
-  return next.join("\n");
 }
 
 function posActionsUrl(cfg: DotykackaConfig): string {
@@ -439,8 +413,8 @@ async function listOpenDotykackaOrdersForTable(
 
 /**
  * Zápis "žádost o účet" do Dotykačky.
- * Když je namapovaný produkt (`oa-bill-request`), přidá 0 Kč položku mimo účet hosta
- * (stůl `oa-signal-table`, jinak účet bez stolu). Jinak spadne na poznámku u otevřeného účtu hosta.
+ * Skrytá položka 0 Kč mimo účet hosta (stůl `oa-signal-table`, jinak účet bez stolu).
+ * Host ji na účtu neuvidí; obsluha ji má ihned na bonu (štítek `oa-volani`).
  */
 export async function syncBillRequestToDotykacka(payload: unknown, cfg: DotykackaConfig): Promise<DotykackaSyncResult> {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
@@ -457,6 +431,17 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
         : NaN;
   if (!Number.isFinite(tableId)) {
     return { ok: false, error: "Chybí nebo neplatné tableId (očekává se ID stolu v Dotyce)", meta: {} };
+  }
+
+  const productId = resolveBillRequestProductId(cfg.productMap);
+  if (productId === undefined) {
+    return {
+      ok: false,
+      error:
+        `Chybí produkt pro žádost o účet — v mapě produktů nastavte klíč "${DOTYKACKA_BILL_REQUEST_PRODUCT_MAP_KEY}" ` +
+        `(nebo DOTYKACKA_BILL_REQUEST_PRODUCT_ID v .env) na ID skryté 0 Kč položky v Dotykačce.`,
+      meta: { tableId, action: "bill_request_missing_product" },
+    };
   }
 
   const sessionExternalId = buildDotykackaTableSessionExternalId(cfg, o);
@@ -484,7 +469,6 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
       meta: { tableId, sessionExternalId, action: "order/list" },
     };
   }
-  const openOrders = listResult.orders;
 
   const ordersTotal = typeof o.ordersTotal === "number" ? o.ordersTotal : Number(o.ordersTotal);
   const tipPct = typeof o.tipPct === "number" ? o.tipPct : Number(o.tipPct);
@@ -502,67 +486,31 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
     timeLabel: formatRestaurantLocalHhmm(),
   });
 
-  const productId = resolveBillRequestProductId(cfg.productMap);
-  if (productId !== undefined) {
-    const items: OrderPosItem[] = [
-      {
-        id: productId,
-        qty: 1,
-        note: billLine,
-        tags: [DOTYKACKA_BILL_REQUEST_PRINT_TAG],
-      },
-    ];
-    const target = staffSignalTarget(cfg);
-    const result = await submitOrderItemsToDotykackaTable(
-      cfg,
-      accessToken,
-      target.tableId,
-      target.sessionExternalId,
-      items,
-    );
-    if (!result.ok) return result;
-    return {
-      ok: true,
-      meta: {
-        ...result.meta,
-        action: result.meta.action ?? "bill_request_add_item",
-        ...(target.tableId != null ? { tableId: target.tableId } : {}),
-      },
-    };
-  }
-
-  // Fallback bez namapovaného produktu: poznámka u otevřeného účtu.
-  const ours = openOrders.filter((x) => x.externalId === sessionExternalId);
-  const targets = ours.length > 0 ? ours : openOrders;
-
-  for (const ord of targets) {
-    const note = mergeOrderNoteWithOaBillLine(ord.note, billLine);
-    const upd = await postDotykackaPosAction(cfg, accessToken, {
-      action: "order/update",
-      "order-id": ord.orderId,
-      note,
-    });
-    if (!upd.ok) {
-      return {
-        ok: false,
-        error: formatPosActionsHttpError(cfg, upd.status, upd.text),
-        meta: { tableId, sessionExternalId, action: "order/update", httpStatus: upd.status },
-      };
-    }
-    const updData = upd.data;
-    if (updData && typeof updData === "object") {
-      const code = (updData as { code?: unknown }).code;
-      if (typeof code === "number" && code !== 0) {
-        return {
-          ok: false,
-          error: `Dotykačka order/update selhal (code ${code})`,
-          meta: { tableId, sessionExternalId, action: "order/update" },
-        };
-      }
-    }
-  }
-
-  return { ok: true, meta: { tableId, sessionExternalId, action: "bill_request_note" } };
+  const items: OrderPosItem[] = [
+    {
+      id: productId,
+      qty: 1,
+      note: billLine,
+      tags: [DOTYKACKA_BILL_REQUEST_PRINT_TAG],
+    },
+  ];
+  const target = staffSignalTarget(cfg);
+  const result = await submitOrderItemsToDotykackaTable(
+    cfg,
+    accessToken,
+    target.tableId,
+    target.sessionExternalId,
+    items,
+  );
+  if (!result.ok) return result;
+  return {
+    ok: true,
+    meta: {
+      ...result.meta,
+      action: result.meta.action ?? "bill_request_add_item",
+      ...(target.tableId != null ? { tableId: target.tableId } : {}),
+    },
+  };
 }
 
 /**
