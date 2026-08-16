@@ -24,15 +24,15 @@
 
 |--|--|
 
-| **Verze** | **1.22** (`versionCode` **23**) |
+| **Verze** | **1.23** (`versionCode` **24**) |
 
 | **APK URL** | `https://app.tableflow.cz/releases/tableflow-kiosk.apk` |
 
 | **Podpis** | debug (Android Studio) — stejný na všech tabletech z `assembleDebug` |
 
-| **SHA256** | `7851fbf78d297d9b30b0b9232888a048741eefcfafa7f638d9bf9009943e6e32` |
+| **SHA256** | `e0a34a340fbe6c87ff6e785c0d8e7ec906bde88cea4d62a3f204983e16258fa5` |
 
-| **Nové v 1.22** | Hlášení baterie do Admin → Zařízení |
+| **Nové v 1.23** | Update APK i bez Device Owner (systémový dialog Instalovat); hlášení baterie |
 
 
 
@@ -46,7 +46,7 @@
 
 3. **Aktualizovat APK** → dialog (verze na tabletu vs. server) → potvrdit.
 
-4. Admin ~2 min čeká na hlášení verze; sloupec **APK na tabletu** má ukázat `v1.22 (code 23) ✓`.
+4. Admin ~2 min čeká na hlášení verze; sloupec **APK na tabletu** má ukázat `v1.23 (code 24) ✓`.
 
 5. Na tabletu případně potvrdit **Instalovat** (bez Device Owner).
 
@@ -64,13 +64,13 @@
 
 |----------|---------|
 
-| `KIOSK_APK_VERSION_CODE` | `23` |
+| `KIOSK_APK_VERSION_CODE` | `24` |
 
-| `KIOSK_APK_VERSION_NAME` | `1.22` |
+| `KIOSK_APK_VERSION_NAME` | `1.23` |
 
 | `KIOSK_APK_URL` | (prázdné = `{NEXT_PUBLIC_APP_URL}/releases/tableflow-kiosk.apk`) |
 
-| `KIOSK_APK_SHA256` | `7851fbf78d297d9b30b0b9232888a048741eefcfafa7f638d9bf9009943e6e32` |
+| `KIOSK_APK_SHA256` | `e0a34a340fbe6c87ff6e785c0d8e7ec906bde88cea4d62a3f204983e16258fa5` |
 
 
 
