@@ -35,7 +35,12 @@ export async function GET(req: Request) {
       { ok: true, devices, kioskRelease, restaurantId: rid },
       { headers: { "Cache-Control": "private, no-store, no-cache, must-revalidate" } },
     );
-  } catch {
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    if (msg === "UNAUTHORIZED") {
+      return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    }
+    console.error("GET /api/devices", e);
+    return NextResponse.json({ ok: false, error: "Nepodařilo se načíst seznam zařízení." }, { status: 500 });
   }
 }
