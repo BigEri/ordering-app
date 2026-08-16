@@ -5,8 +5,9 @@ import {
   getDeviceRebootNonce,
   getDeviceReloadNonce,
   getEffectiveTable,
-  recordKioskApkVersion,
+  recordKioskTelemetry,
 } from "../../../../lib/server/deviceRegistry";
+import { parseKioskBatteryQuery } from "../../../../lib/server/kioskBatteryTelemetry";
 import { getKioskAppRelease } from "../../../../lib/server/kioskAppRelease";
 import { ensureKioskDeviceSecret } from "../../../../lib/server/kioskDeviceBindings";
 import { resolveKioskMaintenanceRebootSchedule } from "../../../../lib/server/kioskMaintenanceReboot";
@@ -25,8 +26,18 @@ export async function GET(req: NextRequest) {
 
   const apkVersionRaw = req.nextUrl.searchParams.get("apkVersionCode")?.trim() ?? "";
   const apkVersionCode = Number.parseInt(apkVersionRaw, 10);
-  if (Number.isFinite(apkVersionCode) && apkVersionCode > 0) {
-    recordKioskApkVersion(deviceId, apkVersionCode);
+  const battery = parseKioskBatteryQuery({
+    batteryPercent: req.nextUrl.searchParams.get("batteryPercent"),
+    batteryCharging: req.nextUrl.searchParams.get("batteryCharging"),
+  });
+  const hasApk = Number.isFinite(apkVersionCode) && apkVersionCode > 0;
+  if (hasApk || battery) {
+    recordKioskTelemetry(deviceId, {
+      ...(hasApk ? { apkVersionCode } : {}),
+      ...(battery
+        ? { batteryPercent: battery.percent, batteryCharging: battery.charging }
+        : {}),
+    });
   }
 
   // Strict mode: binding exists only if it's stored in DB (kiosk_device_bindings).

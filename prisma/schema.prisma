@@ -280,6 +280,10 @@ model KioskDeviceBinding {
   lastSeenAtIso String?
   /** Nahlášené BuildConfig.VERSION_CODE z tabletu při poll config. */
   kioskApkVersionCode Int?
+  /** 0–100 z kiosk APK (BatteryManager); null = starší APK / ještě nehlásilo. */
+  batteryPercent Int?
+  /** 0/1 — nabíjí se nebo plně nabito a připojeno. */
+  batteryCharging Int?
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
 }

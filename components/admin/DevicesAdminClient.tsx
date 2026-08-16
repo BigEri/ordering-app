@@ -23,6 +23,8 @@ type DeviceRow = {
   userAgent?: string;
   restaurantId?: string | null;
   kioskApkVersionCode?: number | null;
+  batteryPercent?: number | null;
+  batteryCharging?: boolean | null;
 };
 
 type KioskRelease = {
@@ -31,6 +33,12 @@ type KioskRelease = {
   apkUrl: string;
   sha256: string | null;
 } | null;
+
+function batteryLevelColor(percent: number): string {
+  if (percent < 20) return "#f87171";
+  if (percent < 50) return "#fbbf24";
+  return "var(--success)";
+}
 
 type HealthPayload = {
   ok?: boolean;
@@ -389,6 +397,32 @@ export function DevicesAdminClient({
       .replace("{code}", String(kioskRelease.versionCode));
   };
 
+  const renderBattery = (d: DeviceRow) => {
+    if (d.batteryPercent == null) {
+      return (
+        <span className="textMuted2" title={tStaff("admin.devices.batteryUnknown")}>
+          —
+        </span>
+      );
+    }
+    const color = d.online ? batteryLevelColor(d.batteryPercent) : undefined;
+    return (
+      <div>
+        <span
+          className={d.online ? undefined : "textMuted"}
+          style={{ color, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}
+        >
+          {d.batteryPercent} %
+        </span>
+        {d.batteryCharging ? (
+          <div className="textMuted2" style={{ marginTop: 4, fontSize: 11 }}>
+            {tStaff("admin.devices.batteryCharging")}
+          </div>
+        ) : null}
+      </div>
+    );
+  };
+
   const onForceReload = async (deviceId: string) => {
     setReloadErr(false);
     setReloadErrDetail(null);
@@ -731,6 +765,7 @@ export function DevicesAdminClient({
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.table")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.dotykackaTable")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.apkOnDevice")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.battery")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.status")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.last")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.actions")}</th>
@@ -775,6 +810,7 @@ export function DevicesAdminClient({
                       <span className="textMuted2">{tStaff("admin.devices.apkVersionUnknown")}</span>
                     )}
                   </td>
+                  <td style={{ padding: "10px 12px" }}>{renderBattery(d)}</td>
                   <td style={{ padding: "10px 12px" }}>
                     {d.online ? (
                       <span style={{ color: "var(--success)" }}>{tStaff("admin.devices.online")}</span>

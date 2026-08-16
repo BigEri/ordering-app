@@ -15,6 +15,8 @@ export type KioskDeviceBindingRow = {
   rebootNonce: number;
   lastSeenAtIso: string | null;
   kioskApkVersionCode: number | null;
+  batteryPercent: number | null;
+  batteryCharging: number | null;
 };
 
 const bindingSelect = {
@@ -30,6 +32,8 @@ const bindingSelect = {
   rebootNonce: true,
   lastSeenAtIso: true,
   kioskApkVersionCode: true,
+  batteryPercent: true,
+  batteryCharging: true,
 } as const;
 
 export async function getKioskDeviceBinding(deviceId: string): Promise<KioskDeviceBindingRow | null> {
@@ -187,10 +191,15 @@ export async function setKioskDevicePairingLocked(deviceId: string, locked: bool
   });
 }
 
-/** Zapíše lastSeen a volitelně verzi APK do DB (spolehlivý přehled v adminu na Vercelu). */
+/** Zapíše lastSeen a volitelně verzi APK / baterii do DB (spolehlivý přehled v adminu na Vercelu). */
 export async function touchKioskDeviceTelemetry(
   deviceId: string,
-  input: { apkVersionCode?: number | null; userAgent?: string | null },
+  input: {
+    apkVersionCode?: number | null;
+    userAgent?: string | null;
+    batteryPercent?: number | null;
+    batteryCharging?: boolean | null;
+  },
 ): Promise<void> {
   const id = deviceId.trim();
   if (!id) return;
@@ -199,11 +208,16 @@ export async function touchKioskDeviceTelemetry(
     input.apkVersionCode != null && Number.isFinite(input.apkVersionCode) && input.apkVersionCode > 0
       ? Math.trunc(input.apkVersionCode)
       : undefined;
+  const hasBattery = input.batteryPercent != null && Number.isFinite(input.batteryPercent);
+  const batteryPercent = hasBattery ? Math.trunc(input.batteryPercent as number) : undefined;
+  const batteryCharging = hasBattery ? (input.batteryCharging ? 1 : 0) : undefined;
   await prisma.kioskDeviceBinding.updateMany({
     where: { deviceId: id },
     data: {
       lastSeenAtIso: ts,
       ...(apk !== undefined ? { kioskApkVersionCode: apk } : {}),
+      ...(batteryPercent !== undefined ? { batteryPercent } : {}),
+      ...(batteryCharging !== undefined ? { batteryCharging } : {}),
     },
   });
 }

@@ -27,6 +27,9 @@ export type DeviceRecord = {
   pairingLocked?: number;
   /** Nahlášené z tabletu při poll config (BuildConfig.VERSION_CODE). */
   kioskApkVersionCode?: number | null;
+  /** 0–100 z kiosk APK; null = ještě nehlásilo. */
+  batteryPercent?: number | null;
+  batteryCharging?: boolean | null;
 };
 
 const ONLINE_THRESHOLD_MS = 120_000;
@@ -39,6 +42,15 @@ function lastSeenMsFromIso(iso: string | null | undefined): number {
 
 function mergeLastSeen(memoryMs: number, dbIso: string | null | undefined): number {
   return Math.max(memoryMs, lastSeenMsFromIso(dbIso));
+}
+
+function mergeBatteryCharging(
+  mem: boolean | null | undefined,
+  db: number | null | undefined,
+): boolean | null {
+  if (typeof mem === "boolean") return mem;
+  if (db == null) return null;
+  return db === 1;
 }
 
 const presenceByDevice = new Map<string, DeviceRecord>();
@@ -68,22 +80,45 @@ export async function getDeviceRebootNonce(deviceId: string): Promise<number> {
   return getKioskDeviceRebootNonce(deviceId);
 }
 
-export function recordKioskApkVersion(deviceId: string, versionCode: number) {
+export function recordKioskTelemetry(
+  deviceId: string,
+  input: {
+    apkVersionCode?: number;
+    batteryPercent?: number | null;
+    batteryCharging?: boolean | null;
+  },
+) {
   const id = deviceId.trim();
-  if (!id || !Number.isFinite(versionCode) || versionCode < 1) return;
+  if (!id) return;
   const prev = presenceByDevice.get(id);
-  if (prev) {
-    presenceByDevice.set(id, { ...prev, kioskApkVersionCode: versionCode, lastSeen: Date.now() });
-  } else {
-    presenceByDevice.set(id, {
-      deviceId: id,
-      tableId: "",
-      tableLabel: "",
-      lastSeen: Date.now(),
-      kioskApkVersionCode: versionCode,
-    });
-  }
-  void touchKioskDeviceTelemetry(id, { apkVersionCode: versionCode }).catch(() => {});
+  const apk =
+    input.apkVersionCode != null && Number.isFinite(input.apkVersionCode) && input.apkVersionCode > 0
+      ? Math.trunc(input.apkVersionCode)
+      : prev?.kioskApkVersionCode ?? null;
+  const hasBattery = input.batteryPercent != null && Number.isFinite(input.batteryPercent);
+  const batteryPercent = hasBattery
+    ? Math.max(0, Math.min(100, Math.trunc(input.batteryPercent as number)))
+    : prev?.batteryPercent ?? null;
+  const batteryCharging = hasBattery ? Boolean(input.batteryCharging) : prev?.batteryCharging ?? null;
+  if (apk == null && !hasBattery) return;
+
+  presenceByDevice.set(id, {
+    deviceId: id,
+    tableId: prev?.tableId ?? "",
+    tableLabel: prev?.tableLabel ?? "",
+    lastSeen: Date.now(),
+    userAgent: prev?.userAgent,
+    restaurantId: prev?.restaurantId,
+    pairingLocked: prev?.pairingLocked,
+    kioskApkVersionCode: apk,
+    batteryPercent,
+    batteryCharging,
+  });
+  void touchKioskDeviceTelemetry(id, {
+    apkVersionCode: apk,
+    batteryPercent: hasBattery ? batteryPercent : undefined,
+    batteryCharging: hasBattery ? batteryCharging : undefined,
+  }).catch(() => {});
 }
 
 export function clearDeviceFromMemory(deviceId: string): void {
@@ -186,6 +221,8 @@ export function recordPresence(
     lastSeen: Date.now(),
     userAgent: userAgent ?? prev?.userAgent,
     kioskApkVersionCode: prev?.kioskApkVersionCode ?? null,
+    batteryPercent: prev?.batteryPercent ?? null,
+    batteryCharging: prev?.batteryCharging ?? null,
   });
   void touchKioskDeviceTelemetry(deviceId, { userAgent }).catch(() => {});
 }
@@ -208,6 +245,8 @@ export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online
       restaurantId: kb.restaurantId,
       pairingLocked: kb.pairingLocked,
       kioskApkVersionCode: p?.kioskApkVersionCode ?? kb.kioskApkVersionCode ?? null,
+      batteryPercent: p?.batteryPercent ?? kb.batteryPercent ?? null,
+      batteryCharging: mergeBatteryCharging(p?.batteryCharging, kb.batteryCharging),
     });
   }
 
@@ -222,6 +261,8 @@ export async function listDeviceRecords(): Promise<Array<DeviceRecord & { online
       restaurantId: kb?.restaurantId ?? fallbackRid ?? undefined,
       pairingLocked: kb?.pairingLocked ?? undefined,
       kioskApkVersionCode: p.kioskApkVersionCode ?? kb?.kioskApkVersionCode ?? null,
+      batteryPercent: p.batteryPercent ?? kb?.batteryPercent ?? null,
+      batteryCharging: mergeBatteryCharging(p.batteryCharging, kb?.batteryCharging),
     });
   }
 

@@ -1,6 +1,5 @@
 # Kiosk APK
 
-**1.11** (code 12) — WebView cookies for admin login.
+**1.22** (code 23) — Battery telemetry for Admin → Devices.
 
 https://app.tableflow.cz/releases/tableflow-kiosk.apk
-
