@@ -43,6 +43,12 @@ function payloadRestaurantId(sanitized: unknown): string | null {
   return typeof r === "string" && r.trim() ? r.trim() : null;
 }
 
+function payloadDeviceId(sanitized: unknown): string | null {
+  if (!sanitized || typeof sanitized !== "object" || Array.isArray(sanitized)) return null;
+  const d = (sanitized as Record<string, unknown>).deviceId;
+  return typeof d === "string" && d.trim() ? d.trim() : null;
+}
+
 async function maybeSyncDotykacka(
   eventType: string,
   sanitized: unknown,
@@ -53,6 +59,75 @@ async function maybeSyncDotykacka(
   if (eventType === "BILL_REQUEST") return syncBillRequestToDotykacka(sanitized, cfg);
   if (eventType === "STAFF_CALL") return syncStaffCallToDotykacka(sanitized, cfg);
   return undefined;
+}
+
+/** Sync do Dotykačky + audit / stav restaurace (synchronní — klient vidí úspěch i chybu). */
+async function runDotykackaSyncWithAudit(input: {
+  eventType: string;
+  sanitized: unknown;
+  clientRequestId: string | undefined;
+}): Promise<{ ok: boolean; error?: string } | undefined> {
+  const { eventType, sanitized, clientRequestId } = input;
+  const rid = payloadRestaurantId(sanitized);
+  const deviceId = payloadDeviceId(sanitized);
+
+  try {
+    const dk = await maybeSyncDotykacka(eventType, sanitized);
+    if (!dk) return undefined;
+
+    const result = dk.ok ? { ok: true as const } : { ok: false as const, error: dk.error };
+
+    if (rid) {
+      const details: Record<string, unknown> = {
+        eventType,
+        clientRequestId: clientRequestId ?? null,
+      };
+      if (eventType === "ORDER_CONFIRMED") {
+        await recordIntegrationAuditEvent({
+          type: dk.ok ? "pos_order_sent" : "pos_order_failed",
+          restaurantId: rid,
+          actorUserId: null,
+          deviceId,
+          details: {
+            ...details,
+            ...(dk.meta ? { dotykacka: dk.meta } : {}),
+            ...(dk.ok ? {} : { error: dk.error }),
+          },
+        });
+      }
+      if (dk.ok) {
+        markRestaurantDotykackaSyncOk({ restaurantId: rid, details });
+      } else {
+        markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: dk.error, details });
+      }
+    }
+
+    return result;
+  } catch (e) {
+    const error = e instanceof Error ? e.message : "Dotykačka sync selhal";
+    if (rid) {
+      markRestaurantDotykackaSyncFailed({
+        restaurantId: rid,
+        error,
+        details: { eventType, clientRequestId: clientRequestId ?? null, thrown: true },
+      });
+      if (eventType === "ORDER_CONFIRMED") {
+        await recordIntegrationAuditEvent({
+          type: "pos_order_failed",
+          restaurantId: rid,
+          actorUserId: null,
+          deviceId,
+          details: {
+            eventType,
+            clientRequestId: clientRequestId ?? null,
+            thrown: true,
+            error,
+          },
+        });
+      }
+    }
+    return { ok: false, error };
+  }
 }
 
 async function verifyPosDeviceSecret(
@@ -120,78 +195,11 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
   recordPresenceFromPosPayload(sanitizedForPipeline, userAgent ?? null);
   const logged = await appendVirtualPosEvent(eventType, sanitizedForPipeline);
 
-  let dotykacka: { ok: boolean; error?: string } | undefined;
-  try {
-    const dk = await maybeSyncDotykacka(eventType, sanitizedForPipeline);
-    if (dk) {
-      dotykacka = dk.ok ? { ok: true } : { ok: false, error: dk.error };
-
-      const rid = payloadRestaurantId(sanitizedForPipeline);
-      if (rid) {
-        const details: Record<string, unknown> = {
-          eventType,
-          clientRequestId: clientRequestId ?? null,
-        };
-        // POS events for support: order sent/failed to POS (Dotykačka).
-        if (eventType === "ORDER_CONFIRMED") {
-          await recordIntegrationAuditEvent({
-            type: dk.ok ? "pos_order_sent" : "pos_order_failed",
-            restaurantId: rid,
-            actorUserId: null,
-            deviceId:
-              sanitizedForPipeline && typeof sanitizedForPipeline === "object" && !Array.isArray(sanitizedForPipeline)
-                ? (sanitizedForPipeline as Record<string, unknown>).deviceId && typeof (sanitizedForPipeline as Record<string, unknown>).deviceId === "string"
-                  ? ((sanitizedForPipeline as Record<string, unknown>).deviceId as string)
-                  : null
-                : null,
-            details: {
-              ...details,
-              ...(dk.meta ? { dotykacka: dk.meta } : {}),
-              ...(dk.ok ? {} : { error: dk.error }),
-            },
-          });
-        }
-        if (dk.ok) {
-          markRestaurantDotykackaSyncOk({ restaurantId: rid, details });
-        } else {
-          markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: dk.error, details });
-        }
-      }
-    }
-  } catch (e) {
-    dotykacka = {
-      ok: false,
-      error: e instanceof Error ? e.message : "Dotykačka sync selhal",
-    };
-
-    const rid = payloadRestaurantId(sanitizedForPipeline);
-    if (rid) {
-      markRestaurantDotykackaSyncFailed({
-        restaurantId: rid,
-        error: dotykacka.error ?? "Dotykačka sync selhal",
-        details: { eventType, clientRequestId: clientRequestId ?? null, thrown: true },
-      });
-      if (eventType === "ORDER_CONFIRMED") {
-        await recordIntegrationAuditEvent({
-          type: "pos_order_failed",
-          restaurantId: rid,
-          actorUserId: null,
-          deviceId:
-            sanitizedForPipeline && typeof sanitizedForPipeline === "object" && !Array.isArray(sanitizedForPipeline)
-              ? (sanitizedForPipeline as Record<string, unknown>).deviceId && typeof (sanitizedForPipeline as Record<string, unknown>).deviceId === "string"
-                ? ((sanitizedForPipeline as Record<string, unknown>).deviceId as string)
-                : null
-              : null,
-          details: {
-            eventType,
-            clientRequestId: clientRequestId ?? null,
-            thrown: true,
-            error: dotykacka.error ?? "Dotykačka sync selhal",
-          },
-        });
-      }
-    }
-  }
+  const dotykacka = await runDotykackaSyncWithAudit({
+    eventType,
+    sanitized: sanitizedForPipeline,
+    clientRequestId,
+  });
 
   // Bezpečnější default: pokud je Dotykačka zapnutá a sync selže,
   // nechceme vracet "ok" a potichu ztratit položky v pokladně.

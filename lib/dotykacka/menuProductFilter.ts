@@ -128,6 +128,28 @@ function isRawWarehouseIngredient(raw: Record<string, unknown>, graph: RecipeGra
   return true;
 }
 
+export type StandaloneProductHideReason =
+  | "internal-tag"
+  | "price-entry"
+  | "weight-unit"
+  | "recipe-ingredient";
+
+/**
+ * Proč schovat z nabídky pro hosty (ne z customizací). `null` = nechat.
+ * Štítek kiosk/tableflow/public má přednost. `display` / smazané řeší volající.
+ */
+export function standaloneDotykackaProductHideReason(
+  raw: Record<string, unknown>,
+  graph: RecipeGraph,
+): StandaloneProductHideReason | null {
+  if (recordHasGuestForceShowTag(raw)) return null;
+  if (recordHasInternalHideTag(raw)) return "internal-tag";
+  if (requiresPriceEntry(raw)) return "price-entry";
+  if (unitIsWarehouseWeight(raw.unit)) return "weight-unit";
+  if (isRawWarehouseIngredient(raw, graph)) return "recipe-ingredient";
+  return null;
+}
+
 /**
  * Schovat z nabídky pro hosty (ne z customizací). `display` / smazané řeší volající.
  */
@@ -135,10 +157,5 @@ export function shouldHideStandaloneDotykackaProduct(
   raw: Record<string, unknown>,
   graph: RecipeGraph,
 ): boolean {
-  if (recordHasGuestForceShowTag(raw)) return false;
-  if (recordHasInternalHideTag(raw)) return true;
-  if (requiresPriceEntry(raw)) return true;
-  if (unitIsWarehouseWeight(raw.unit)) return true;
-  if (isRawWarehouseIngredient(raw, graph)) return true;
-  return false;
+  return standaloneDotykackaProductHideReason(raw, graph) != null;
 }

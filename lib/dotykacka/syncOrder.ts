@@ -755,11 +755,11 @@ async function tryCreateOrderOnTable(
   });
 }
 
-/** Prodleva před opakovaným order/list — Dotykačka někdy krátce nevrátí čerstvě vytvořený účet. */
-const ADD_ITEM_LIST_RETRY_MS = [0, 500, 1500, 3000];
+/** Jen při ORDER_LOCKED (2001) — prázdný stůl jde hned na create (bez opakovaného listu). */
+const ADD_ITEM_LOCK_RETRY_MS = [0, 700, 1400];
 
 /**
- * Odeslání položek na stůl: add-item k otevřenému účtu, create jen když po opakování listu opravdu nic není.
+ * Odeslání položek na stůl: add-item k otevřenému účtu, create hned když list nic nevrátí.
  */
 async function submitOrderItemsToDotykackaTable(
   cfg: DotykackaConfig,
@@ -772,8 +772,8 @@ async function submitOrderItemsToDotykackaTable(
   let lastAdd: TryAddItemsResult = null;
   let lastListError: DotykackaSyncResult | null = null;
 
-  for (let i = 0; i < ADD_ITEM_LIST_RETRY_MS.length; i++) {
-    const delay = ADD_ITEM_LIST_RETRY_MS[i]!;
+  for (let i = 0; i < ADD_ITEM_LOCK_RETRY_MS.length; i++) {
+    const delay = ADD_ITEM_LOCK_RETRY_MS[i]!;
     if (delay > 0) await sleep(delay);
 
     const addResult = await tryAddItemsToOpenOrders(cfg, accessToken, tableId, sessionExternalId, items);
@@ -781,10 +781,8 @@ async function submitOrderItemsToDotykackaTable(
 
     if (addResult?.ok === true) return addResult;
 
-    if (addResult === null) {
-      if (i < ADD_ITEM_LIST_RETRY_MS.length - 1) continue;
-      break;
-    }
+    // Prázdný stůl → create (neopakovat list se sleepem).
+    if (addResult === null) break;
 
     if (addResult.meta.action === "order/list") {
       lastListError = addResult;
@@ -793,7 +791,7 @@ async function submitOrderItemsToDotykackaTable(
 
     if ((addResult.meta.openOrderCount ?? 0) > 0) {
       const code = addResult.meta.posActionCode;
-      if (code === 2001 && i < ADD_ITEM_LIST_RETRY_MS.length - 1) continue;
+      if (code === 2001 && i < ADD_ITEM_LOCK_RETRY_MS.length - 1) continue;
       return addResult;
     }
 
@@ -927,8 +925,7 @@ export async function syncOrderConfirmedToDotykacka(
   }
 
   const accessToken = await getDotykackaAccessTokenForCloud(cfg);
-  const pre = await preflightDotykackaPosActions(cfg, accessToken);
-  if (!pre.ok) return { ok: false, error: pre.error, meta: { tableId, sessionExternalId, action: "order/hello" } };
+  // Bez order/hello — šetří jedno webhook čekání; list/add-item/create samy odhalí výpadek POS.
 
   const tableNote =
     typeof o.tableLabel === "string" && o.tableLabel.trim()
