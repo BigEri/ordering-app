@@ -226,15 +226,16 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "Dostupné APK na serveru",
     "admin.devices.apkOnDevice": "APK na tabletu",
     "admin.devices.apkUpdateHint":
-      "U tabletu Aktualizovat APK — tablet musí být v Host režimu. Bez Device Owner se na tabletu objeví systémový dialog Instalovat. Když AirDroid drží kiosk zámek a dialog nejde, nahrajte stejný soubor do AirDroid App Library → Update → Force Install. Web (menu) se aktualizuje z adminu (Obnovit menu / Vynutit obnovení).",
+      "Tlačítko Aktualizovat APK teď na stávajících tabletech nemusí stačit — v aplikaci na tabletu se update bez Device Owner zahazoval. Jednou nainstalujte APK ručně (odkaz níž, USB do tabletu, otevřít soubor, Instalovat). Pak už budou další aktualizace z adminu fungovat. Menu (jídla, ceny) se mění zvlášť: Obnovit menu / Vynutit obnovení.",
+    "admin.devices.apkDownload": "Stáhnout APK do počítače",
     "admin.devices.apkUpdateConfirmTitle": "Aktualizovat APK na tabletu?",
     "admin.devices.apkUpdateConfirmBody":
-      "Stůl {table} · zařízení {device}\n\nVerze na tabletu: {current}\nVerze na serveru: {target}\n\nTablet musí běžet v režimu Host. S Device Owner se APK nainstaluje tiše; bez něj se na tabletu ukáže dialog Instalovat.\n\nPo potvrzení počkáme až ~2 minuty na hlášení nové verze.",
+      "Stůl {table} · zařízení {device}\n\nVerze na tabletu: {current}\nVerze na serveru: {target}\n\nTablet musí běžet v režimu Host. Na tabletu se může ukázat dialog Instalovat — potvrďte ho.\n\nPo potvrzení počkáme až ~2 minuty, než tablet nahlásí novou verzi.",
     "admin.devices.apkUpdateAlreadyCurrent": "Tablet už hlásí stejnou nebo novější verzi — stažení APK pravděpodobně proběhne jen pokud server má vyšší versionCode.",
     "admin.devices.apkUpdateOk":
       "Stůl {table}: tablet hlásí verzi {version} (code {code}) — odpovídá serveru.",
     "admin.devices.apkUpdatePending":
-      "Požadavek odeslán (nonce {nonce}), ale tablet ještě nehlásí {target}. Tablet musí být online v režimu Host. Bez Device Owner potvrďte na tabletu dialog Instalovat. Pokud se dialog neukáže (tvrdý AirDroid zámek), použijte AirDroid App Library → Force Install.",
+      "Požadavek odeslán (nonce {nonce}), ale tablet ještě nehlásí {target}. Zkontrolujte, že je online v režimu Host, a na tabletu potvrďte dialog Instalovat, pokud se objevil.",
     "admin.devices.apkVersionUnknown": "neznámá (tablet ještě nehlásil verzi)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "naposledy viděn",
@@ -487,15 +488,16 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "APK available on server",
     "admin.devices.apkOnDevice": "APK on tablet",
     "admin.devices.apkUpdateHint":
-      "Per tablet: Update APK — Host mode required. Without Device Owner the tablet shows the system Install dialog. If AirDroid kiosk lock blocks it, upload the same file to AirDroid App Library → Update → Force Install. Web menu always updates from admin (refresh menu / force reload).",
+      "Update APK on current tablets may do nothing — the app on the tablet dropped updates without Device Owner. Install this APK once by hand (link below, USB to the tablet, open the file, Install). Later updates from admin will work. Menu content is separate: Refresh menu / Force reload.",
+    "admin.devices.apkDownload": "Download APK to this computer",
     "admin.devices.apkUpdateConfirmTitle": "Update APK on this tablet?",
     "admin.devices.apkUpdateConfirmBody":
-      "Table {table} · device {device}\n\nVersion on tablet: {current}\nVersion on server: {target}\n\nTablet must run in Host mode. Device Owner installs silently; otherwise the tablet shows an Install dialog.\n\nAfter confirm we wait up to ~2 minutes for the new version report.",
+      "Table {table} · device {device}\n\nVersion on tablet: {current}\nVersion on server: {target}\n\nThe tablet must run in Host mode. An Install dialog may appear on the tablet — confirm it.\n\nAfter confirm we wait up to ~2 minutes for the new version report.",
     "admin.devices.apkUpdateAlreadyCurrent": "Tablet already reports the same or newer version — download only runs if the server has a higher versionCode.",
     "admin.devices.apkUpdateOk":
       "Table {table}: tablet reports {version} (code {code}) — matches server.",
     "admin.devices.apkUpdatePending":
-      "Request sent (nonce {nonce}), but the tablet has not reported {target} yet. Tablet must be online in Host mode. Without Device Owner, confirm the Install dialog on the tablet. If no dialog appears (hard AirDroid lock), use AirDroid App Library → Force Install.",
+      "Request sent (nonce {nonce}), but the tablet has not reported {target} yet. Check it is online in Host mode, and confirm Install on the tablet if the dialog appeared.",
     "admin.devices.apkVersionUnknown": "unknown (tablet has not reported yet)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "last seen",
@@ -748,7 +750,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "서버 APK",
     "admin.devices.apkOnDevice": "태블릿 APK",
     "admin.devices.apkUpdateHint":
-      "기기별 APK 업데이트 — Host 모드 필요. Device Owner가 아니면 시스템에 설치 대화상자가 뜹니다. AirDroid 잠금이 막으면 App Library → Update → Force Install. 웹 메뉴는 관리자에서 갱신.",
+      "현재 태블릿의 APK 업데이트 버튼은 동작하지 않을 수 있습니다. 아래 링크로 APK를 받아 USB로 한 번 설치하세요. 이후 관리자 업데이트가 됩니다. 메뉴 내용은 새로 고침과 별개입니다.",
+    "admin.devices.apkDownload": "컴퓨터에 APK 다운로드",
     "admin.devices.apkUpdateConfirmTitle": "이 태블릿의 APK를 업데이트할까요?",
     "admin.devices.apkUpdateConfirmBody":
       "테이블 {table} · 기기 {device}\n\n태블릿 버전: {current}\n서버 버전: {target}\n\n태블릿은 Host 모드여야 합니다. Device Owner면 조용히 설치, 아니면 설치 대화상자.\n\n확인 후 최대 ~2분간 새 버전 보고를 기다립니다.",
@@ -756,7 +759,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkUpdateOk":
       "테이블 {table}: 태블릿 {version} (code {code}) 보고 — 서버와 일치.",
     "admin.devices.apkUpdatePending":
-      "요청 전송됨 (nonce {nonce}). 아직 {target} 미확인. Host 모드에서 온라인이어야 합니다. Device Owner가 아니면 태블릿에서 설치를 확인하세요. 대화상자가 없으면 AirDroid App Library → Force Install.",
+      "요청 전송됨 (nonce {nonce}). 아직 {target} 미확인. Host 모드에서 온라인인지 확인하고, 설치 대화상자가 뜨면 확인하세요.",
     "admin.devices.apkVersionUnknown": "알 수 없음(아직 보고 없음)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "마지막 확인",

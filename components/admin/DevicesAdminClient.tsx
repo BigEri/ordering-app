@@ -723,7 +723,10 @@ export function DevicesAdminClient({
           <>
             {" "}
             {tStaff("admin.devices.apkRelease")}: <strong>{kioskRelease.versionName}</strong> (code{" "}
-            {kioskRelease.versionCode}).
+            {kioskRelease.versionCode}).{" "}
+            <a href={kioskRelease.apkUrl} download="tableflow-kiosk.apk">
+              {tStaff("admin.devices.apkDownload")}
+            </a>
           </>
         ) : (
           <> {tStaff("admin.devices.apkUpdateNoRelease")}</>
