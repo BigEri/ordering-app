@@ -234,7 +234,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkUpdateOk":
       "Stůl {table}: tablet hlásí verzi {version} (code {code}) — odpovídá serveru.",
     "admin.devices.apkUpdatePending":
-      "Požadavek odeslán (nonce {nonce}). Verze {target} se zatím nepotvrdila — zkuste „Obnovit seznam“ za chvíli; tablet musí být v Host režimu.",
+      "Požadavek odeslán (nonce {nonce}), ale tablet ještě nehlásí {target}. U AirDroid MDM se APK z adminu neinstaluje — v AirDroidu: Apps → App Library → stejný soubor → Update → Force Install. Native Device Owner: tablet musí být online v režimu Host.",
     "admin.devices.apkVersionUnknown": "neznámá (tablet ještě nehlásil verzi)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "naposledy viděn",
@@ -495,7 +495,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkUpdateOk":
       "Table {table}: tablet reports {version} (code {code}) — matches server.",
     "admin.devices.apkUpdatePending":
-      "Request sent (nonce {nonce}). Version {target} not confirmed yet — try “Refresh list” shortly; tablet must be in Host mode.",
+      "Request sent (nonce {nonce}), but the tablet has not reported {target} yet. AirDroid MDM will not install from this button — AirDroid: Apps → App Library → same file → Update → Force Install. Native Device Owner: tablet must be online in Host mode.",
     "admin.devices.apkVersionUnknown": "unknown (tablet has not reported yet)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "last seen",
@@ -756,7 +756,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkUpdateOk":
       "테이블 {table}: 태블릿 {version} (code {code}) 보고 — 서버와 일치.",
     "admin.devices.apkUpdatePending":
-      "요청 전송됨 (nonce {nonce}). 버전 {target} 미확인 — 잠시 후 ‘목록 새로 고침’; Host 모드 필요.",
+      "요청 전송됨 (nonce {nonce}). 아직 {target} 미확인. AirDroid MDM은 이 버튼으로 설치되지 않습니다 — AirDroid: Apps → App Library → 같은 파일 → Update → Force Install. 네이티브 Device Owner: Host 모드에서 온라인.",
     "admin.devices.apkVersionUnknown": "알 수 없음(아직 보고 없음)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "마지막 확인",

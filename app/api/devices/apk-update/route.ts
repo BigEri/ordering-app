@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdminSession, type AdminSession } from "../../../../lib/server/adminGuard";
-import {
-  activeRestaurantCookieName,
-  userHasRestaurantAccess,
-} from "../../../../lib/server/auth";
+import { userHasRestaurantAccess } from "../../../../lib/server/auth";
 import { bumpDeviceApkUpdateNonce } from "../../../../lib/server/deviceRegistry";
-import { cookieValueFromHeader } from "../../../../lib/server/httpCookie";
 import { getKioskAppRelease } from "../../../../lib/server/kioskAppRelease";
 import { getKioskDeviceBinding } from "../../../../lib/server/kioskDeviceBindings";
 
@@ -50,21 +46,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "Neznámé nebo nespárované zařízení." }, { status: 404 });
   }
 
-  const rid = cookieValueFromHeader(cookieHeader, activeRestaurantCookieName()).trim();
-  if (!rid) {
-    return NextResponse.json(
-      { ok: false, error: "Nejdřív dokončete nastavení v Přehledu administrace." },
-      { status: 400 },
-    );
-  }
-  if (session.globalRole !== "SUPER_ADMIN" && !(await userHasRestaurantAccess(session.userId, rid)).ok) {
+  if (
+    session.globalRole !== "SUPER_ADMIN" &&
+    !(await userHasRestaurantAccess(session.userId, binding.restaurantId)).ok
+  ) {
     return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-  }
-  if (rid !== binding.restaurantId) {
-    return NextResponse.json(
-      { ok: false, error: "Zařízení nepatří k vaší restauraci." },
-      { status: 403 },
-    );
   }
 
   const apkUpdateNonce = await bumpDeviceApkUpdateNonce(deviceId);
