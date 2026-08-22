@@ -55,9 +55,9 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const reloadNonce = await bumpDeviceReloadNonce(deviceId);
   await prisma.kioskDeviceBinding.deleteMany({ where: { deviceId } });
   clearDeviceFromMemory(deviceId);
-  const reloadNonce = await bumpDeviceReloadNonce(deviceId);
   return NextResponse.json({ ok: true, deviceId, reloadNonce });
 }
 
