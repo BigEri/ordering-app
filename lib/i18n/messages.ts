@@ -226,16 +226,23 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "Dostupné APK na serveru",
     "admin.devices.apkOnDevice": "APK na tabletu",
     "admin.devices.apkUpdateHint":
-      "Tlačítko Aktualizovat APK teď na stávajících tabletech nemusí stačit — v aplikaci na tabletu se update bez Device Owner zahazoval. Jednou nainstalujte APK ručně (odkaz níž, USB do tabletu, otevřít soubor, Instalovat). Pak už budou další aktualizace z adminu fungovat. Menu (jídla, ceny) se mění zvlášť: Obnovit menu / Vynutit obnovení.",
+      "Aktualizovat APK (jeden tablet nebo všechny) stáhne novou aplikaci do ~15 s. Na tabletech s Device Owner proběhne tichá instalace. Menu (jídla, ceny) se mění zvlášť: Obnovit menu / Vynutit obnovení.",
     "admin.devices.apkDownload": "Stáhnout APK do počítače",
+    "admin.devices.apkUpdateAll": "Aktualizovat APK na všech tabletech",
+    "admin.devices.apkUpdateAllHint":
+      "Všechny tablety provozovny dostanou signál ke stažení APK do ~15 s (online, Device Owner = tichá instalace).",
+    "admin.devices.apkUpdateAllConfirm":
+      "Odeslat aktualizaci APK na všechny tablety této provozovny? Tablety musí být online. S Device Owner se nainstaluje tiše.",
+    "admin.devices.apkUpdateAllOk":
+      "{devices} tablet(ů) dostalo signál k aktualizaci na v{version} (code {code}). Do ~15 s začnou stahovat; sloupec APK na tabletu se obnoví po instalaci.",
     "admin.devices.apkUpdateConfirmTitle": "Aktualizovat APK na tabletu?",
     "admin.devices.apkUpdateConfirmBody":
-      "Stůl {table} · zařízení {device}\n\nVerze na tabletu: {current}\nVerze na serveru: {target}\n\nTablet musí běžet v režimu Host. Na tabletu se může ukázat dialog Instalovat — potvrďte ho.\n\nPo potvrzení počkáme až ~2 minuty, než tablet nahlásí novou verzi.",
+      "Stůl {table} · zařízení {device}\n\nVerze na tabletu: {current}\nVerze na serveru: {target}\n\nTablet musí běžet v režimu Host. S Device Owner se APK nainstaluje tiše.\n\nPo potvrzení počkáme až ~2 minuty, než tablet nahlásí novou verzi.",
     "admin.devices.apkUpdateAlreadyCurrent": "Tablet už hlásí stejnou nebo novější verzi — stažení APK pravděpodobně proběhne jen pokud server má vyšší versionCode.",
     "admin.devices.apkUpdateOk":
       "Stůl {table}: tablet hlásí verzi {version} (code {code}) — odpovídá serveru.",
     "admin.devices.apkUpdatePending":
-      "Požadavek odeslán (nonce {nonce}), ale tablet ještě nehlásí {target}. Zkontrolujte, že je online v režimu Host, a na tabletu potvrďte dialog Instalovat, pokud se objevil.",
+      "Požadavek odeslán (nonce {nonce}), ale tablet ještě nehlásí {target}. Musí být online v režimu Host (Device Owner = tichá instalace).",
     "admin.devices.apkVersionUnknown": "neznámá (tablet ještě nehlásil verzi)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "naposledy viděn",
@@ -488,16 +495,23 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "APK available on server",
     "admin.devices.apkOnDevice": "APK on tablet",
     "admin.devices.apkUpdateHint":
-      "Update APK on current tablets may do nothing — the app on the tablet dropped updates without Device Owner. Install this APK once by hand (link below, USB to the tablet, open the file, Install). Later updates from admin will work. Menu content is separate: Refresh menu / Force reload.",
+      "Update APK (one tablet or all) downloads the new app within ~15 s. Device Owner tablets install silently. Menu content is separate: Refresh menu / Force reload.",
     "admin.devices.apkDownload": "Download APK to this computer",
+    "admin.devices.apkUpdateAll": "Update APK on all tablets",
+    "admin.devices.apkUpdateAllHint":
+      "All venue tablets get a signal to download the APK within ~15 s (online; Device Owner = silent install).",
+    "admin.devices.apkUpdateAllConfirm":
+      "Send an APK update to all tablets at this venue? Tablets must be online. Device Owner installs silently.",
+    "admin.devices.apkUpdateAllOk":
+      "{devices} tablet(s) signaled to update to v{version} (code {code}). They start downloading within ~15 s; APK on tablet updates after install.",
     "admin.devices.apkUpdateConfirmTitle": "Update APK on this tablet?",
     "admin.devices.apkUpdateConfirmBody":
-      "Table {table} · device {device}\n\nVersion on tablet: {current}\nVersion on server: {target}\n\nThe tablet must run in Host mode. An Install dialog may appear on the tablet — confirm it.\n\nAfter confirm we wait up to ~2 minutes for the new version report.",
+      "Table {table} · device {device}\n\nVersion on tablet: {current}\nVersion on server: {target}\n\nThe tablet must run in Host mode. Device Owner installs the APK silently.\n\nAfter confirm we wait up to ~2 minutes for the new version report.",
     "admin.devices.apkUpdateAlreadyCurrent": "Tablet already reports the same or newer version — download only runs if the server has a higher versionCode.",
     "admin.devices.apkUpdateOk":
       "Table {table}: tablet reports {version} (code {code}) — matches server.",
     "admin.devices.apkUpdatePending":
-      "Request sent (nonce {nonce}), but the tablet has not reported {target} yet. Check it is online in Host mode, and confirm Install on the tablet if the dialog appeared.",
+      "Request sent (nonce {nonce}), but the tablet has not reported {target} yet. It must be online in Host mode (Device Owner = silent install).",
     "admin.devices.apkVersionUnknown": "unknown (tablet has not reported yet)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "last seen",
@@ -750,16 +764,23 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.apkRelease": "서버 APK",
     "admin.devices.apkOnDevice": "태블릿 APK",
     "admin.devices.apkUpdateHint":
-      "현재 태블릿의 APK 업데이트 버튼은 동작하지 않을 수 있습니다. 아래 링크로 APK를 받아 USB로 한 번 설치하세요. 이후 관리자 업데이트가 됩니다. 메뉴 내용은 새로 고침과 별개입니다.",
+      "APK 업데이트(한 대 또는 전체)는 ~15초 안에 새 앱을 받습니다. Device Owner 태블릿은 조용히 설치됩니다. 메뉴 내용은 새로 고침과 별개입니다.",
     "admin.devices.apkDownload": "컴퓨터에 APK 다운로드",
+    "admin.devices.apkUpdateAll": "모든 태블릿 APK 업데이트",
+    "admin.devices.apkUpdateAllHint":
+      "매장의 모든 태블릿이 ~15초 안에 APK를 받습니다(온라인, Device Owner = 무음 설치).",
+    "admin.devices.apkUpdateAllConfirm":
+      "이 매장의 모든 태블릿에 APK 업데이트를 보낼까요? 온라인이어야 합니다. Device Owner는 조용히 설치합니다.",
+    "admin.devices.apkUpdateAllOk":
+      "{devices}대 태블릿에 v{version} (code {code}) 업데이트 신호. ~15초 내 다운로드; 설치 후 태블릿 APK 열이 갱신됩니다.",
     "admin.devices.apkUpdateConfirmTitle": "이 태블릿의 APK를 업데이트할까요?",
     "admin.devices.apkUpdateConfirmBody":
-      "테이블 {table} · 기기 {device}\n\n태블릿 버전: {current}\n서버 버전: {target}\n\n태블릿은 Host 모드여야 합니다. Device Owner면 조용히 설치, 아니면 설치 대화상자.\n\n확인 후 최대 ~2분간 새 버전 보고를 기다립니다.",
+      "테이블 {table} · 기기 {device}\n\n태블릿 버전: {current}\n서버 버전: {target}\n\n태블릿은 Host 모드여야 합니다. Device Owner면 조용히 설치됩니다.\n\n확인 후 최대 ~2분간 새 버전 보고를 기다립니다.",
     "admin.devices.apkUpdateAlreadyCurrent": "태블릿이 이미 동일하거나 더 높은 버전을 보고합니다 — 서버 versionCode가 더 높을 때만 다운로드됩니다.",
     "admin.devices.apkUpdateOk":
       "테이블 {table}: 태블릿 {version} (code {code}) 보고 — 서버와 일치.",
     "admin.devices.apkUpdatePending":
-      "요청 전송됨 (nonce {nonce}). 아직 {target} 미확인. Host 모드에서 온라인인지 확인하고, 설치 대화상자가 뜨면 확인하세요.",
+      "요청 전송됨 (nonce {nonce}). 아직 {target} 미확인. Host 모드에서 온라인인지 확인하세요 (Device Owner = 무음 설치).",
     "admin.devices.apkVersionUnknown": "알 수 없음(아직 보고 없음)",
     "admin.devices.apkVersionFmt": "v{name} (code {code})",
     "admin.devices.lastSeenHint": "마지막 확인",

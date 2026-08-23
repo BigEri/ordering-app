@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 
+import { MenuCategoryHoursEditor } from "../../components/admin/MenuCategoryHoursEditor";
 import { FilePickButton } from "../../components/FilePickButton";
 import { KioskAnchor } from "../../components/kiosk/KioskAnchor";
 import { LanguageMenu } from "../../components/LanguageMenu";
@@ -13,8 +14,10 @@ import type { DotykackaMenuSection } from "../../lib/dotykacka/dotykackaMenuSect
 import { applyMenuOverrides } from "../../lib/menu/applyMenuOverrides";
 import { applyMenuIngredientOverrides } from "../../lib/menu/applyMenuIngredientOverrides";
 import { applyMenuTextOverrides } from "../../lib/menu/applyMenuTextOverrides";
+import { isCategoryVisibleAtHhmm } from "../../lib/menu/categoryHours";
 import { menuSectionCategoryKey } from "../../lib/menu/menuSectionKey";
-import type { MenuOverridesPayload } from "../../lib/server/menuOverridesRead";
+import { EMPTY_MENU_OVERRIDES, menuOverridesFromApiJson, type MenuOverridesPayload } from "../../lib/menu/parseMenuOverrides";
+import { formatRestaurantLocalHhmm } from "../../lib/restaurantLocalTime";
 import type { MenuTextOverridesForLocale } from "../../lib/menu/menuTextOverridesTypes";
 import type { MenuIngredientOverridesForLocale } from "../../lib/menu/menuIngredientOverridesTypes";
 import { usePosTableFields } from "../../components/DeviceTableProvider";
@@ -177,12 +180,7 @@ export function MenuBrowseClient({
   const { addOrder } = useOrders();
 
   const [overrides, setOverrides] = React.useState<MenuOverridesPayload>(() =>
-    initialMenuOverrides ?? {
-      images: {},
-      orderByCategory: {},
-      hiddenItemIds: [],
-      hiddenCategoryKeys: [],
-    },
+    initialMenuOverrides ?? EMPTY_MENU_OVERRIDES,
   );
   const hiddenSet = React.useMemo(() => new Set<string>(overrides.hiddenItemIds ?? []), [overrides.hiddenItemIds]);
   const hiddenCategorySet = React.useMemo(
@@ -221,6 +219,15 @@ export function MenuBrowseClient({
   const [menuImagesHealthCheckedCount, setMenuImagesHealthCheckedCount] = React.useState<number | null>(null);
   const [orderSavingKey, setOrderSavingKey] = React.useState<string | null>(null);
   const [activeCategoryKey, setActiveCategoryKey] = React.useState<string | null>(null);
+  /** Null do mountu — host SSR ukáže všechny časové sekce (stejný DOM), pak tick schová mimo okno. */
+  const [nowHhmm, setNowHhmm] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    const tick = () => setNowHhmm(formatRestaurantLocalHhmm());
+    tick();
+    const id = window.setInterval(tick, 15_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   React.useEffect(() => {
     if (!restaurantId) return;
@@ -236,14 +243,10 @@ export function MenuBrowseClient({
           orderByCategory?: Record<string, string[]>;
           hiddenItemIds?: string[];
           hiddenCategoryKeys?: string[];
+          categoryHours?: unknown;
         };
         if (cancelled || !r.ok || !j.ok) return;
-        setOverrides({
-          images: j.images ?? {},
-          orderByCategory: j.orderByCategory ?? {},
-          hiddenItemIds: Array.isArray(j.hiddenItemIds) ? j.hiddenItemIds : [],
-          hiddenCategoryKeys: Array.isArray(j.hiddenCategoryKeys) ? j.hiddenCategoryKeys : [],
-        });
+        setOverrides(menuOverridesFromApiJson(j));
       } catch {
         /* ignore */
       }
@@ -443,24 +446,23 @@ export function MenuBrowseClient({
     if (!restaurantId) return base;
     const withText = applyMenuTextOverrides(base, textOverrides);
     const withIngredients = applyMenuIngredientOverrides(withText, ingredientOverrides);
+    const hoursMap = overrides.categoryHours ?? {};
+    const filterHours = (rows: typeof withIngredients) => {
+      if (!nowHhmm) return rows;
+      return rows.filter((sec) => isCategoryVisibleAtHhmm(hoursMap[menuSectionCategoryKey(sec)], nowHhmm));
+    };
     const shouldHide = menuVariant !== "editor" || !canEditMenu;
     if (!shouldHide) return withIngredients;
-    // Host menu: sekce už přišly odfiltrované ze serveru; znovu nefiltrovat (hydratace = stejný DOM).
-    if (menuVariant === "guest") return withIngredients;
-    // Editor: dokud se načítá oprávnění, držíme stejný výřez jako host (bez přidání skrytých položek).
-    if (editorStatus === null) {
-      if (hiddenSet.size === 0 && hiddenCategorySet.size === 0) return withIngredients;
-      return withIngredients
+    // Host: skryté kategorie už SSR odřízl; po mountu schováme sekce mimo denní okno.
+    if (menuVariant === "guest") return filterHours(withIngredients);
+    const hideHidden = (rows: typeof withIngredients) => {
+      if (hiddenSet.size === 0 && hiddenCategorySet.size === 0) return rows;
+      return rows
         .filter((sec) => !hiddenCategorySet.has(menuSectionCategoryKey(sec)))
         .map((sec) => ({ ...sec, items: sec.items.filter((it) => !hiddenSet.has(it.id)) }))
         .filter((sec) => sec.items.length > 0);
-    }
-    // V editoru mimo edit mód skryjeme položky, které admin označil jako hidden.
-    if (hiddenSet.size === 0 && hiddenCategorySet.size === 0) return withIngredients;
-    return withIngredients
-      .filter((sec) => !hiddenCategorySet.has(menuSectionCategoryKey(sec)))
-      .map((sec) => ({ ...sec, items: sec.items.filter((it) => !hiddenSet.has(it.id)) }))
-      .filter((sec) => sec.items.length > 0);
+    };
+    return filterHours(hideHidden(withIngredients));
   }, [
     sections,
     restaurantId,
@@ -471,7 +473,7 @@ export function MenuBrowseClient({
     canEditMenu,
     hiddenSet,
     hiddenCategorySet,
-    editorStatus,
+    nowHhmm,
   ]);
 
   const setHidden = React.useCallback(
@@ -496,20 +498,9 @@ export function MenuBrowseClient({
           setMenuEditorErr(j.error ?? "Uložení viditelnosti selhalo.");
           // Re-sync from server.
           const rr = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
-          const jo = (await rr.json()) as {
-            ok?: boolean;
-            images?: Record<string, string>;
-            orderByCategory?: Record<string, string[]>;
-            hiddenItemIds?: string[];
-            hiddenCategoryKeys?: string[];
-          };
+          const jo = (await rr.json()) as { ok?: boolean; images?: Record<string, string>; orderByCategory?: Record<string, string[]>; hiddenItemIds?: string[]; hiddenCategoryKeys?: string[]; categoryHours?: unknown };
           if (rr.ok && jo.ok) {
-            setOverrides({
-              images: jo.images ?? {},
-              orderByCategory: jo.orderByCategory ?? {},
-              hiddenItemIds: Array.isArray(jo.hiddenItemIds) ? jo.hiddenItemIds : [],
-              hiddenCategoryKeys: Array.isArray(jo.hiddenCategoryKeys) ? jo.hiddenCategoryKeys : [],
-            });
+            setOverrides(menuOverridesFromApiJson(jo));
           }
         }
       } catch {
@@ -539,24 +530,48 @@ export function MenuBrowseClient({
         if (!r.ok || !j.ok) {
           setMenuEditorErr(j.error ?? "Uložení viditelnosti kategorie selhalo.");
           const rr = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
-          const jo = (await rr.json()) as {
-            ok?: boolean;
-            images?: Record<string, string>;
-            orderByCategory?: Record<string, string[]>;
-            hiddenItemIds?: string[];
-            hiddenCategoryKeys?: string[];
-          };
+          const jo = (await rr.json()) as { ok?: boolean; images?: Record<string, string>; orderByCategory?: Record<string, string[]>; hiddenItemIds?: string[]; hiddenCategoryKeys?: string[]; categoryHours?: unknown };
           if (rr.ok && jo.ok) {
-            setOverrides({
-              images: jo.images ?? {},
-              orderByCategory: jo.orderByCategory ?? {},
-              hiddenItemIds: Array.isArray(jo.hiddenItemIds) ? jo.hiddenItemIds : [],
-              hiddenCategoryKeys: Array.isArray(jo.hiddenCategoryKeys) ? jo.hiddenCategoryKeys : [],
-            });
+            setOverrides(menuOverridesFromApiJson(jo));
           }
         }
       } catch {
         setMenuEditorErr("Nepodařilo se uložit změnu (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      }
+    },
+    [restaurantId, canEditMenu],
+  );
+
+  const setCategoryHours = React.useCallback(
+    async (categoryKey: string, next: { visibleFrom: string; visibleUntil: string } | null) => {
+      if (!restaurantId || !canEditMenu) return;
+      setMenuEditorErr(null);
+      setOverrides((o) => {
+        const categoryHours = { ...o.categoryHours };
+        if (next) categoryHours[categoryKey] = next;
+        else delete categoryHours[categoryKey];
+        return { ...o, categoryHours };
+      });
+      try {
+        const r = await fetch("/api/admin/menu/category-hours", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            restaurantId,
+            categoryKey,
+            visibleFrom: next?.visibleFrom ?? "",
+            visibleUntil: next?.visibleUntil ?? "",
+          }),
+        });
+        const j = (await r.json()) as { ok?: boolean; error?: string };
+        if (!r.ok || !j.ok) {
+          setMenuEditorErr(j.error ?? "Uložení času kategorie selhalo.");
+          const rr = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
+          const jo = (await rr.json()) as { ok?: boolean; images?: Record<string, string>; orderByCategory?: Record<string, string[]>; hiddenItemIds?: string[]; hiddenCategoryKeys?: string[]; categoryHours?: unknown };
+          if (rr.ok && jo.ok) setOverrides(menuOverridesFromApiJson(jo));
+        }
+      } catch {
+        setMenuEditorErr("Nepodařilo se uložit čas kategorie (připojení).");
       }
     },
     [restaurantId, canEditMenu],
@@ -647,20 +662,9 @@ export function MenuBrowseClient({
       if (!ok && restaurantId) {
         try {
           const r = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
-          const jso = (await r.json()) as {
-            ok?: boolean;
-            images?: Record<string, string>;
-            orderByCategory?: Record<string, string[]>;
-            hiddenItemIds?: string[];
-            hiddenCategoryKeys?: string[];
-          };
+          const jso = (await r.json()) as { ok?: boolean; images?: Record<string, string>; orderByCategory?: Record<string, string[]>; hiddenItemIds?: string[]; hiddenCategoryKeys?: string[]; categoryHours?: unknown };
           if (r.ok && jso.ok) {
-            setOverrides({
-              images: jso.images ?? {},
-              orderByCategory: jso.orderByCategory ?? {},
-              hiddenItemIds: Array.isArray(jso.hiddenItemIds) ? jso.hiddenItemIds : [],
-              hiddenCategoryKeys: Array.isArray(jso.hiddenCategoryKeys) ? jso.hiddenCategoryKeys : [],
-            });
+            setOverrides(menuOverridesFromApiJson(jso));
           }
         } catch {
           /* ignore */
@@ -1130,7 +1134,8 @@ export function MenuBrowseClient({
               <KioskAnchor href="/menu">/menu</KioskAnchor> pro zákazníky.{" "}
               <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
                 <strong>Tip k fotkám:</strong> pro lepší zobrazení na kartách a v detailu používejte spíš fotky na šířku
-                (např. poměr 16:9), ne čistě na výšku.
+                (např. poměr 16:9), ne čistě na výšku. U sekce můžete nastavit <strong>Od–Do</strong> (čas Česko) — na
+                tabletu se sekce schová mimo interval (v 14:00 už polední není). Skrytá kategorie má přednost.
               </span>
             </p>
           ) : null}
@@ -1305,7 +1310,7 @@ export function MenuBrowseClient({
                 key={`${sec.sortOrder}-${sec.categoryId ?? sec.labelKey ?? "sec"}`}
                 className="menuPageCategorySection"
               >
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                   <div style={{ display: "grid", gap: 4 }}>
                     <h2 className="menuPageCategoryTitle" style={{ margin: 0 }}>
                       {sectionHeading(sec, t)}
@@ -1314,6 +1319,14 @@ export function MenuBrowseClient({
                       <div style={{ fontSize: 12, color: "rgba(251,191,36,0.95)", fontWeight: 700 }}>
                         Kategorie skrytá pro hosty
                       </div>
+                    ) : null}
+                    {menuVariant === "editor" && canEditMenu ? (
+                      <MenuCategoryHoursEditor
+                        categoryKey={catKey}
+                        hours={overrides.categoryHours?.[catKey]}
+                        nowHhmm={nowHhmm ?? formatRestaurantLocalHhmm()}
+                        onSave={(next) => setCategoryHours(catKey, next)}
+                      />
                     ) : null}
                   </div>
                   {menuVariant === "editor" && canEditMenu ? (

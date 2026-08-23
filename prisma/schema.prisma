@@ -26,6 +26,7 @@ model Restaurant {
   menuItemPositions   MenuItemPosition[]
   menuHiddenItems     MenuHiddenItem[]
   menuHiddenCategories MenuHiddenCategory[]
+  menuCategorySchedules MenuCategorySchedule[]
   menuTextOverrides   MenuTextOverride[]
   menuIngredientOverrides MenuIngredientOverride[]
   menuDotykackaLabels MenuDotykackaLabel[]
@@ -88,6 +89,7 @@ model User {
   menuImagesUpdated MenuImage[] @relation("MenuImageUpdatedBy")
   menuHiddenItemsUpdated MenuHiddenItem[] @relation("MenuHiddenItemUpdatedBy")
   menuHiddenCategoriesUpdated MenuHiddenCategory[] @relation("MenuHiddenCategoryUpdatedBy")
+  menuCategorySchedulesUpdated MenuCategorySchedule[] @relation("MenuCategoryScheduleUpdatedBy")
   menuTextOverridesUpdated MenuTextOverride[] @relation("MenuTextOverrideUpdatedBy")
   menuIngredientOverridesUpdated MenuIngredientOverride[] @relation("MenuIngredientOverrideUpdatedBy")
   menuDotykackaLabelsUpdated MenuDotykackaLabel[] @relation("MenuDotykackaLabelUpdatedBy")
@@ -153,6 +155,21 @@ model MenuHiddenCategory {
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
   updatedByUser User? @relation("MenuHiddenCategoryUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, categoryKey])
+}
+
+/** Volitelné denní okno viditelnosti sekce (Evropa/Praha). Bez řádku = pořád. */
+model MenuCategorySchedule {
+  restaurantId    String
+  categoryKey     String
+  visibleFrom     String
+  visibleUntil    String
+  updatedAtIso    String
+  updatedByUserId String?
+
+  restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User?      @relation("MenuCategoryScheduleUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   @@id([restaurantId, categoryKey])
 }

@@ -1,15 +1,13 @@
+import { parseCategoryHoursMap } from "../menu/categoryHours";
+import { type MenuOverridesPayload } from "../menu/parseMenuOverrides";
 import { prisma } from "./prisma";
 
-export type MenuOverridesPayload = {
-  images: Record<string, string>;
-  orderByCategory: Record<string, string[]>;
-  hiddenItemIds: string[];
-  hiddenCategoryKeys: string[];
-};
+export type { MenuOverridesPayload } from "../menu/parseMenuOverrides";
+export { EMPTY_MENU_OVERRIDES, menuOverridesFromApiJson } from "../menu/parseMenuOverrides";
 
 export async function readMenuOverridesForRestaurant(restaurantId: string): Promise<MenuOverridesPayload> {
   const rid = restaurantId.trim();
-  const [imgRows, posRows, hiddenRows, hiddenCatRows] = await Promise.all([
+  const [imgRows, posRows, hiddenRows, hiddenCatRows, hoursRows] = await Promise.all([
     prisma.menuImage.findMany({
       where: { restaurantId: rid },
       select: { menuItemId: true, imageUrl: true },
@@ -27,6 +25,12 @@ export async function readMenuOverridesForRestaurant(restaurantId: string): Prom
       where: { restaurantId: rid, hidden: 1 },
       select: { categoryKey: true },
     }),
+    prisma.menuCategorySchedule
+      .findMany({
+        where: { restaurantId: rid },
+        select: { categoryKey: true, visibleFrom: true, visibleUntil: true },
+      })
+      .catch(() => [] as { categoryKey: string; visibleFrom: string; visibleUntil: string }[]),
   ]);
 
   const images: Record<string, string> = {};
@@ -46,5 +50,9 @@ export async function readMenuOverridesForRestaurant(restaurantId: string): Prom
     .map((r) => r.categoryKey)
     .filter((x) => typeof x === "string" && x.trim() !== "");
 
-  return { images, orderByCategory, hiddenItemIds, hiddenCategoryKeys };
+  const categoryHours = parseCategoryHoursMap(
+    Object.fromEntries(hoursRows.map((r) => [r.categoryKey, { visibleFrom: r.visibleFrom, visibleUntil: r.visibleUntil }])),
+  );
+
+  return { images, orderByCategory, hiddenItemIds, hiddenCategoryKeys, categoryHours };
 }

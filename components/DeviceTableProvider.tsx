@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import * as React from "react";
 
 import { isAdminMenuPreviewOnClient } from "../lib/admin/publicMenuPreviewUrl";
+import { isKioskWebView } from "../lib/kiosk/isKioskWebView";
 import { setKioskDeviceSecretForPos } from "../lib/pos/kioskDeviceSecretStore";
 import { randomUuid } from "../lib/randomUuid";
 import { prefetchMenuCacheFromWelcome } from "../lib/kiosk/warmMenuCache";
@@ -14,6 +15,7 @@ const STORAGE_TABLE_ID = "kiosk.tableId";
 const STORAGE_TABLE_LABEL = "kiosk.tableLabel";
 /** Poslední známý reload nonce ze serveru — při vyšším čísle v /api/devices/config se stránka obnoví. */
 const STORAGE_RELOAD_NONCE = "kiosk.reloadNonce";
+const STORAGE_APK_UPDATE_NONCE = "kiosk.apkUpdateNonce";
 const STORAGE_DEVICE_SECRET = "kiosk.deviceSecret";
 /** Záložní cookie (když localStorage selže nebo se maže). */
 const COOKIE_DEVICE_ID = "kiosk_device_id";
@@ -51,6 +53,8 @@ type DeviceConfigJson = {
     deviceSecret?: string | null;
   } | null;
   reloadNonce?: number;
+  apkUpdateNonce?: number;
+  appRelease?: { apkUrl?: string | null; versionCode?: number | null } | null;
 };
 
 const configInflight = new Map<string, Promise<DeviceConfigJson>>();
@@ -102,6 +106,51 @@ function applyServerReloadNonce(serverNonce: unknown): void {
     /* ignore */
   }
   window.location.reload();
+}
+
+function readStoredApkUpdateNonce(): number {
+  try {
+    const raw = window.localStorage.getItem(STORAGE_APK_UPDATE_NONCE);
+    if (raw == null || raw === "") return 0;
+    const n = Number.parseInt(raw, 10);
+    return Number.isFinite(n) ? n : 0;
+  } catch {
+    return 0;
+  }
+}
+
+type KioskInstallBridge = { installApk?: (url: string) => void };
+
+/**
+ * Starší APK bez nativního polleru: pokus otevřít APK URL ve WebView.
+ * Novější APK (TableflowKiosk / native poller) si update bere samo — web nespouští duplicitní instalaci.
+ */
+function applyServerApkUpdateNonce(data: DeviceConfigJson): boolean {
+  if (typeof window === "undefined") return false;
+  if (!isKioskWebView()) return false;
+  const nonce = data.apkUpdateNonce;
+  const apkUrl = data.appRelease?.apkUrl?.trim() ?? "";
+  if (typeof nonce !== "number" || !Number.isFinite(nonce) || nonce < 1) return false;
+  if (!apkUrl.startsWith("https://")) return false;
+  const prev = readStoredApkUpdateNonce();
+  if (nonce <= prev) return false;
+  try {
+    window.localStorage.setItem(STORAGE_APK_UPDATE_NONCE, String(nonce));
+  } catch {
+    /* ignore */
+  }
+  const bridge = (window as unknown as { TableflowKiosk?: KioskInstallBridge }).TableflowKiosk;
+  if (typeof bridge?.installApk === "function") {
+    return false;
+  }
+  const a = document.createElement("a");
+  a.href = apkUrl;
+  a.rel = "noopener";
+  a.setAttribute("download", "tableflow-kiosk.apk");
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  return true;
 }
 
 function normalizeDeviceId(raw: string | null | undefined): string | null {
@@ -440,7 +489,10 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
           applyBinding(data.binding);
           applyDeviceSecret(data.binding.deviceSecret);
         }
-        if (!cancelled) applyServerReloadNonce(data.reloadNonce);
+        if (!cancelled) {
+          const apkStarted = applyServerApkUpdateNonce(data);
+          if (!apkStarted) applyServerReloadNonce(data.reloadNonce);
+        }
         await syncPairingWithConfig(id, data.ok ? data.binding ?? null : null, () => cancelled);
       } catch {
         /* offline — lokální stůl */
@@ -472,7 +524,8 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
           writeLocalTable(data.binding.tableId, data.binding.tableLabel);
           applyDeviceSecret(data.binding.deviceSecret);
         }
-        applyServerReloadNonce(data.reloadNonce);
+        const apkStarted = applyServerApkUpdateNonce(data);
+        if (!apkStarted) applyServerReloadNonce(data.reloadNonce);
         await syncPairingWithConfig(deviceId, data.ok ? data.binding ?? null : null, () => cancelled);
       } catch {
         /* ignore */

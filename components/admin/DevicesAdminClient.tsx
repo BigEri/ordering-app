@@ -99,6 +99,7 @@ export function DevicesAdminClient({
   const [menuRefreshErr, setMenuRefreshErr] = React.useState(false);
   const [menuRefreshErrDetail, setMenuRefreshErrDetail] = React.useState<string | null>(null);
   const [reloadAllLoading, setReloadAllLoading] = React.useState(false);
+  const [apkUpdateAllLoading, setApkUpdateAllLoading] = React.useState(false);
   const [apkUpdateErr, setApkUpdateErr] = React.useState(false);
   const [apkUpdateErrDetail, setApkUpdateErrDetail] = React.useState<string | null>(null);
   const [apkUpdatingId, setApkUpdatingId] = React.useState<string | null>(null);
@@ -479,6 +480,46 @@ export function DevicesAdminClient({
     }
   };
 
+  const onForceApkUpdateAll = async () => {
+    if (!rid || !kioskRelease) return;
+    const releaseSnapshot = kioskRelease;
+    const ok = window.confirm(tStaff("admin.devices.apkUpdateAllConfirm"));
+    if (!ok) return;
+    setApkUpdateErr(false);
+    setApkUpdateErrDetail(null);
+    setApkUpdateOk(null);
+    setApkUpdatePending(null);
+    setApkUpdateAllLoading(true);
+    try {
+      const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(rid)}/kiosk-apk-update-all`, {
+        method: "POST",
+        credentials: "same-origin",
+      });
+      const data = (await r.json()) as {
+        ok?: boolean;
+        devicesSignaled?: number;
+        error?: string;
+        release?: { versionName?: string; versionCode?: number };
+      };
+      if (!r.ok || !data.ok) {
+        setApkUpdateErr(true);
+        setApkUpdateErrDetail(data.error ?? null);
+        return;
+      }
+      const n = typeof data.devicesSignaled === "number" ? data.devicesSignaled : 0;
+      setApkUpdateOk(
+        tStaff("admin.devices.apkUpdateAllOk")
+          .replace("{devices}", String(n))
+          .replace("{version}", data.release?.versionName ?? releaseSnapshot.versionName)
+          .replace("{code}", String(data.release?.versionCode ?? releaseSnapshot.versionCode)),
+      );
+    } catch {
+      setApkUpdateErr(true);
+    } finally {
+      setApkUpdateAllLoading(false);
+    }
+  };
+
   const onRefreshMenuFromDotykacka = async () => {
     setMenuRefreshErr(false);
     setMenuRefreshErrDetail(null);
@@ -717,21 +758,52 @@ export function DevicesAdminClient({
         </p>
       ) : null}
 
-      <p className="textMuted" style={{ margin: "0 0 12px", maxWidth: 52 * 16, lineHeight: 1.5, fontSize: 13 }}>
-        {tStaff("admin.devices.apkUpdateHint")}
-        {kioskRelease ? (
-          <>
-            {" "}
-            {tStaff("admin.devices.apkRelease")}: <strong>{kioskRelease.versionName}</strong> (code{" "}
-            {kioskRelease.versionCode}).{" "}
-            <a href={kioskRelease.apkUrl} download="tableflow-kiosk.apk">
-              {tStaff("admin.devices.apkDownload")}
-            </a>
-          </>
-        ) : (
-          <> {tStaff("admin.devices.apkUpdateNoRelease")}</>
-        )}
-      </p>
+      <div
+        style={{
+          border: "1px solid rgba(251, 191, 36, 0.35)",
+          borderRadius: 16,
+          padding: 16,
+          marginBottom: 16,
+          background: "var(--panel)",
+        }}
+      >
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", marginBottom: 10 }}>
+          <button
+            type="button"
+            disabled={apkUpdateAllLoading || !activeRestaurantId || !kioskRelease}
+            onClick={() => void onForceApkUpdateAll()}
+            title={tStaff("admin.devices.apkUpdateAllHint")}
+            style={{
+              padding: "10px 16px",
+              borderRadius: 10,
+              border: "1px solid #fbbf24",
+              background: "transparent",
+              color: "#fde68a",
+              fontWeight: 600,
+              fontSize: 14,
+              cursor:
+                apkUpdateAllLoading || !activeRestaurantId || !kioskRelease ? "not-allowed" : "pointer",
+              opacity: apkUpdateAllLoading || !activeRestaurantId || !kioskRelease ? 0.55 : 1,
+            }}
+          >
+            {apkUpdateAllLoading ? "…" : tStaff("admin.devices.apkUpdateAll")}
+          </button>
+          {kioskRelease ? (
+            <span className="textMuted2" style={{ fontSize: 13 }}>
+              {tStaff("admin.devices.apkRelease")}: <strong style={{ color: "var(--text)" }}>{kioskRelease.versionName}</strong>{" "}
+              (code {kioskRelease.versionCode}).{" "}
+              <a href={kioskRelease.apkUrl} download="tableflow-kiosk.apk">
+                {tStaff("admin.devices.apkDownload")}
+              </a>
+            </span>
+          ) : (
+            <span style={{ color: "#fecaca", fontSize: 13 }}>{tStaff("admin.devices.apkUpdateNoRelease")}</span>
+          )}
+        </div>
+        <p className="textMuted" style={{ margin: 0, maxWidth: 52 * 16, lineHeight: 1.5, fontSize: 13 }}>
+          {tStaff("admin.devices.apkUpdateHint")}
+        </p>
+      </div>
 
       {loadErr ? (
         <p role="alert" style={{ color: "#fecaca" }}>

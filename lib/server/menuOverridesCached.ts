@@ -5,7 +5,7 @@ import { readDotykackaLabelsForRestaurantLocale } from "./menuDotykackaLabels";
 import { readMenuIngredientOverridesForRestaurantLocale } from "./menuIngredientOverrides";
 import type { MenuIngredientOverridesForLocale } from "../menu/menuIngredientOverridesTypes";
 import type { MenuTextOverridesForLocale } from "../menu/menuTextOverridesTypes";
-import { readMenuOverridesForRestaurant, type MenuOverridesPayload } from "./menuOverridesRead";
+import { readMenuOverridesForRestaurant, EMPTY_MENU_OVERRIDES, type MenuOverridesPayload } from "./menuOverridesRead";
 import { listEnabledLocaleCodes, readMenuTextOverridesForRestaurantLocale } from "./menuTextOverrides";
 
 const DEFAULT_REVALIDATE_SEC = 120;
@@ -49,12 +49,12 @@ export async function readMenuOverridesForRestaurantCached(
 ): Promise<MenuOverridesPayload> {
   const rid = restaurantId.trim();
   if (!rid) {
-    return { images: {}, orderByCategory: {}, hiddenItemIds: [], hiddenCategoryKeys: [] };
+    return EMPTY_MENU_OVERRIDES;
   }
   const revalidate = cacheRevalidateSec();
   const run = unstable_cache(
     () => readMenuOverridesForRestaurant(rid),
-    ["menu-overrides-v1", rid],
+    ["menu-overrides-v2", rid],
     { revalidate, tags: [menuOverridesCacheTag(rid)] },
   );
   return run();
