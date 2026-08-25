@@ -569,7 +569,7 @@ textarea {
 }
 
 .feat__frame {
-  margin: 0;
+  margin: 0 auto;
   width: min(100%, 980px);
   justify-self: center;
   text-align: center;
@@ -582,6 +582,7 @@ textarea {
   position: relative;
   display: block;
   width: 100%;
+  margin-inline: auto;
   padding: 0;
   border: 0;
   border-radius: 1.2rem;
@@ -595,11 +596,15 @@ textarea {
 }
 
 .feat__frame img {
+  display: block;
   width: 100%;
-  margin: 0 auto;
+  max-width: 100%;
+  margin-inline: auto;
   border-radius: 1.2rem;
   border: 1px solid var(--line);
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+  object-fit: contain;
+  object-position: center;
 }
 
 .feat__zoom-hint {
