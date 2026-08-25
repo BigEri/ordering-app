@@ -24,14 +24,27 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <a class="skip" href="#top">Přeskočit na obsah</a>
+
     <header class="top">
       <a class="top__brand" href="#top" aria-label="Tableflow">
         <img src="assets/tableflow-icon.png" alt="" width="36" height="36" />
         <span>Tableflow</span>
       </a>
-      <nav class="top__nav" aria-label="Hlavní">
+      <button
+        class="top__toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="site-nav"
+        aria-label="Otevřít menu"
+      >
+        <span></span>
+        <span></span>
+      </button>
+      <nav class="top__nav" id="site-nav" aria-label="Hlavní">
         <a href="#proc">Proč Tableflow</a>
         <a href="#jak">Jak to funguje</a>
+        <a href="#funkce">Funkce</a>
         <a href="#faq">FAQ</a>
         <a class="top__cta" href="#kontakt">Domluvit ukázku</a>
       </nav>
@@ -39,28 +52,8 @@
 
     <main id="top">
       <section class="hero" aria-labelledby="hero-title">
-        <div class="hero__media" aria-hidden="true">
-          <img
-            class="hero__img"
-            src="assets/hero-kiosk.png"
-            alt="Tablet upevněný u stolu s aplikací Tableflow"
-            width="1600"
-            height="900"
-          />
-          <div class="hero__veil"></div>
-        </div>
-
-        <div class="hero__content">
-          <div class="hero__brand">
-            <img
-              class="hero__mark"
-              src="assets/tableflow-icon.png"
-              alt=""
-              width="120"
-              height="120"
-            />
-            <p class="hero__wordmark">Tableflow</p>
-          </div>
+        <div class="hero__copy">
+          <p class="hero__wordmark">Tableflow</p>
           <h1 id="hero-title">Objednávka přímo u stolu</h1>
           <p class="hero__lead">
             Hosté si na tabletu sami prohlédnou menu a odešlou objednávku.
@@ -70,6 +63,20 @@
             <a class="btn btn--primary" href="#kontakt">Domluvit ukázku</a>
             <a class="btn btn--ghost" href="#jak">Jak to funguje</a>
           </div>
+          <ul class="hero__chips">
+            <li>Bez aplikace v telefonu</li>
+            <li>Menu z pokladny</li>
+            <li>Čeština · English · 한국어</li>
+          </ul>
+        </div>
+        <div class="hero__visual">
+          <img
+            class="hero__device"
+            src="assets/kiosk-table.png"
+            alt="Tablet upevněný u stolu s aplikací Tableflow"
+            width="1200"
+            height="1500"
+          />
         </div>
       </section>
 
@@ -80,17 +87,78 @@
           Objednávku hosté vyřídí sami. Personál se věnuje servisu — ne běhání s blokem.
         </p>
         <ul class="why__list">
-          <li class="why__item">
+          <li class="card">
+            <span class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </span>
             <h3>Rychlejší obsluha</h3>
             <p>Hosté začnou objednávat hned po usednutí, bez čekání na obsluhu.</p>
           </li>
-          <li class="why__item">
+          <li class="card">
+            <span class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M4 19V8m0 0 4 3 4-6 4 5 4-2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M4 19h16" stroke-linecap="round" />
+              </svg>
+            </span>
             <h3>Méně běhání</h3>
             <p>Méně zbytečných cest ke stolům kvůli zápisu objednávky nebo doplnění.</p>
           </li>
-          <li class="why__item">
+          <li class="card">
+            <span class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <rect x="5" y="3" width="14" height="18" rx="2" />
+                <path d="M9 8h6M9 12h6M9 16h4" stroke-linecap="round" />
+              </svg>
+            </span>
             <h3>Hosté si objednají sami</h3>
             <p>Prohlédnou menu, upraví jídlo a odešlou objednávku přímo z tabletu u stolu.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section class="section pos" id="pos" aria-labelledby="pos-title">
+        <div class="pos__copy">
+          <p class="section__eyebrow">Pokladna</p>
+          <h2 id="pos-title">Nejsme další pokladna</h2>
+          <p class="section__lead">
+            Tableflow doplňuje váš stávající POS. Objednávka od hosta jde do pokladního systému —
+            kuchyně a platby zůstávají tam, kde je máte.
+          </p>
+          <p class="pos__partner">Momentálně napojeni na <strong>Dotykačku</strong></p>
+          <p class="pos__note">Na dalších pokladních systémech pracujeme.</p>
+        </div>
+        <ul class="pos__points">
+          <li>
+            <span class="card__icon card__icon--sm" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M4 7h16M8 3v4m8-4v4" stroke-linecap="round" />
+                <rect x="4" y="7" width="16" height="14" rx="2" />
+                <path d="M8 12h8M8 16h5" stroke-linecap="round" />
+              </svg>
+            </span>
+            <div>
+              <h3>Menu z pokladny</h3>
+              <p>
+                Menu se načte ze stávající pokladny — nemusíte ho zakládat znovu.
+                Úpravy pak děláte v POS, nebo u nás v administraci.
+              </p>
+            </div>
+          </li>
+          <li>
+            <span class="card__icon card__icon--sm" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M7 7h10v10H7z" />
+                <path d="M7 7 3 3m14 4 4-4M7 17l-4 4m14-4 4 4" stroke-linecap="round" />
+              </svg>
+            </span>
+            <div>
+              <h3>Objednávka v POS</h3>
+              <p>Potvrzená objednávka se propíše do pokladny. Neměníte zavedený provoz kuchyně.</p>
+            </div>
           </li>
         </ul>
       </section>
@@ -102,19 +170,18 @@
           Bez aplikace v telefonu hosta. Tablet je u stolu, napojený na váš pokladní systém —
           menu se načte automaticky, objednávky se vrací zpět do POS.
         </p>
-
         <ol class="steps">
-          <li class="steps__item">
+          <li class="card">
             <span class="steps__num" aria-hidden="true">01</span>
             <h3>Tablet u stolu</h3>
             <p>Každý stůl má svůj tablet — host začne objednávat hned, bez čekání na obsluhu.</p>
           </li>
-          <li class="steps__item">
+          <li class="card">
             <span class="steps__num" aria-hidden="true">02</span>
             <h3>Výběr a odeslání</h3>
             <p>Jazyky, alergeny, přílohy. Objednávka odchází jedním potvrzením.</p>
           </li>
-          <li class="steps__item">
+          <li class="card">
             <span class="steps__num" aria-hidden="true">03</span>
             <h3>Do pokladny</h3>
             <p>Kuchyně a účet běží ve vašem POS. Host může přivolat personál nebo požádat o účet.</p>
@@ -122,58 +189,156 @@
         </ol>
       </section>
 
-      <section class="section menu-look" id="menu" aria-labelledby="menu-title">
-        <p class="section__eyebrow">Digitální menu</p>
-        <h2 id="menu-title">Tak vypadá nabídka na tabletu</h2>
+      <section class="section feat" id="funkce" aria-labelledby="feat-title">
+        <p class="section__eyebrow">Co tablet umí</p>
+        <h2 id="feat-title">Tak vypadá nabídka na tabletu</h2>
         <p class="section__lead">
           Kategorie, fotky jídel, ceny — a u položek jako palačinka si host vybere přesně, co chce.
         </p>
-        <figure class="menu-look__frame">
-          <img
-            src="assets/menu-screen.png"
-            alt="Přehled digitálního menu Tableflow s kategoriemi a položkami"
-            width="1400"
-            height="1050"
-            loading="lazy"
-          />
-          <figcaption class="product__caption">Přehled menu v aplikaci Tableflow.</figcaption>
-        </figure>
-        <div class="menu-look__pair">
-          <figure class="menu-look__frame">
-            <img
-              src="assets/menu-palacinka-card.png"
-              alt="Karta palačinky v digitálním menu"
-              width="1200"
-              height="900"
-              loading="lazy"
-            />
-            <figcaption class="product__caption">Náhledová karta palačinky v nabídce.</figcaption>
-          </figure>
-          <figure class="menu-look__frame">
-            <img
-              src="assets/menu-palacinka-customize.png"
-              alt="Úprava palačinky — výběr přísad a polev"
-              width="1200"
-              height="900"
-              loading="lazy"
-            />
-            <figcaption class="product__caption">Úprava jídla — přísady a polevy podle chuti.</figcaption>
+
+        <div class="feat__layout">
+          <div class="feat__tabs" role="tablist" aria-label="Ukázky obrazovek">
+            <button
+              class="feat__tab is-on"
+              type="button"
+              role="tab"
+              aria-selected="true"
+              data-src="assets/menu-screen.png"
+              data-alt="Přehled digitálního menu Tableflow s kategoriemi a položkami"
+              data-cap="Přehled menu v aplikaci Tableflow."
+            >
+              <span class="card__icon card__icon--sm" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <rect x="3" y="4" width="18" height="16" rx="2" />
+                  <path d="M8 8h8M8 12h5" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span>
+                <strong>Digitální menu</strong>
+                <small>Kategorie, fotky a ceny na jedné obrazovce.</small>
+              </span>
+            </button>
+            <button
+              class="feat__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-src="assets/menu-palacinka-card.png"
+              data-alt="Karta palačinky v digitálním menu"
+              data-cap="Náhledová karta palačinky v nabídce."
+            >
+              <span class="card__icon card__icon--sm" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <rect x="4" y="5" width="16" height="14" rx="2" />
+                  <path d="M4 10h16" />
+                </svg>
+              </span>
+              <span>
+                <strong>Karta jídla</strong>
+                <small>Host vidí jídlo, cenu a může ho rovnou přidat.</small>
+              </span>
+            </button>
+            <button
+              class="feat__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-src="assets/menu-palacinka-customize.png"
+              data-alt="Úprava palačinky — výběr přísad a polev"
+              data-cap="Úprava jídla — přísady a polevy podle chuti."
+            >
+              <span class="card__icon card__icon--sm" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path d="M12 4v16M8 8h8M7 16h10" stroke-linecap="round" />
+                  <circle cx="12" cy="12" r="9" />
+                </svg>
+              </span>
+              <span>
+                <strong>Úpravy jídel</strong>
+                <small>Přílohy, oblohy, složení a alergeny přehledně.</small>
+              </span>
+            </button>
+            <button
+              class="feat__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-src="assets/menu-order.png"
+              data-alt="Objednávka na tabletu — burger s masem navíc, palačinka s přísadami a Coca-Cola"
+              data-cap="Hotová objednávka — burger, maso navíc, palačinka s přísadami a pití."
+            >
+              <span class="card__icon card__icon--sm" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <path d="M6 7h12l-1 12H7L6 7z" stroke-linejoin="round" />
+                  <path d="M9 7V5a3 3 0 0 1 6 0v2" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span>
+                <strong>Objednávka</strong>
+                <small>Košík s položkami, množstvím a součtem před odesláním.</small>
+              </span>
+            </button>
+            <button
+              class="feat__tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+              data-src="assets/menu-bill.png"
+              data-alt="Žádost o účet — rozpis položek, spropitné a způsob platby"
+              data-cap="Žádost o účet — rozpis položek, spropitné, platba a odeslání personálu."
+            >
+              <span class="card__icon card__icon--sm" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                  <rect x="5" y="3" width="14" height="18" rx="2" />
+                  <path d="M8 8h8M8 12h8M8 16h5" stroke-linecap="round" />
+                </svg>
+              </span>
+              <span>
+                <strong>Žádost o účet</strong>
+                <small>Rozpis, spropitné a zvolený způsob platby.</small>
+              </span>
+            </button>
+          </div>
+          <figure class="feat__frame">
+            <button
+              class="feat__zoom"
+              type="button"
+              id="feat-zoom"
+              aria-label="Zvětšit náhled obrazovky"
+            >
+              <img
+                id="feat-img"
+                src="assets/menu-screen.png"
+                alt="Přehled digitálního menu Tableflow s kategoriemi a položkami"
+                width="1400"
+                height="1050"
+              />
+              <span class="feat__zoom-hint" aria-hidden="true">Zvětšit</span>
+            </button>
+            <figcaption class="feat__cap" id="feat-cap">Přehled menu v aplikaci Tableflow.</figcaption>
           </figure>
         </div>
-      </section>
 
-      <section class="section staff" id="personal" aria-labelledby="staff-title">
-        <h2 id="staff-title">Nejsme další pokladna</h2>
-        <p class="section__lead">
-          Tableflow doplňuje váš stávající POS. Objednávka od hosta jde do pokladního systému —
-          kuchyně a platby zůstávají tam, kde je máte. Co tablet všechno umí?
-        </p>
-        <ul class="staff__list">
-          <li>
+        <ul class="feat__extras">
+          <li class="card">
+            <span class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v4M8 12h8" stroke-linecap="round" />
+                <path d="M9 16h6" stroke-linecap="round" />
+              </svg>
+            </span>
             <h3>Přivolání personálu</h3>
             <p>Host přivolá obsluhu ze stolu, když potřebuje pomoct nebo doplnit něco mimo menu.</p>
           </li>
-          <li>
+          <li class="card">
+            <span class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <path d="M7 8h10M7 12h6" stroke-linecap="round" />
+                <rect x="5" y="4" width="14" height="16" rx="2" />
+                <path d="M9 18h6" stroke-linecap="round" />
+              </svg>
+            </span>
             <h3>Žádost o účet</h3>
             <p>
               Účet si host vyžádá z tabletu — personál to vidí a vyřídí platbu v POS.
@@ -181,16 +346,15 @@
               Pokud platby kartou, nebo platby zvlášť provádíte u pokladny, tablet může hostovi napsat ať zaplatí u pokladny, že obsluha je už informovaná.
             </p>
           </li>
-          <li>
-            <h3>Úpravy jídel</h3>
-            <p>
-              Host si vybere jídlo, může si ho upravit, přidat více příloh, oblohy, čehokoliv bude chtít.
-              Uvidí složení a alergeny přehledně.
-            </p>
-          </li>
-          <li>
-            <h3>Objednávka v POS</h3>
-            <p>Potvrzená objednávka se propíše do pokladny. Neměníte zavedený provoz kuchyně.</p>
+          <li class="card">
+            <span class="card__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M3 12h18M12 3c2.8 3.2 2.8 14.8 0 18M12 3c-2.8 3.2-2.8 14.8 0 18" stroke-linecap="round" />
+              </svg>
+            </span>
+            <h3>Jazyky</h3>
+            <p>Host si na úvodní obrazovce vybere jazyk a pokračuje do menu. Nic nestahuje do telefonu.</p>
           </li>
         </ul>
       </section>
@@ -198,37 +362,27 @@
       <section class="section rollout" id="zavedeni" aria-labelledby="rollout-title">
         <p class="section__eyebrow">Zavedení</p>
         <h2 id="rollout-title">Od napojení po první stůl</h2>
-        <p class="section__lead">
-          Spuštění držíme jednoduché. Se vším vám rádi pomůžeme.
-        </p>
+        <p class="section__lead">Spuštění držíme jednoduché. Se vším vám rádi pomůžeme.</p>
         <ol class="rollout__list">
-          <li>
+          <li class="card">
             <span class="rollout__num" aria-hidden="true">1</span>
-            <div>
-              <h3>Napojení POS</h3>
-              <p>Propojíme Tableflow s vaším pokladním systémem.</p>
-            </div>
+            <h3>Napojení POS</h3>
+            <p>Propojíme Tableflow s vaším pokladním systémem.</p>
           </li>
-          <li>
+          <li class="card">
             <span class="rollout__num" aria-hidden="true">2</span>
-            <div>
-              <h3>Načtení menu</h3>
-              <p>Menu se načte ze stávající pokladny — nemusíte ho zakládat znovu.</p>
-            </div>
+            <h3>Načtení menu</h3>
+            <p>Menu se načte ze stávající pokladny — nemusíte ho zakládat znovu.</p>
           </li>
-          <li>
+          <li class="card">
             <span class="rollout__num" aria-hidden="true">3</span>
-            <div>
-              <h3>Párování tabletů</h3>
-              <p>Tablety přiřadíte ke stolům ve webové administraci.</p>
-            </div>
+            <h3>Párování tabletů</h3>
+            <p>Tablety přiřadíte ke stolům ve webové administraci.</p>
           </li>
-          <li>
+          <li class="card">
             <span class="rollout__num" aria-hidden="true">4</span>
-            <div>
-              <h3>Hotovo</h3>
-              <p>Hosté mohou objednávat. Úpravy menu řešíte v POS nebo u nás.</p>
-            </div>
+            <h3>Hotovo</h3>
+            <p>Hosté mohou objednávat. Úpravy menu řešíte v POS nebo u nás.</p>
           </li>
         </ol>
       </section>
@@ -255,7 +409,7 @@
         </div>
         <div class="venue__visual" aria-hidden="true">
           <figure class="venue__frame venue__frame--main">
-            <img src="assets/detail-starter.png" alt="" width="800" height="600" />
+            <img src="assets/hero-kiosk.png" alt="" width="800" height="1000" />
           </figure>
           <figure class="venue__frame venue__frame--accent">
             <img src="assets/detail-drink.png" alt="" width="600" height="600" />
@@ -282,8 +436,8 @@
           <details class="faq__item">
             <summary>Funguje to s naším POS?</summary>
             <p>
-              Tableflow je stavěný na napojení na moderní pokladní systémy. Při ukázce ověříme,
-              jestli sedí na vaši pokladnu, a navrhneme další krok.
+              Momentálně jsme napojeni na Dotykačku. Na dalších pokladních systémech pracujeme.
+              Při ukázce ověříme, jestli sedí na vaši pokladnu, a navrhneme další krok.
             </p>
           </details>
           <details class="faq__item">
@@ -295,9 +449,7 @@
           </details>
           <details class="faq__item">
             <summary>Potřebují hosté stáhnout aplikaci?</summary>
-            <p>
-              Ne. Objednávají z tabletu u stolu. Nic neinstalují do telefonu.
-            </p>
+            <p>Ne. Objednávají z tabletu u stolu. Nic neinstalují do telefonu.</p>
           </details>
           <details class="faq__item">
             <summary>Jak rychle to spustíme?</summary>
@@ -310,13 +462,47 @@
       </section>
 
       <section class="section contact" id="kontakt" aria-labelledby="contact-title">
-        <h2 id="contact-title">Máte zájem? Kontaktujte nás</h2>
-        <p class="section__lead">
-          Domluvíme krátkou ukázku — napojení na váš POS, načtení menu a nastavení tabletů u stolů.
-        </p>
-        <div class="contact__actions">
-          <a class="btn btn--primary" href="mailto:info@tableflow.cz">Napsat na info@tableflow.cz</a>
+        <div class="contact__intro">
+          <h2 id="contact-title">Máte zájem? Kontaktujte nás</h2>
+          <p class="section__lead">
+            Domluvíme krátkou ukázku — napojení na váš POS, načtení menu a nastavení tabletů u stolů.
+          </p>
         </div>
+        <form class="contact__form" id="contact-form" novalidate>
+          <input
+            class="contact__honey"
+            type="text"
+            name="_honey"
+            tabindex="-1"
+            autocomplete="off"
+            aria-hidden="true"
+          />
+          <label>
+            Název provozovny
+            <input type="text" name="venue" autocomplete="organization" placeholder="Např. Restaurace U Stolu" />
+          </label>
+          <label>
+            E-mail
+            <input type="email" name="email" required autocomplete="email" placeholder="vas@email.cz" />
+          </label>
+          <label>
+            Telefon
+            <input type="tel" name="phone" autocomplete="tel" placeholder="+420 …" />
+          </label>
+          <label>
+            Počet stolů
+            <input type="number" name="tables" min="1" inputmode="numeric" placeholder="např. 12" />
+          </label>
+          <label class="contact__full">
+            Zpráva
+            <textarea name="message" rows="4" placeholder="Napište, co vás zajímá."></textarea>
+          </label>
+          <div class="contact__row">
+            <button class="btn btn--primary" type="submit" id="contact-submit">Odeslat poptávku</button>
+            <a class="contact__mail" href="mailto:info@tableflow.cz">nebo napsat na info@tableflow.cz</a>
+          </div>
+          <p class="contact__status" id="contact-status" role="status" aria-live="polite" hidden></p>
+        </form>
       </section>
     </main>
 
@@ -328,9 +514,18 @@
       <p>Objednávka přímo u stolu.</p>
     </footer>
 
+    <div class="lightbox" id="lightbox" hidden>
+      <button class="lightbox__close" type="button" aria-label="Zavřít">×</button>
+      <button class="lightbox__backdrop" type="button" aria-label="Zavřít náhled" tabindex="-1"></button>
+      <figure class="lightbox__figure">
+        <img id="lightbox-img" src="" alt="" />
+        <figcaption class="lightbox__cap" id="lightbox-cap"></figcaption>
+      </figure>
+    </div>
+
     <script>
       const reveal = document.querySelectorAll(
-        ".section, .steps__item, .venue__frame, .why__item, .faq__item",
+        ".section, .card, .venue__frame, .faq__item, .feat__tab, .feat__frame",
       );
       const io = new IntersectionObserver(
         (entries) => {
@@ -341,9 +536,143 @@
             }
           }
         },
-        { threshold: 0.16, rootMargin: "0px 0px -6% 0px" },
+        { threshold: 0.14, rootMargin: "0px 0px -6% 0px" },
       );
       reveal.forEach((el) => io.observe(el));
+
+      const toggle = document.querySelector(".top__toggle");
+      const nav = document.getElementById("site-nav");
+      toggle?.addEventListener("click", () => {
+        const open = toggle.getAttribute("aria-expanded") === "true";
+        toggle.setAttribute("aria-expanded", String(!open));
+        toggle.setAttribute("aria-label", open ? "Otevřít menu" : "Zavřít menu");
+        nav.classList.toggle("is-open", !open);
+      });
+      nav?.querySelectorAll("a").forEach((link) => {
+        link.addEventListener("click", () => {
+          toggle?.setAttribute("aria-expanded", "false");
+          nav.classList.remove("is-open");
+        });
+      });
+
+      const featImg = document.getElementById("feat-img");
+      const featCap = document.getElementById("feat-cap");
+      const featZoom = document.getElementById("feat-zoom");
+      const lightbox = document.getElementById("lightbox");
+      const lightboxImg = document.getElementById("lightbox-img");
+      const lightboxCap = document.getElementById("lightbox-cap");
+      const tabs = document.querySelectorAll(".feat__tab");
+
+      function openLightbox() {
+        if (!lightbox || !featImg || !lightboxImg) return;
+        lightboxImg.src = featImg.currentSrc || featImg.src;
+        lightboxImg.alt = featImg.alt || "";
+        if (lightboxCap) lightboxCap.textContent = featCap?.textContent || "";
+        lightbox.hidden = false;
+        document.body.classList.add("is-lightbox");
+        lightbox.querySelector(".lightbox__close")?.focus();
+      }
+
+      function closeLightbox() {
+        if (!lightbox) return;
+        lightbox.hidden = true;
+        document.body.classList.remove("is-lightbox");
+        if (lightboxImg) lightboxImg.removeAttribute("src");
+        featZoom?.focus();
+      }
+
+      featZoom?.addEventListener("click", openLightbox);
+      lightbox?.querySelector(".lightbox__close")?.addEventListener("click", closeLightbox);
+      lightbox?.querySelector(".lightbox__backdrop")?.addEventListener("click", closeLightbox);
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && lightbox && !lightbox.hidden) closeLightbox();
+      });
+
+      tabs.forEach((tab) => {
+        tab.addEventListener("click", () => {
+          tabs.forEach((t) => {
+            t.classList.remove("is-on");
+            t.setAttribute("aria-selected", "false");
+          });
+          tab.classList.add("is-on");
+          tab.setAttribute("aria-selected", "true");
+          if (featImg) {
+            featImg.src = tab.dataset.src;
+            featImg.alt = tab.dataset.alt || "";
+          }
+          if (featCap) featCap.textContent = tab.dataset.cap || "";
+        });
+      });
+
+      const contactForm = document.getElementById("contact-form");
+      const contactStatus = document.getElementById("contact-status");
+      const contactSubmit = document.getElementById("contact-submit");
+      const CONTACT_TO = "info@tableflow.cz";
+
+      function setContactStatus(type, text) {
+        if (!contactStatus) return;
+        contactStatus.hidden = !text;
+        contactStatus.className = `contact__status${type ? ` contact__status--${type}` : ""}`;
+        contactStatus.textContent = text || "";
+      }
+
+      contactForm?.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        if (form._honey?.value) return;
+
+        const venue = form.venue.value.trim();
+        const email = form.email.value.trim();
+        const phone = form.phone.value.trim();
+        const tables = form.tables.value.trim();
+        const message = form.message.value.trim();
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          setContactStatus("error", "Zadejte platný e-mail, ať vám můžeme odepsat.");
+          form.email.focus();
+          return;
+        }
+
+        contactSubmit.disabled = true;
+        contactSubmit.textContent = "Odesílám…";
+        setContactStatus("pending", "Odesílám poptávku…");
+
+        const payload = {
+          _subject: "Poptávka Tableflow z webu",
+          _template: "table",
+          _captcha: "false",
+          email,
+          "Provozovna": venue || "—",
+          "Telefon": phone || "—",
+          "Počet stolů": tables || "—",
+          "Zpráva": message || "—",
+        };
+
+        try {
+          const res = await fetch(`https://formsubmit.co/ajax/${CONTACT_TO}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Accept: "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.message || "Odeslání se nepovedlo.");
+          }
+          form.reset();
+          setContactStatus("ok", "Poptávka je odeslaná. Ozveme se na váš e-mail.");
+        } catch (err) {
+          setContactStatus(
+            "error",
+            "Odeslání se nepovedlo. Napište nám prosím na info@tableflow.cz.",
+          );
+        } finally {
+          contactSubmit.disabled = false;
+          contactSubmit.textContent = "Odeslat poptávku";
+        }
+      });
     </script>
   </body>
 </html>
