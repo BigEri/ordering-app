@@ -467,7 +467,16 @@
             Domluvíme krátkou ukázku — napojení na váš POS, načtení menu a nastavení tabletů u stolů.
           </p>
         </div>
-        <form class="contact__form" id="contact-form" novalidate>
+        <form
+          class="contact__form"
+          id="contact-form"
+          action="https://formsubmit.co/info@tableflow.cz"
+          method="POST"
+        >
+          <input type="hidden" name="_subject" value="Poptávka Tableflow z webu" />
+          <input type="hidden" name="_template" value="table" />
+          <input type="hidden" name="_captcha" value="false" />
+          <input type="hidden" name="_next" value="https://www.tableflow.cz/?odeslano=1#kontakt" />
           <input
             class="contact__honey"
             type="text"
@@ -478,7 +487,7 @@
           />
           <label>
             Název provozovny
-            <input type="text" name="venue" autocomplete="organization" placeholder="Např. Restaurace U Stolu" />
+            <input type="text" name="Provozovna" autocomplete="organization" placeholder="Např. Restaurace U Stolu" />
           </label>
           <label>
             E-mail
@@ -486,15 +495,15 @@
           </label>
           <label>
             Telefon
-            <input type="tel" name="phone" autocomplete="tel" placeholder="+420 …" />
+            <input type="tel" name="Telefon" autocomplete="tel" placeholder="+420 …" />
           </label>
           <label>
             Počet stolů
-            <input type="number" name="tables" min="1" inputmode="numeric" placeholder="např. 12" />
+            <input type="number" name="Počet stolů" min="1" inputmode="numeric" placeholder="např. 12" />
           </label>
           <label class="contact__full">
             Zpráva
-            <textarea name="message" rows="4" placeholder="Napište, co vás zajímá."></textarea>
+            <textarea name="Zpráva" rows="4" placeholder="Napište, co vás zajímá."></textarea>
           </label>
           <div class="contact__row">
             <button class="btn btn--primary" type="submit" id="contact-submit">Odeslat poptávku</button>
@@ -606,7 +615,6 @@
       const contactForm = document.getElementById("contact-form");
       const contactStatus = document.getElementById("contact-status");
       const contactSubmit = document.getElementById("contact-submit");
-      const CONTACT_TO = "info@tableflow.cz";
 
       function setContactStatus(type, text) {
         if (!contactStatus) return;
@@ -615,62 +623,27 @@
         contactStatus.textContent = text || "";
       }
 
-      contactForm?.addEventListener("submit", async (event) => {
-        event.preventDefault();
+      if (new URLSearchParams(location.search).get("odeslano") === "1") {
+        setContactStatus("ok", "Poptávka je odeslaná. Ozveme se na váš e-mail.");
+        history.replaceState({}, "", `${location.pathname}#kontakt`);
+      }
+
+      contactForm?.addEventListener("submit", (event) => {
         const form = event.currentTarget;
-        if (form._honey?.value) return;
-
-        const venue = form.venue.value.trim();
+        if (form._honey?.value) {
+          event.preventDefault();
+          return;
+        }
         const email = form.email.value.trim();
-        const phone = form.phone.value.trim();
-        const tables = form.tables.value.trim();
-        const message = form.message.value.trim();
-
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          event.preventDefault();
           setContactStatus("error", "Zadejte platný e-mail, ať vám můžeme odepsat.");
           form.email.focus();
           return;
         }
-
         contactSubmit.disabled = true;
         contactSubmit.textContent = "Odesílám…";
         setContactStatus("pending", "Odesílám poptávku…");
-
-        const payload = {
-          _subject: "Poptávka Tableflow z webu",
-          _template: "table",
-          _captcha: "false",
-          email,
-          "Provozovna": venue || "—",
-          "Telefon": phone || "—",
-          "Počet stolů": tables || "—",
-          "Zpráva": message || "—",
-        };
-
-        try {
-          const res = await fetch(`https://formsubmit.co/ajax/${CONTACT_TO}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Accept: "application/json",
-            },
-            body: JSON.stringify(payload),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok) {
-            throw new Error(data.message || "Odeslání se nepovedlo.");
-          }
-          form.reset();
-          setContactStatus("ok", "Poptávka je odeslaná. Ozveme se na váš e-mail.");
-        } catch (err) {
-          setContactStatus(
-            "error",
-            "Odeslání se nepovedlo. Napište nám prosím na info@tableflow.cz.",
-          );
-        } finally {
-          contactSubmit.disabled = false;
-          contactSubmit.textContent = "Odeslat poptávku";
-        }
       });
     </script>
   </body>
