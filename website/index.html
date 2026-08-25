@@ -478,11 +478,11 @@
             style="display: none"
           />
           <label>
-            Název provozovny <span class="req" aria-hidden="true">*</span>
+            <span class="contact__label">Název provozovny<span class="req" aria-hidden="true">*</span></span>
             <input type="text" name="venue" required autocomplete="organization" placeholder="Např. Restaurace U Stolu" />
           </label>
           <label>
-            E-mail <span class="req" aria-hidden="true">*</span>
+            <span class="contact__label">E-mail<span class="req" aria-hidden="true">*</span></span>
             <input type="email" name="email" required autocomplete="email" placeholder="vas@email.cz" />
           </label>
           <label>
@@ -497,6 +497,7 @@
             Zpráva
             <textarea name="message" rows="4" placeholder="Napište, co vás zajímá."></textarea>
           </label>
+          <p class="contact__hint"><span class="req" aria-hidden="true">*</span> povinná pole</p>
           <div class="contact__row">
             <button class="btn btn--primary" type="submit" id="contact-submit">Odeslat poptávku</button>
             <a class="contact__mail" href="mailto:info@tableflow.cz">nebo napsat na info@tableflow.cz</a>

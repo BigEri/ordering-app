@@ -934,9 +934,21 @@ body.is-lightbox {
   color: var(--muted);
 }
 
+.contact__label {
+  display: inline;
+}
+
 .contact__form .req {
+  margin-left: 0.2em;
   color: var(--teal);
   font-weight: 600;
+}
+
+.contact__hint {
+  grid-column: 1 / -1;
+  margin: 0.15rem 0 0;
+  color: var(--muted2);
+  font-size: 0.82rem;
 }
 
 .contact__full,
