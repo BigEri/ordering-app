@@ -478,11 +478,11 @@
             style="display: none"
           />
           <label>
-            Název provozovny
-            <input type="text" name="venue" autocomplete="organization" placeholder="Např. Restaurace U Stolu" />
+            Název provozovny <span class="req" aria-hidden="true">*</span>
+            <input type="text" name="venue" required autocomplete="organization" placeholder="Např. Restaurace U Stolu" />
           </label>
           <label>
-            E-mail
+            E-mail <span class="req" aria-hidden="true">*</span>
             <input type="email" name="email" required autocomplete="email" placeholder="vas@email.cz" />
           </label>
           <label>
@@ -628,6 +628,12 @@
         const tables = form.tables.value.trim();
         const message = form.message.value.trim();
 
+        if (!venue) {
+          setContactStatus("error", "Zadejte název provozovny.");
+          form.venue.focus();
+          return;
+        }
+
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
           setContactStatus("error", "Zadejte platný e-mail, ať vám můžeme odepsat.");
           form.email.focus();
@@ -658,8 +664,8 @@
               subject: "Poptávka Tableflow z webu",
               from_name: "Tableflow web",
               email,
-              name: venue || email,
-              Provozovna: venue || "—",
+              name: venue,
+              Provozovna: venue,
               Telefon: phone || "—",
               "Počet stolů": tables || "—",
               Zpráva: message || "—",

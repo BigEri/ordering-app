@@ -934,6 +934,11 @@ body.is-lightbox {
   color: var(--muted);
 }
 
+.contact__form .req {
+  color: var(--teal);
+  font-weight: 600;
+}
+
 .contact__full,
 .contact__row {
   grid-column: 1 / -1;
