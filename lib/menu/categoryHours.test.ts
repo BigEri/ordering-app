@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   anyTimedCategoryActive,
   formatCategoryHoursLabel,
+  isAlwaysScheduleTimes,
   isCategoryVisibleAtHhmm,
   isCategoryVisibleWithExclusiveSchedule,
   isHhmmInHalfOpenWindow,
@@ -81,5 +82,13 @@ describe("isCategoryVisibleWithExclusiveSchedule", () => {
   it("bez časových oken je základní nabídka vidět", () => {
     expect(isCategoryVisibleWithExclusiveSchedule("mains", {}, new Set(), "12:30")).toBe(true);
     expect(anyTimedCategoryActive({}, "12:30")).toBe(false);
+  });
+});
+
+describe("isAlwaysScheduleTimes", () => {
+  it("pozná sentinel ALWAYS", () => {
+    expect(isAlwaysScheduleTimes("ALWAYS", "ALWAYS")).toBe(true);
+    expect(isAlwaysScheduleTimes("always", "Always")).toBe(true);
+    expect(isAlwaysScheduleTimes("12:00", "14:00")).toBe(false);
   });
 });

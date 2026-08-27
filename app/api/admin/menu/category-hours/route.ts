@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { normalizeHhmm } from "../../../../../lib/menu/categoryHours";
+import { CATEGORY_SCHEDULE_ALWAYS, normalizeHhmm } from "../../../../../lib/menu/categoryHours";
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { nowIso } from "../../../../../lib/server/db";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
@@ -65,25 +65,27 @@ export async function PATCH(req: Request) {
     if (clearToBase) {
       await prisma.menuCategorySchedule.deleteMany({ where: { restaurantId, categoryKey } });
     } else {
-      await prisma.menuCategorySchedule.upsert({
-        where: { restaurantId_categoryKey: { restaurantId, categoryKey } },
-        update: {
-          visibleFrom: always ? null : visibleFrom,
-          visibleUntil: always ? null : visibleUntil,
-          alwaysVisible: always ? 1 : 0,
-          updatedAtIso: ts,
-          updatedByUserId: session.userId,
-        },
-        create: {
-          restaurantId,
-          categoryKey,
-          visibleFrom: always ? null : visibleFrom,
-          visibleUntil: always ? null : visibleUntil,
-          alwaysVisible: always ? 1 : 0,
-          updatedAtIso: ts,
-          updatedByUserId: session.userId,
-        },
-      });
+      const visibleFromStored = always ? CATEGORY_SCHEDULE_ALWAYS : visibleFrom;
+      const visibleUntilStored = always ? CATEGORY_SCHEDULE_ALWAYS : visibleUntil;
+      const base = {
+        visibleFrom: visibleFromStored,
+        visibleUntil: visibleUntilStored,
+        updatedAtIso: ts,
+        updatedByUserId: session.userId,
+      };
+      try {
+        await prisma.menuCategorySchedule.upsert({
+          where: { restaurantId_categoryKey: { restaurantId, categoryKey } },
+          update: { ...base, alwaysVisible: always ? 1 : 0 },
+          create: { restaurantId, categoryKey, ...base, alwaysVisible: always ? 1 : 0 },
+        });
+      } catch {
+        await prisma.menuCategorySchedule.upsert({
+          where: { restaurantId_categoryKey: { restaurantId, categoryKey } },
+          update: base,
+          create: { restaurantId, categoryKey, ...base },
+        });
+      }
     }
 
     invalidateMenuOverridesCache(restaurantId);

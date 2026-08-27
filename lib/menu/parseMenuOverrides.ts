@@ -1,5 +1,5 @@
 import type { CategoryHours } from "./categoryHours";
-import { parseCategoryHoursMap } from "./categoryHours";
+import { isAlwaysScheduleTimes, parseCategoryHoursMap } from "./categoryHours";
 
 function parseStringKeyList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -44,6 +44,16 @@ export function menuOverridesFromApiJson(j: {
   alwaysVisibleCategoryKeys?: unknown;
 }): MenuOverridesPayload {
   const alwaysVisibleCategoryKeys = parseStringKeyList(j.alwaysVisibleCategoryKeys);
+  if (j.categoryHours && typeof j.categoryHours === "object") {
+    for (const [key, val] of Object.entries(j.categoryHours as Record<string, unknown>)) {
+      const k = key.trim();
+      if (!k || !val || typeof val !== "object") continue;
+      const o = val as Record<string, unknown>;
+      if (isAlwaysScheduleTimes(o.visibleFrom, o.visibleUntil) && !alwaysVisibleCategoryKeys.includes(k)) {
+        alwaysVisibleCategoryKeys.push(k);
+      }
+    }
+  }
   const alwaysSet = new Set(alwaysVisibleCategoryKeys);
   const categoryHours = parseCategoryHoursMap(j.categoryHours);
   for (const key of alwaysSet) delete categoryHours[key];

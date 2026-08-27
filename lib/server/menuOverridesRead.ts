@@ -1,4 +1,5 @@
 import { parseCategoryHoursMap } from "../menu/categoryHours";
+import { isAlwaysScheduleTimes } from "../menu/categoryHours";
 import { type MenuOverridesPayload } from "../menu/parseMenuOverrides";
 import { prisma } from "./prisma";
 
@@ -71,7 +72,7 @@ export async function readMenuOverridesForRestaurant(restaurantId: string): Prom
     .filter((x) => typeof x === "string" && x.trim() !== "");
 
   const alwaysVisibleCategoryKeys = hoursRows
-    .filter((r) => r.alwaysVisible === 1)
+    .filter((r) => r.alwaysVisible === 1 || isAlwaysScheduleTimes(r.visibleFrom, r.visibleUntil))
     .map((r) => r.categoryKey)
     .filter((x) => typeof x === "string" && x.trim() !== "");
 

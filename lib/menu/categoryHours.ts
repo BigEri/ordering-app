@@ -91,10 +91,20 @@ export function parseCategoryHoursMap(raw: unknown): Record<string, CategoryHour
     const k = key.trim();
     if (!k || !val || typeof val !== "object") continue;
     const o = val as Record<string, unknown>;
+    if (isAlwaysScheduleTimes(o.visibleFrom, o.visibleUntil)) continue;
     const from = normalizeHhmm(typeof o.visibleFrom === "string" ? o.visibleFrom : "");
     const until = normalizeHhmm(typeof o.visibleUntil === "string" ? o.visibleUntil : "");
     if (!from || !until || from === until) continue;
     out[k] = { visibleFrom: from, visibleUntil: until };
   }
   return out;
+}
+
+/** Marker v `visibleFrom`/`visibleUntil`, aby Pořád přežilo i bez sloupce `alwaysVisible`. */
+export const CATEGORY_SCHEDULE_ALWAYS = "ALWAYS";
+
+export function isAlwaysScheduleTimes(from: unknown, until: unknown): boolean {
+  const f = typeof from === "string" ? from.trim().toUpperCase() : "";
+  const u = typeof until === "string" ? until.trim().toUpperCase() : "";
+  return f === CATEGORY_SCHEDULE_ALWAYS && u === CATEGORY_SCHEDULE_ALWAYS;
 }

@@ -187,6 +187,7 @@ export function MenuBrowseClient({
   const [overrides, setOverrides] = React.useState<MenuOverridesPayload>(() =>
     initialMenuOverrides ?? EMPTY_MENU_OVERRIDES,
   );
+  const overridesRestaurantRef = React.useRef(restaurantId);
   const hiddenSet = React.useMemo(() => new Set<string>(overrides.hiddenItemIds ?? []), [overrides.hiddenItemIds]);
   const hiddenCategorySet = React.useMemo(
     () => new Set<string>(overrides.hiddenCategoryKeys ?? []),
@@ -263,8 +264,10 @@ export function MenuBrowseClient({
   }, [restaurantId, initialMenuOverrides]);
 
   React.useEffect(() => {
-    if (initialMenuOverrides) setOverrides(initialMenuOverrides);
-  }, [initialMenuOverrides]);
+    if (overridesRestaurantRef.current === restaurantId) return;
+    overridesRestaurantRef.current = restaurantId;
+    setOverrides(initialMenuOverrides ?? EMPTY_MENU_OVERRIDES);
+  }, [restaurantId, initialMenuOverrides]);
 
   React.useEffect(() => {
     if (!restaurantId) {
