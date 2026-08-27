@@ -14,7 +14,12 @@ import type { DotykackaMenuSection } from "../../lib/dotykacka/dotykackaMenuSect
 import { applyMenuOverrides } from "../../lib/menu/applyMenuOverrides";
 import { applyMenuIngredientOverrides } from "../../lib/menu/applyMenuIngredientOverrides";
 import { applyMenuTextOverrides } from "../../lib/menu/applyMenuTextOverrides";
-import { isCategoryVisibleAtHhmm } from "../../lib/menu/categoryHours";
+import {
+  anyTimedCategoryActive,
+  isAlwaysScheduleSave,
+  isCategoryVisibleWithExclusiveSchedule,
+  type CategoryScheduleSave,
+} from "../../lib/menu/categoryHours";
 import { menuSectionCategoryKey } from "../../lib/menu/menuSectionKey";
 import { EMPTY_MENU_OVERRIDES, menuOverridesFromApiJson, type MenuOverridesPayload } from "../../lib/menu/parseMenuOverrides";
 import { formatRestaurantLocalHhmm } from "../../lib/restaurantLocalTime";
@@ -244,6 +249,7 @@ export function MenuBrowseClient({
           hiddenItemIds?: string[];
           hiddenCategoryKeys?: string[];
           categoryHours?: unknown;
+          alwaysVisibleCategoryKeys?: unknown;
         };
         if (cancelled || !r.ok || !j.ok) return;
         setOverrides(menuOverridesFromApiJson(j));
@@ -447,9 +453,12 @@ export function MenuBrowseClient({
     const withText = applyMenuTextOverrides(base, textOverrides);
     const withIngredients = applyMenuIngredientOverrides(withText, ingredientOverrides);
     const hoursMap = overrides.categoryHours ?? {};
+    const alwaysKeys = new Set(overrides.alwaysVisibleCategoryKeys ?? []);
     const filterHours = (rows: typeof withIngredients) => {
       if (!nowHhmm) return rows;
-      return rows.filter((sec) => isCategoryVisibleAtHhmm(hoursMap[menuSectionCategoryKey(sec)], nowHhmm));
+      return rows.filter((sec) =>
+        isCategoryVisibleWithExclusiveSchedule(menuSectionCategoryKey(sec), hoursMap, alwaysKeys, nowHhmm),
+      );
     };
     const shouldHide = menuVariant !== "editor" || !canEditMenu;
     if (!shouldHide) return withIngredients;
@@ -543,14 +552,25 @@ export function MenuBrowseClient({
   );
 
   const setCategoryHours = React.useCallback(
-    async (categoryKey: string, next: { visibleFrom: string; visibleUntil: string } | null) => {
+    async (categoryKey: string, next: CategoryScheduleSave) => {
       if (!restaurantId || !canEditMenu) return;
       setMenuEditorErr(null);
+      const always = isAlwaysScheduleSave(next);
+      const windowHours = next && "visibleFrom" in next ? next : null;
       setOverrides((o) => {
         const categoryHours = { ...o.categoryHours };
-        if (next) categoryHours[categoryKey] = next;
-        else delete categoryHours[categoryKey];
-        return { ...o, categoryHours };
+        const alwaysKeys = new Set(o.alwaysVisibleCategoryKeys ?? []);
+        if (always) {
+          delete categoryHours[categoryKey];
+          alwaysKeys.add(categoryKey);
+        } else if (windowHours) {
+          alwaysKeys.delete(categoryKey);
+          categoryHours[categoryKey] = windowHours;
+        } else {
+          delete categoryHours[categoryKey];
+          alwaysKeys.delete(categoryKey);
+        }
+        return { ...o, categoryHours, alwaysVisibleCategoryKeys: [...alwaysKeys] };
       });
       try {
         const r = await fetch("/api/admin/menu/category-hours", {
@@ -559,8 +579,9 @@ export function MenuBrowseClient({
           body: JSON.stringify({
             restaurantId,
             categoryKey,
-            visibleFrom: next?.visibleFrom ?? "",
-            visibleUntil: next?.visibleUntil ?? "",
+            always,
+            visibleFrom: windowHours?.visibleFrom ?? "",
+            visibleUntil: windowHours?.visibleUntil ?? "",
           }),
         });
         const j = (await r.json()) as { ok?: boolean; error?: string };
@@ -1134,8 +1155,9 @@ export function MenuBrowseClient({
               <KioskAnchor href="/menu">/menu</KioskAnchor> pro zákazníky.{" "}
               <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
                 <strong>Tip k fotkám:</strong> pro lepší zobrazení na kartách a v detailu používejte spíš fotky na šířku
-                (např. poměr 16:9), ne čistě na výšku. U sekce můžete nastavit <strong>Od–Do</strong> (čas Česko) — na
-                tabletu se sekce schová mimo interval (v 14:00 už polední není). Skrytá kategorie má přednost.
+                (např. poměr 16:9), ne čistě na výšku. U sekce: <strong>Od–Do</strong> = jen v tu dobu (v 14:00 už polední
+                není). Bez času = základní nabídka, která se schová, když zrovna běží časové menu. <strong>Pořád</strong> =
+                vidět vždy (nápoje). Skrytá kategorie má přednost.
               </span>
             </p>
           ) : null}
@@ -1304,6 +1326,16 @@ export function MenuBrowseClient({
           {displaySections.map((sec) => {
             const catKey = menuSectionCategoryKey(sec);
             const catHidden = hiddenCategorySet.has(catKey);
+            const hoursNow = nowHhmm ?? formatRestaurantLocalHhmm();
+            const guestHiddenByHours =
+              menuVariant === "editor" &&
+              nowHhmm != null &&
+              !isCategoryVisibleWithExclusiveSchedule(
+                catKey,
+                overrides.categoryHours,
+                new Set(overrides.alwaysVisibleCategoryKeys ?? []),
+                hoursNow,
+              );
             return (
               <div
                 id={menuSectionDomId(catKey)}
@@ -1324,7 +1356,12 @@ export function MenuBrowseClient({
                       <MenuCategoryHoursEditor
                         categoryKey={catKey}
                         hours={overrides.categoryHours?.[catKey]}
+                        alwaysVisible={(overrides.alwaysVisibleCategoryKeys ?? []).includes(catKey)}
                         nowHhmm={nowHhmm ?? formatRestaurantLocalHhmm()}
+                        timedMenuActive={anyTimedCategoryActive(
+                          overrides.categoryHours,
+                          nowHhmm ?? formatRestaurantLocalHhmm(),
+                        )}
                         onSave={(next) => setCategoryHours(catKey, next)}
                       />
                     ) : null}
@@ -1341,7 +1378,7 @@ export function MenuBrowseClient({
                     </button>
                   ) : null}
                 </div>
-                <div className="menuItemGrid menuItemGrid--cols2">
+                <div className="menuItemGrid menuItemGrid--cols2" style={guestHiddenByHours ? { opacity: 0.55 } : undefined}>
                   {sec.items.map((item, itemIdx) =>
                     menuVariant === "editor" && canEditMenu ? (
                       <div key={`${sec.categoryId ?? sec.labelKey ?? "s"}-${item.id}`} className="menuItemAdminWrap">

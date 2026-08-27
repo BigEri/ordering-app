@@ -44,6 +44,40 @@ export function isCategoryVisibleAtHhmm(hours: CategoryHours | null | undefined,
   return isHhmmInHalfOpenWindow(nowHhmm, from, until);
 }
 
+/** Právě běží aspoň jedno denní okno (polední menu apod.). */
+export function anyTimedCategoryActive(
+  hoursMap: Record<string, CategoryHours> | null | undefined,
+  nowHhmm: string,
+): boolean {
+  if (!hoursMap) return false;
+  return Object.values(hoursMap).some((h) => isCategoryVisibleAtHhmm(h, nowHhmm));
+}
+
+/**
+ * Viditelnost sekce: okno jen v intervalu, Pořád vždy, prázdné Od–Do = základní
+ * nabídka (schová se, když zrovna běží nějaké časové menu).
+ */
+export function isCategoryVisibleWithExclusiveSchedule(
+  categoryKey: string,
+  hoursMap: Record<string, CategoryHours> | null | undefined,
+  alwaysKeys: ReadonlySet<string>,
+  nowHhmm: string,
+): boolean {
+  const key = categoryKey.trim();
+  if (!key) return true;
+  if (alwaysKeys.has(key)) return true;
+  const hours = hoursMap?.[key];
+  if (hours) return isCategoryVisibleAtHhmm(hours, nowHhmm);
+  return !anyTimedCategoryActive(hoursMap, nowHhmm);
+}
+
+/** null = základní nabídka; `{ always: true }` = Pořád; jinak denní okno. */
+export type CategoryScheduleSave = CategoryHours | { always: true } | null;
+
+export function isAlwaysScheduleSave(next: CategoryScheduleSave): next is { always: true } {
+  return typeof next === "object" && next !== null && "always" in next && next.always === true;
+}
+
 export function formatCategoryHoursLabel(hours: CategoryHours): string {
   const from = normalizeHhmm(hours.visibleFrom) ?? hours.visibleFrom;
   const until = normalizeHhmm(hours.visibleUntil) ?? hours.visibleUntil;

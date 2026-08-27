@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  anyTimedCategoryActive,
   formatCategoryHoursLabel,
   isCategoryVisibleAtHhmm,
+  isCategoryVisibleWithExclusiveSchedule,
   isHhmmInHalfOpenWindow,
   normalizeHhmm,
 } from "./categoryHours";
@@ -55,5 +57,29 @@ describe("isCategoryVisibleAtHhmm", () => {
 describe("formatCategoryHoursLabel", () => {
   it("spojuje časy en dash", () => {
     expect(formatCategoryHoursLabel({ visibleFrom: "12:00", visibleUntil: "14:00" })).toBe("12:00–14:00");
+  });
+});
+
+describe("isCategoryVisibleWithExclusiveSchedule", () => {
+  const lunch = { visibleFrom: "12:00", visibleUntil: "14:00" };
+  const hoursMap = { lunch };
+
+  it("Pořád je vidět i během poledního okna", () => {
+    const always = new Set(["drinks"]);
+    expect(isCategoryVisibleWithExclusiveSchedule("drinks", hoursMap, always, "12:30")).toBe(true);
+    expect(isCategoryVisibleWithExclusiveSchedule("drinks", hoursMap, always, "10:00")).toBe(true);
+  });
+
+  it("základní nabídka se schová, když běží časové menu", () => {
+    const always = new Set(["drinks"]);
+    expect(isCategoryVisibleWithExclusiveSchedule("mains", hoursMap, always, "12:30")).toBe(false);
+    expect(isCategoryVisibleWithExclusiveSchedule("lunch", hoursMap, always, "12:30")).toBe(true);
+    expect(isCategoryVisibleWithExclusiveSchedule("mains", hoursMap, always, "14:00")).toBe(true);
+    expect(isCategoryVisibleWithExclusiveSchedule("lunch", hoursMap, always, "14:00")).toBe(false);
+  });
+
+  it("bez časových oken je základní nabídka vidět", () => {
+    expect(isCategoryVisibleWithExclusiveSchedule("mains", {}, new Set(), "12:30")).toBe(true);
+    expect(anyTimedCategoryActive({}, "12:30")).toBe(false);
   });
 });

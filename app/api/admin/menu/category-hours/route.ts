@@ -10,8 +10,10 @@ import { prisma } from "../../../../../lib/server/prisma";
 export const dynamic = "force-dynamic";
 
 /**
- * Admin: denní okno viditelnosti sekce (Evropa/Praha).
- * Obě pole prázdná = vždy vidět. Jinak obě HH:mm, half-open [od, do).
+ * Admin: viditelnost sekce.
+ * always=true → Pořád (i během časového menu).
+ * Obě pole prázdná (a always ne) → základní nabídka.
+ * Jinak obě HH:mm, half-open [od, do).
  */
 export async function PATCH(req: Request) {
   try {
@@ -32,6 +34,7 @@ export async function PATCH(req: Request) {
     const categoryKey = typeof o.categoryKey === "string" ? o.categoryKey.trim() : "";
     const fromRaw = typeof o.visibleFrom === "string" ? o.visibleFrom : "";
     const untilRaw = typeof o.visibleUntil === "string" ? o.visibleUntil : "";
+    const always = o.always === true;
 
     if (!restaurantId || !categoryKey) {
       return NextResponse.json({ ok: false, error: "Missing restaurantId/categoryKey" }, { status: 400 });
@@ -47,11 +50,11 @@ export async function PATCH(req: Request) {
 
     const fromTrim = fromRaw.trim();
     const untilTrim = untilRaw.trim();
-    const clear = fromTrim === "" && untilTrim === "";
-    const visibleFrom = clear ? null : normalizeHhmm(fromTrim);
-    const visibleUntil = clear ? null : normalizeHhmm(untilTrim);
+    const clearToBase = !always && fromTrim === "" && untilTrim === "";
+    const visibleFrom = always || clearToBase ? null : normalizeHhmm(fromTrim);
+    const visibleUntil = always || clearToBase ? null : normalizeHhmm(untilTrim);
 
-    if (!clear && (!visibleFrom || !visibleUntil)) {
+    if (!always && !clearToBase && (!visibleFrom || !visibleUntil)) {
       return NextResponse.json({ ok: false, error: "Čas Od i Do musí být ve formátu HH:mm." }, { status: 400 });
     }
     if (visibleFrom && visibleUntil && visibleFrom === visibleUntil) {
@@ -59,22 +62,24 @@ export async function PATCH(req: Request) {
     }
 
     const ts = nowIso();
-    if (clear) {
+    if (clearToBase) {
       await prisma.menuCategorySchedule.deleteMany({ where: { restaurantId, categoryKey } });
     } else {
       await prisma.menuCategorySchedule.upsert({
         where: { restaurantId_categoryKey: { restaurantId, categoryKey } },
         update: {
-          visibleFrom: visibleFrom!,
-          visibleUntil: visibleUntil!,
+          visibleFrom: always ? null : visibleFrom,
+          visibleUntil: always ? null : visibleUntil,
+          alwaysVisible: always ? 1 : 0,
           updatedAtIso: ts,
           updatedByUserId: session.userId,
         },
         create: {
           restaurantId,
           categoryKey,
-          visibleFrom: visibleFrom!,
-          visibleUntil: visibleUntil!,
+          visibleFrom: always ? null : visibleFrom,
+          visibleUntil: always ? null : visibleUntil,
+          alwaysVisible: always ? 1 : 0,
           updatedAtIso: ts,
           updatedByUserId: session.userId,
         },
@@ -86,8 +91,9 @@ export async function PATCH(req: Request) {
       ok: true,
       restaurantId,
       categoryKey,
-      visibleFrom: clear ? null : visibleFrom,
-      visibleUntil: clear ? null : visibleUntil,
+      always,
+      visibleFrom: always || clearToBase ? null : visibleFrom,
+      visibleUntil: always || clearToBase ? null : visibleUntil,
     });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";

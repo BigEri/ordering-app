@@ -25,12 +25,32 @@ export async function readMenuOverridesForRestaurant(restaurantId: string): Prom
       where: { restaurantId: rid, hidden: 1 },
       select: { categoryKey: true },
     }),
-    prisma.menuCategorySchedule
-      .findMany({
-        where: { restaurantId: rid },
-        select: { categoryKey: true, visibleFrom: true, visibleUntil: true },
-      })
-      .catch(() => [] as { categoryKey: string; visibleFrom: string; visibleUntil: string }[]),
+    (async () => {
+      try {
+        return await prisma.menuCategorySchedule.findMany({
+          where: { restaurantId: rid },
+          select: { categoryKey: true, visibleFrom: true, visibleUntil: true, alwaysVisible: true },
+        });
+      } catch {
+        try {
+          const fallback = await prisma.menuCategorySchedule.findMany({
+            where: { restaurantId: rid },
+            select: { categoryKey: true, visibleFrom: true, visibleUntil: true },
+          });
+          return fallback.map((r) => ({
+            ...r,
+            alwaysVisible: 0,
+          }));
+        } catch {
+          return [] as {
+            categoryKey: string;
+            visibleFrom: string | null;
+            visibleUntil: string | null;
+            alwaysVisible: number;
+          }[];
+        }
+      }
+    })(),
   ]);
 
   const images: Record<string, string> = {};
@@ -50,9 +70,19 @@ export async function readMenuOverridesForRestaurant(restaurantId: string): Prom
     .map((r) => r.categoryKey)
     .filter((x) => typeof x === "string" && x.trim() !== "");
 
+  const alwaysVisibleCategoryKeys = hoursRows
+    .filter((r) => r.alwaysVisible === 1)
+    .map((r) => r.categoryKey)
+    .filter((x) => typeof x === "string" && x.trim() !== "");
+
+  const alwaysSet = new Set(alwaysVisibleCategoryKeys);
   const categoryHours = parseCategoryHoursMap(
-    Object.fromEntries(hoursRows.map((r) => [r.categoryKey, { visibleFrom: r.visibleFrom, visibleUntil: r.visibleUntil }])),
+    Object.fromEntries(
+      hoursRows
+        .filter((r) => !alwaysSet.has(r.categoryKey))
+        .map((r) => [r.categoryKey, { visibleFrom: r.visibleFrom, visibleUntil: r.visibleUntil }]),
+    ),
   );
 
-  return { images, orderByCategory, hiddenItemIds, hiddenCategoryKeys, categoryHours };
+  return { images, orderByCategory, hiddenItemIds, hiddenCategoryKeys, categoryHours, alwaysVisibleCategoryKeys };
 }

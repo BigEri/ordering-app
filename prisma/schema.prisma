@@ -159,12 +159,14 @@ model MenuHiddenCategory {
   @@id([restaurantId, categoryKey])
 }
 
-/** Volitelné denní okno viditelnosti sekce (Evropa/Praha). Bez řádku = pořád. */
+/** Viditelnost sekce: řádek s časy = denní okno; alwaysVisible=1 = Pořád; bez řádku = základní nabídka. */
 model MenuCategorySchedule {
   restaurantId    String
   categoryKey     String
-  visibleFrom     String
-  visibleUntil    String
+  visibleFrom     String?
+  visibleUntil    String?
+  /** 1 = sekce vidět vždy, i když zrovna běží časové menu. */
+  alwaysVisible   Int      @default(0)
   updatedAtIso    String
   updatedByUserId String?
 
