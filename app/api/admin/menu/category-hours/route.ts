@@ -6,6 +6,7 @@ import { nowIso } from "../../../../../lib/server/db";
 import { canEditMenuForRestaurant } from "../../../../../lib/server/menuEditorAuth";
 import { invalidateMenuOverridesCache } from "../../../../../lib/server/menuOverridesCached";
 import { prisma } from "../../../../../lib/server/prisma";
+import { upsertMenuCategoryScheduleRow } from "../../../../../lib/server/upsertMenuCategorySchedule";
 
 export const dynamic = "force-dynamic";
 
@@ -67,25 +68,18 @@ export async function PATCH(req: Request) {
     } else {
       const visibleFromStored = always ? CATEGORY_SCHEDULE_ALWAYS : visibleFrom;
       const visibleUntilStored = always ? CATEGORY_SCHEDULE_ALWAYS : visibleUntil;
-      const base = {
+      if (!visibleFromStored || !visibleUntilStored) {
+        return NextResponse.json({ ok: false, error: "Čas Od i Do musí být ve formátu HH:mm." }, { status: 400 });
+      }
+      await upsertMenuCategoryScheduleRow({
+        restaurantId,
+        categoryKey,
         visibleFrom: visibleFromStored,
         visibleUntil: visibleUntilStored,
+        always,
         updatedAtIso: ts,
         updatedByUserId: session.userId,
-      };
-      try {
-        await prisma.menuCategorySchedule.upsert({
-          where: { restaurantId_categoryKey: { restaurantId, categoryKey } },
-          update: { ...base, alwaysVisible: always ? 1 : 0 },
-          create: { restaurantId, categoryKey, ...base, alwaysVisible: always ? 1 : 0 },
-        });
-      } catch {
-        await prisma.menuCategorySchedule.upsert({
-          where: { restaurantId_categoryKey: { restaurantId, categoryKey } },
-          update: base,
-          create: { restaurantId, categoryKey, ...base },
-        });
-      }
+      });
     }
 
     invalidateMenuOverridesCache(restaurantId);
@@ -100,6 +94,6 @@ export async function PATCH(req: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
     if (msg === "UNAUTHORIZED") return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
-    return NextResponse.json({ ok: false, error: "Error" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: "Uložení času kategorie se nezdařilo." }, { status: 500 });
   }
 }
