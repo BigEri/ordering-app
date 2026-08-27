@@ -28,17 +28,27 @@ export function MenuCategoryHoursEditor({
   const [from, setFrom] = React.useState(alwaysVisible ? "" : (hours?.visibleFrom ?? ""));
   const [until, setUntil] = React.useState(alwaysVisible ? "" : (hours?.visibleUntil ?? ""));
   const [saving, setSaving] = React.useState(false);
+  const [alwaysOn, setAlwaysOn] = React.useState(alwaysVisible);
+  const skipBlurPersistRef = React.useRef(false);
+  const alwaysIntentRef = React.useRef(alwaysVisible);
 
   React.useEffect(() => {
+    alwaysIntentRef.current = alwaysVisible;
+    setAlwaysOn(alwaysVisible);
     setFrom(alwaysVisible ? "" : (hours?.visibleFrom ?? ""));
     setUntil(alwaysVisible ? "" : (hours?.visibleUntil ?? ""));
   }, [categoryKey, hours?.visibleFrom, hours?.visibleUntil, alwaysVisible]);
 
   const persist = async (nextFrom: string, nextUntil: string) => {
+    if (skipBlurPersistRef.current) {
+      skipBlurPersistRef.current = false;
+      return;
+    }
+    if (alwaysIntentRef.current || alwaysVisible) return;
     const f = nextFrom.trim();
     const u = nextUntil.trim();
     if (f === "" && u === "") {
-      if (alwaysVisible || !hours) return;
+      if (!hours) return;
       setSaving(true);
       try {
         await onSave(null);
@@ -50,7 +60,8 @@ export function MenuCategoryHoursEditor({
     const nf = normalizeHhmm(f);
     const nu = normalizeHhmm(u);
     if (!nf || !nu || nf === nu) return;
-    if (!alwaysVisible && hours && hours.visibleFrom === nf && hours.visibleUntil === nu) return;
+    if (hours && hours.visibleFrom === nf && hours.visibleUntil === nu) return;
+    alwaysIntentRef.current = false;
     setSaving(true);
     try {
       await onSave({ visibleFrom: nf, visibleUntil: nu });
@@ -60,7 +71,10 @@ export function MenuCategoryHoursEditor({
   };
 
   const saveAlways = async () => {
-    if (alwaysVisible) {
+    skipBlurPersistRef.current = true;
+    if (alwaysOn) {
+      alwaysIntentRef.current = false;
+      setAlwaysOn(false);
       setSaving(true);
       try {
         await onSave(null);
@@ -69,6 +83,8 @@ export function MenuCategoryHoursEditor({
       }
       return;
     }
+    alwaysIntentRef.current = true;
+    setAlwaysOn(true);
     setFrom("");
     setUntil("");
     setSaving(true);
@@ -83,8 +99,8 @@ export function MenuCategoryHoursEditor({
 
   return (
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
-      {alwaysVisible ? (
-        <span style={{ fontSize: 12, fontWeight: 700, color: "rgba(187, 247, 208, 0.95)" }}>Pořád</span>
+      {alwaysOn ? (
+        <span style={{ fontSize: 12, fontWeight: 800, color: "#86efac" }}>Pořád zapnuto</span>
       ) : hours ? (
         <span
           style={{
@@ -112,7 +128,7 @@ export function MenuCategoryHoursEditor({
         <input
           type="time"
           value={from}
-          disabled={disabled || saving}
+          disabled={disabled || saving || alwaysOn}
           onChange={(e) => setFrom(e.target.value)}
           onBlur={() => void persist(from, until)}
           style={{ fontSize: 13 }}
@@ -123,7 +139,7 @@ export function MenuCategoryHoursEditor({
         <input
           type="time"
           value={until}
-          disabled={disabled || saving}
+          disabled={disabled || saving || alwaysOn}
           onChange={(e) => setUntil(e.target.value)}
           onBlur={() => void persist(from, until)}
           style={{ fontSize: 13 }}
@@ -131,17 +147,21 @@ export function MenuCategoryHoursEditor({
       </label>
       <button
         type="button"
-        className="chip"
-        disabled={disabled || saving}
+        className={alwaysOn ? "chip chipAlwaysOn" : "chip"}
+        disabled={disabled}
+        aria-pressed={alwaysOn}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          skipBlurPersistRef.current = true;
+        }}
         onClick={() => void saveAlways()}
         title={
-          alwaysVisible
-            ? "Zpět na základní nabídku — schová se, když běží časové menu"
+          alwaysOn
+            ? "Vypnout Pořád — sekce se zase bude chovat jako základní nabídka"
             : "Sekce bude vidět vždy, i během poledního menu"
         }
-        style={alwaysVisible ? { borderColor: "rgba(134, 239, 172, 0.55)" } : undefined}
       >
-        Pořád
+        {alwaysOn ? "Pořád ✓" : "Pořád"}
       </button>
     </div>
   );
