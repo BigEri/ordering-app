@@ -4,7 +4,8 @@ export type RestaurantWorkspaceSection =
   | "users"
   | "devices"
   | "welcome"
-  | "dotykacka";
+  | "dotykacka"
+  | "storyous";
 
 export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; label: string }[] = [
   { id: "overview", label: "Přehled" },
@@ -13,6 +14,7 @@ export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; label: 
   { id: "devices", label: "Zařízení" },
   { id: "welcome", label: "Úvodní obrazovka" },
   { id: "dotykacka", label: "Dotykačka" },
+  { id: "storyous", label: "Storyous" },
 ];
 
 /** Vedoucí nevidí Přehled (název, jazyky, PIN, restart, mazání) — jen SUPER_ADMIN. */
@@ -41,6 +43,7 @@ export function resolveRestaurantWorkspaceSection(
   if (searchTab === "devices") return "devices";
   if (searchTab === "welcome") return "welcome";
   if (searchTab === "dotykacka") return "dotykacka";
+  if (searchTab === "storyous") return "storyous";
   if (searchTab === "menu") return "menu";
   return "overview";
 }

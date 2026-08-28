@@ -31,6 +31,7 @@ model Restaurant {
   menuIngredientOverrides MenuIngredientOverride[]
   menuDotykackaLabels MenuDotykackaLabel[]
   dotykacka           RestaurantDotykacka?
+  storyous            RestaurantStoryous?
   welcome             RestaurantWelcome?
   kioskDeviceBindings KioskDeviceBinding[]
   integrationAuditEvents IntegrationAuditEvent[]
@@ -234,6 +235,21 @@ model RestaurantDotykacka {
   disabled     Int      @default(0)
   revokedAtIso String?
   lastTokenRefreshAtIso String?
+  lastOkAtIso  String?
+  lastError    String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model RestaurantStoryous {
+  restaurantId String @id
+  merchantId   String
+  placeId      String
+  merchantName String?
+  placeName    String?
+  disabled     Int      @default(0)
+  createdAtIso String?
+  updatedAtIso String
   lastOkAtIso  String?
   lastError    String?
 

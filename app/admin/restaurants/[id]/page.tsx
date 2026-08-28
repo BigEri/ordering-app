@@ -3,6 +3,7 @@
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 
 import { DevicesAdminClient } from "../../../../components/admin/DevicesAdminClient";
+import { StoryousSettingsClient } from "../../../../components/admin/StoryousSettingsClient";
 import { UsersAdminClient } from "../../../../components/admin/UsersAdminClient";
 import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
 import { Suspense } from "react";
@@ -32,7 +33,7 @@ type RestaurantLocalesResponse =
   | { ok: true; hasConfig: boolean; locales: { code: string; label: string; enabled: boolean }[] }
   | { ok: false; error: string };
 
-const TABS = ["overview", "menu", "users", "devices", "welcome", "dotykacka"] as const;
+const TABS = ["overview", "menu", "users", "devices", "welcome", "dotykacka", "storyous"] as const;
 type TabId = (typeof TABS)[number];
 
 function tabFromSearch(raw: string | null): TabId {
@@ -693,7 +694,7 @@ function RestaurantDetailInner() {
             ID: {id}
           </p>
         </div>
-        {tab === "overview" || tab === "dotykacka" ? (
+        {tab === "overview" || tab === "dotykacka" || tab === "storyous" ? (
           <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
             Obnovit
           </button>
@@ -1147,6 +1148,8 @@ function RestaurantDetailInner() {
           />
         </section>
       ) : null}
+
+      {tab === "storyous" && id ? <StoryousSettingsClient restaurantId={id} /> : null}
 
       {tab === "dotykacka" ? (
         <section
