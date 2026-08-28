@@ -8,7 +8,7 @@
     "dev:clean": "node scripts/clean-next.cjs && next dev --turbopack",
     "preview": "node scripts/preview.cjs",
     "postinstall": "prisma generate",
-    "build": "prisma generate && next build",
+    "build": "prisma generate && prisma migrate deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run"
