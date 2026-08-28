@@ -1,7 +1,7 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { fetchDotykackaProductsForMenuCached } from "../../lib/dotykacka/fetchProductsCached";
+import { fetchRestaurantMenuCached } from "../../lib/menu/fetchRestaurantMenu";
 import { applyMenuItemOverrides } from "../../lib/dotykacka/menuItemOverrides";
 import { isMenuOpenedFromWelcome, welcomeHomePathFromMenuParams } from "../../lib/kiosk/welcomeEntry";
 import { orderMenuSectionsLikeKiosk } from "../../lib/menu/menuSectionsDisplayOrder";
@@ -70,7 +70,7 @@ export default async function MenuPage(props: MenuPageProps) {
   const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.toLowerCase() : "cs";
 
   const [result, menuOverrides, initialMenuUiByLocale] = await Promise.all([
-    fetchDotykackaProductsForMenuCached(restaurantId),
+    fetchRestaurantMenuCached(restaurantId),
     readMenuOverridesForRestaurantCached(restaurantId),
     readAllMenuUiBundlesForRestaurantCached(restaurantId),
   ]);
@@ -85,6 +85,7 @@ export default async function MenuPage(props: MenuPageProps) {
         restaurantId={restaurantId}
         menuVariant="guest"
         adminPreview={adminPreview}
+        menuSource={result.source}
         initialMenuUiByLocale={initialMenuUiByLocale}
         initialMenuUi={{
           locale,
@@ -115,6 +116,7 @@ export default async function MenuPage(props: MenuPageProps) {
       restaurantName={restaurantName}
       restaurantId={restaurantId}
       menuVariant="guest"
+      menuSource={result.source}
       initialMenuOverrides={menuOverrides}
       initialMenuUiByLocale={initialMenuUiByLocale}
       initialMenuUi={{

@@ -11,6 +11,7 @@ import { LanguageMenu } from "../../components/LanguageMenu";
 import { MenuItemOrderModal } from "../../components/MenuItemOrderModal";
 import { MenuItem, type MenuItemData } from "../../components/MenuItem";
 import type { DotykackaMenuSection } from "../../lib/dotykacka/dotykackaMenuSections";
+import type { RestaurantMenuSource } from "../../lib/menu/restaurantMenuSource";
 import { applyMenuOverrides } from "../../lib/menu/applyMenuOverrides";
 import { applyMenuIngredientOverrides } from "../../lib/menu/applyMenuIngredientOverrides";
 import { applyMenuTextOverrides } from "../../lib/menu/applyMenuTextOverrides";
@@ -111,7 +112,34 @@ type MenuBrowseClientProps = {
   initialMenuUiByLocale?: Record<string, MenuUiOverridesBundle>;
   /** Náhled z administrace (`/menu?from=admin`) — zobrazit návrat do admin sekce. */
   adminPreview?: boolean;
+  /** Zdroj jídel a cen — Storyous má přednost před Dotykačkou. */
+  menuSource?: RestaurantMenuSource | null;
 };
+
+function posRefreshCopy(source: RestaurantMenuSource | null | undefined) {
+  if (source === "storyous") {
+    return {
+      button: "Obnovit ze Storyous",
+      title: "Stáhne aktuální menu ze Storyous a obnoví tablety provozovny.",
+      fail: "Obnovení menu ze Storyous se nezdařilo.",
+      prefetchFail: (err: string) => `Cache zrušena, ale Storyous vrátil chybu: ${err}`,
+    };
+  }
+  if (source === "dotykacka") {
+    return {
+      button: "Obnovit z Dotykačky",
+      title: "Stáhne aktuální menu z Dotykačky a obnoví tablety provozovny.",
+      fail: "Obnovení menu z Dotykačky se nezdařilo.",
+      prefetchFail: (err: string) => `Cache zrušena, ale Dotykačka vrátila chybu: ${err}`,
+    };
+  }
+  return {
+    button: "Obnovit z pokladny",
+    title: "Stáhne aktuální menu z pokladny a obnoví tablety provozovny.",
+    fail: "Obnovení menu z pokladny se nezdařilo.",
+    prefetchFail: (err: string) => `Cache zrušena, ale stažení z pokladny selhalo: ${err}`,
+  };
+}
 
 type EditorStatus = { canEdit: boolean; reason?: string };
 
@@ -149,6 +177,7 @@ export function MenuBrowseClient({
   initialMenuUi,
   initialMenuUiByLocale,
   adminPreview = false,
+  menuSource = null,
 }: MenuBrowseClientProps) {
   const { cart, setCart } = useMenuCart();
   const cartHasItems = Object.keys(cart).length > 0;
@@ -362,11 +391,14 @@ export function MenuBrowseClient({
 
   const canEditMenu = menuVariant === "editor" && Boolean(restaurantId && editorStatus?.canEdit);
 
+  const posRefresh = posRefreshCopy(menuSource);
+
   const onRefreshDotykackaMenu = React.useCallback(async () => {
     if (!restaurantId || dotykackaRefreshLoading) return;
     setDotykackaRefreshMsg(null);
     setMenuEditorErr(null);
     setDotykackaRefreshLoading(true);
+    const copy = posRefreshCopy(menuSource);
     try {
       const r = await fetch("/api/admin/menu/refresh-from-dotykacka", {
         method: "POST",
@@ -383,13 +415,11 @@ export function MenuBrowseClient({
         menuPrefetchError?: string;
       };
       if (!r.ok || !j.ok) {
-        setMenuEditorErr(j.error ?? "Obnovení menu z Dotykačky se nezdařilo.");
+        setMenuEditorErr(j.error ?? copy.fail);
         return;
       }
       if (j.menuPrefetchOk === false) {
-        setDotykackaRefreshMsg(
-          `Cache zrušena, ale Dotykačka vrátila chybu: ${j.menuPrefetchError ?? "?"}`,
-        );
+        setDotykackaRefreshMsg(copy.prefetchFail(j.menuPrefetchError ?? "?"));
       } else {
         const sec = typeof j.sectionCount === "number" ? j.sectionCount : "?";
         const dev = typeof j.devicesNotified === "number" ? j.devicesNotified : 0;
@@ -397,11 +427,11 @@ export function MenuBrowseClient({
       }
       router.refresh();
     } catch {
-      setMenuEditorErr("Obnovení menu z Dotykačky se nezdařilo.");
+      setMenuEditorErr(copy.fail);
     } finally {
       setDotykackaRefreshLoading(false);
     }
-  }, [restaurantId, dotykackaRefreshLoading, router]);
+  }, [restaurantId, dotykackaRefreshLoading, router, menuSource]);
 
   React.useEffect(() => {
     if (menuVariant !== "editor" || !restaurantId || !editorStatus) return;
@@ -1254,9 +1284,9 @@ export function MenuBrowseClient({
                     className="chip"
                     disabled={dotykackaRefreshLoading}
                     onClick={() => void onRefreshDotykackaMenu()}
-                    title="Stáhne aktuální menu z Dotykačky a obnoví tablety provozovny."
+                    title={posRefresh.title}
                   >
-                    {dotykackaRefreshLoading ? "Obnovuji…" : "Obnovit z Dotykačky"}
+                    {dotykackaRefreshLoading ? "Obnovuji…" : posRefresh.button}
                   </button>
                 </>
               ) : null}

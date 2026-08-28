@@ -209,17 +209,17 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.reloadErr": "Požadavek na obnovení se nezdařil.",
     "admin.devices.reloadAll": "Vynutit obnovení všech tabletů",
     "admin.devices.reloadAllHint":
-      "Všechny tablety provozovny obnoví stránku do ~15 s (musí být online v režimu host). Zároveň zruší cache menu z Dotykačky — bez stahování nového menu z Dotykačky.",
+      "Všechny tablety provozovny obnoví stránku do ~15 s (musí být online v režimu host). Zároveň zruší cache menu — bez stahování nového menu z pokladny.",
     "admin.devices.reloadAllOk":
-      "{devices} tablet(ů) dostane signál k obnovení do ~15 s (online, režim host). Cache Dotykačky zrušena.",
-    "admin.devices.refreshMenuFromDotykacka": "Obnovit menu z Dotykačky",
+      "{devices} tablet(ů) dostane signál k obnovení do ~15 s (online, režim host). Cache menu zrušena.",
+    "admin.devices.refreshMenuFromDotykacka": "Obnovit menu z pokladny",
     "admin.devices.refreshMenuFromDotykackaHint":
-      "Stáhne aktuální menu z Dotykačky (zruší server cache) a vynutí obnovení všech tabletů vaší provozovny.",
+      "Stáhne aktuální menu z pokladny (Storyous nebo Dotykačka), zruší server cache a vynutí obnovení všech tabletů vaší provozovny.",
     "admin.devices.refreshMenuFromDotykackaOk":
-      "Menu z Dotykačky obnoveno ({sections} sekcí). {devices} tablet(ů) dostane signál k obnovení.",
+      "Menu z pokladny obnoveno ({sections} sekcí). {devices} tablet(ů) dostane signál k obnovení.",
     "admin.devices.refreshMenuFromDotykackaWarn":
-      "Cache zrušena, ale stažení z Dotykačky selhalo: {error}",
-    "admin.devices.refreshMenuFromDotykackaErr": "Obnovení menu z Dotykačky se nezdařilo.",
+      "Cache zrušena, ale stažení z pokladny selhalo: {error}",
+    "admin.devices.refreshMenuFromDotykackaErr": "Obnovení menu z pokladny se nezdařilo.",
     "admin.devices.apkUpdate": "Aktualizovat APK",
     "admin.devices.apkUpdateErr": "Požadavek na aktualizaci APK se nezdařil.",
     "admin.devices.apkUpdateNoRelease": "Na serveru není nastavené kiosk APK (KIOSK_APK_*).",
@@ -478,17 +478,17 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.reloadErr": "Reload request failed.",
     "admin.devices.reloadAll": "Force reload all tablets",
     "admin.devices.reloadAllHint":
-      "All venue tablets reload within ~15 s (must be online in host mode). Also clears Dotykacka menu cache — without fetching a new menu from Dotykacka.",
+      "All venue tablets reload within ~15 s (must be online in host mode). Also clears menu cache — without fetching a new menu from the till.",
     "admin.devices.reloadAllOk":
-      "{devices} tablet(s) notified to reload within ~15 s (online, host mode). Dotykacka cache cleared.",
-    "admin.devices.refreshMenuFromDotykacka": "Refresh menu from Dotykacka",
+      "{devices} tablet(s) notified to reload within ~15 s (online, host mode). Menu cache cleared.",
+    "admin.devices.refreshMenuFromDotykacka": "Refresh menu from till",
     "admin.devices.refreshMenuFromDotykackaHint":
-      "Fetches current Dotykacka menu (clears server cache) and signals all tablets for your venue to reload.",
+      "Fetches the current menu from the till (Storyous or Dotykacka), clears server cache, and signals all tablets for your venue to reload.",
     "admin.devices.refreshMenuFromDotykackaOk":
-      "Dotykacka menu refreshed ({sections} sections). {devices} tablet(s) notified to reload.",
+      "Menu refreshed from till ({sections} sections). {devices} tablet(s) notified to reload.",
     "admin.devices.refreshMenuFromDotykackaWarn":
-      "Cache cleared but Dotykacka fetch failed: {error}",
-    "admin.devices.refreshMenuFromDotykackaErr": "Could not refresh menu from Dotykacka.",
+      "Cache cleared but till fetch failed: {error}",
+    "admin.devices.refreshMenuFromDotykackaErr": "Could not refresh menu from the till.",
     "admin.devices.apkUpdate": "Update kiosk APK",
     "admin.devices.apkUpdateErr": "APK update request failed.",
     "admin.devices.apkUpdateNoRelease": "No kiosk APK configured on the server (KIOSK_APK_*).",
@@ -747,17 +747,17 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.reloadErr": "새로 고침 요청에 실패했습니다.",
     "admin.devices.reloadAll": "모든 태블릿 강제 새로 고침",
     "admin.devices.reloadAllHint":
-      "매장의 모든 태블릿이 ~15초 안에 새로 고칩니다(호스트 모드, 온라인 필요). Dotykacka 메뉴 캐시도 지웁니다 — Dotykacka에서 새 메뉴를 가져오지는 않습니다.",
+      "매장의 모든 태블릿이 ~15초 안에 새로 고칩니다(호스트 모드, 온라인 필요). 메뉴 캐시도 지웁니다 — 포스에서 새 메뉴를 가져오지는 않습니다.",
     "admin.devices.reloadAllOk":
-      "{devices}대 태블릿에 ~15초 내 새로 고침 신호(온라인, 호스트 모드). Dotykacka 캐시 삭제됨.",
-    "admin.devices.refreshMenuFromDotykacka": "Dotykacka에서 메뉴 새로 고침",
+      "{devices}대 태블릿에 ~15초 내 새로 고침 신호(온라인, 호스트 모드). 메뉴 캐시 삭제됨.",
+    "admin.devices.refreshMenuFromDotykacka": "포스에서 메뉴 새로 고침",
     "admin.devices.refreshMenuFromDotykackaHint":
-      "Dotykacka에서 최신 메뉴를 가져옵니다(서버 캐시 삭제)하고 해당 매장의 모든 태블릿에 새로 고침 신호를 보냅니다.",
+      "포스(Storyous 또는 Dotykacka)에서 최신 메뉴를 가져옵니다(서버 캐시 삭제)하고 해당 매장의 모든 태블릿에 새로 고침 신호를 보냅니다.",
     "admin.devices.refreshMenuFromDotykackaOk":
-      "Dotykacka 메뉴 새로 고침 완료(섹션 {sections}개). {devices}대 태블릿에 알림.",
+      "포스 메뉴 새로 고침 완료(섹션 {sections}개). {devices}대 태블릿에 알림.",
     "admin.devices.refreshMenuFromDotykackaWarn":
-      "캐시는 삭제했지만 Dotykacka 가져오기 실패: {error}",
-    "admin.devices.refreshMenuFromDotykackaErr": "Dotykacka 메뉴 새로 고침에 실패했습니다.",
+      "캐시는 삭제했지만 포스 가져오기 실패: {error}",
+    "admin.devices.refreshMenuFromDotykackaErr": "포스 메뉴 새로 고침에 실패했습니다.",
     "admin.devices.apkUpdate": "키오스크 APK 업데이트",
     "admin.devices.apkUpdateErr": "APK 업데이트 요청에 실패했습니다.",
     "admin.devices.apkUpdateNoRelease": "서버에 키오스크 APK가 설정되지 않았습니다 (KIOSK_APK_*).",

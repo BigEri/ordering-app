@@ -1,5 +1,5 @@
 import { SyncActiveRestaurantCookie } from "../../../../../../components/admin/SyncActiveRestaurantCookie";
-import { fetchDotykackaProductsForMenu } from "../../../../../../lib/dotykacka/fetchProducts";
+import { fetchRestaurantMenu } from "../../../../../../lib/menu/fetchRestaurantMenu";
 import { applyMenuItemOverrides } from "../../../../../../lib/dotykacka/menuItemOverrides";
 import { orderMenuSectionsLikeKiosk } from "../../../../../../lib/menu/menuSectionsDisplayOrder";
 import { resolveAdminRestaurantPageAccess } from "../../../../../../lib/server/adminRestaurantPageAccess";
@@ -42,7 +42,7 @@ export default async function RestaurantMenuTranslationsPage({
 
   const { restaurantId, name: restaurantName } = access;
   const [result, menuOverrides] = await Promise.all([
-    fetchDotykackaProductsForMenu(restaurantId),
+    fetchRestaurantMenu(restaurantId),
     readMenuOverridesForRestaurant(restaurantId),
   ]);
   const sections = result.ok

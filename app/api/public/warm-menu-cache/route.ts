@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { fetchDotykackaProductsForMenuCached } from "../../../../lib/dotykacka/fetchProductsCached";
+import { fetchRestaurantMenuCached } from "../../../../lib/menu/fetchRestaurantMenu";
 import {
   readAllMenuUiBundlesForRestaurantCached,
   readMenuOverridesForRestaurantCached,
@@ -10,7 +10,7 @@ import { resolvePublicMenuRestaurantIdSlimFromRequestUrl } from "../../../../lib
 export const dynamic = "force-dynamic";
 
 /**
- * Na pozadí z úvodní stránky přednahřeje server cache pro `/menu` (Dotykačka + overrides + UI).
+ * Na pozadí z úvodní stránky přednahřeje server cache pro `/menu` (pokladna + overrides + UI).
  * Kontext restaurace jen z device vazby / cookie — bez parametru restaurantId od klienta.
  */
 export async function GET(req: Request) {
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
   }
 
   const [dotykacka, overrides, uiByLocale] = await Promise.all([
-    fetchDotykackaProductsForMenuCached(restaurantId),
+    fetchRestaurantMenuCached(restaurantId),
     readMenuOverridesForRestaurantCached(restaurantId),
     readAllMenuUiBundlesForRestaurantCached(restaurantId),
   ]);

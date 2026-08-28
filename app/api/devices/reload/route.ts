@@ -5,7 +5,7 @@ import { userHasRestaurantAccess } from "../../../../lib/server/auth";
 import { bumpDeviceReloadNonce } from "../../../../lib/server/deviceRegistry";
 import { getKioskDeviceBinding } from "../../../../lib/server/kioskDeviceBindings";
 import { invalidateDotykackaMenuCache } from "../../../../lib/dotykacka/menuCache";
-import { fetchDotykackaProductsForMenuCached } from "../../../../lib/dotykacka/fetchProductsCached";
+import { fetchRestaurantMenuCached } from "../../../../lib/menu/fetchRestaurantMenu";
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
   }
 
   invalidateDotykackaMenuCache(binding.restaurantId);
-  void fetchDotykackaProductsForMenuCached(binding.restaurantId).catch(() => {});
+  void fetchRestaurantMenuCached(binding.restaurantId).catch(() => {});
 
   const reloadNonce = await bumpDeviceReloadNonce(deviceId);
   return NextResponse.json({ ok: true, deviceId, reloadNonce, menuCacheInvalidated: true });

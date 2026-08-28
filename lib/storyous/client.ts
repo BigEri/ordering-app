@@ -78,3 +78,13 @@ export async function fetchStoryousPlacePreview(
     menuItemCount: countMenuItems(menu),
   };
 }
+
+export async function fetchStoryousMenuTree(
+  creds: StoryousAppCredentials,
+  merchantId: string,
+  placeId: string,
+): Promise<unknown> {
+  const mid = merchantId.trim();
+  const pid = placeId.trim();
+  return storyousGet(creds, `/menu/${encodeURIComponent(mid)}?placeId=${encodeURIComponent(pid)}`);
+}

@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 
 import { SyncActiveRestaurantCookie } from "../../../../../components/admin/SyncActiveRestaurantCookie";
-import { fetchDotykackaProductsForMenuCached } from "../../../../../lib/dotykacka/fetchProductsCached";
+import { fetchRestaurantMenu } from "../../../../../lib/menu/fetchRestaurantMenu";
 import { applyMenuItemOverrides } from "../../../../../lib/dotykacka/menuItemOverrides";
 import { resolveAdminRestaurantPageAccess } from "../../../../../lib/server/adminRestaurantPageAccess";
 import {
@@ -52,7 +52,7 @@ export default async function RestaurantMenuEditorPage({
   const locale = (await isEnabledLocale(localeRaw)) ? localeRaw.toLowerCase() : "cs";
 
   const [result, menuOverrides, initialMenuUiByLocale] = await Promise.all([
-    fetchDotykackaProductsForMenuCached(restaurantId),
+    fetchRestaurantMenu(restaurantId),
     readMenuOverridesForRestaurantCached(restaurantId),
     readAllMenuUiBundlesForRestaurantCached(restaurantId),
   ]);
@@ -72,6 +72,7 @@ export default async function RestaurantMenuEditorPage({
       restaurantName={restaurantName}
       restaurantId={restaurantId}
       menuVariant="editor"
+      menuSource={result.source}
       initialMenuOverrides={menuOverrides}
       initialMenuUiByLocale={initialMenuUiByLocale}
       initialMenuUi={{

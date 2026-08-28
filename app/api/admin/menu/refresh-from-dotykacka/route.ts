@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { fetchDotykackaProductsForMenuCached } from "../../../../../lib/dotykacka/fetchProductsCached";
+import { fetchRestaurantMenu } from "../../../../../lib/menu/fetchRestaurantMenu";
 import { invalidateDotykackaMenuCache } from "../../../../../lib/dotykacka/menuCache";
 import { requireAdminSession } from "../../../../../lib/server/adminGuard";
 import { activeRestaurantCookieName, userHasRestaurantAccess } from "../../../../../lib/server/auth";
@@ -10,7 +10,7 @@ import { bumpAllKioskDeviceReloadNoncesForRestaurant } from "../../../../../lib/
 export const dynamic = "force-dynamic";
 
 /**
- * Admin: zruší cache menu z Dotykačky a volitelně vynutí obnovení všech tabletů provozovny.
+ * Admin: zruší cache menu (Storyous nebo Dotykačka) a volitelně vynutí obnovení všech tabletů provozovny.
  * Body: { restaurantId?: string, bumpDevices?: boolean } — restaurantId z URL kontextu má přednost před cookie.
  */
 export async function POST(req: Request) {
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
 
   invalidateDotykackaMenuCache(restaurantId);
 
-  const prefetch = await fetchDotykackaProductsForMenuCached(restaurantId);
+  const prefetch = await fetchRestaurantMenu(restaurantId);
 
   let devicesNotified = 0;
   if (bumpDevices) {
@@ -62,6 +62,7 @@ export async function POST(req: Request) {
       ok: true,
       restaurantId,
       devicesNotified,
+      menuSource: prefetch.source,
       menuPrefetchOk: false,
       menuPrefetchError: prefetch.error,
     });
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
     ok: true,
     restaurantId,
     devicesNotified,
+    menuSource: prefetch.source,
     menuPrefetchOk: true,
     sectionCount: prefetch.sections.length,
   });
