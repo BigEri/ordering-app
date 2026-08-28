@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
+import { useAdminLanguage } from "../../../../components/admin/AdminLanguageProvider";
 import { publicMenuUrlFromAdmin } from "../../../../lib/admin/publicMenuPreviewUrl";
 
 import type { DotykackaMenuSection } from "../../../../lib/dotykacka/dotykackaMenuSections";
@@ -40,10 +41,10 @@ function normLabelKey(s: string): string {
   return s.trim().toLowerCase();
 }
 
-function sectionDisplayName(sec: DotykackaMenuSection): string {
-  if (sec.labelKey === "other") return "Ostatní";
-  if (sec.labelKey === "all") return "Vše";
-  return (sec.name || "").trim() || "Bez názvu";
+function sectionDisplayName(sec: DotykackaMenuSection, t: (key: string) => string): string {
+  if (sec.labelKey === "other") return t("admin.translations.sectionOther");
+  if (sec.labelKey === "all") return t("admin.translations.sectionAll");
+  return (sec.name || "").trim() || t("admin.translations.sectionUnnamed");
 }
 
 /** Text pro štítek ID kategorie v editoru (ne product-customization). */
@@ -106,6 +107,7 @@ type MenuTranslationsClientProps = {
 };
 
 export function MenuTranslationsClient({ restaurantId, restaurantName, sections, loadError }: MenuTranslationsClientProps) {
+  const { t } = useAdminLanguage();
   const [locales, setLocales] = React.useState<AdminLocale[]>([
     { code: "cs", label: "Čeština", enabled: true },
     { code: "en", label: "English", enabled: true },
@@ -228,7 +230,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         };
         if (cancelled) return;
         if (!r.ok || !j.ok || !j.text) {
-          setErr(j.error ?? "Nelze načíst překlady.");
+          setErr(j.error ?? t("admin.translations.loadErr"));
           return;
         }
         setByLocale(mergeLoaded(enabledLocales, j.text));
@@ -247,7 +249,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         setAutoSaveState("idle");
         setAutoSaveErr(null);
       } catch {
-        if (!cancelled) setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+        if (!cancelled) setErr(t("admin.translations.loadNetworkErr"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -459,15 +461,16 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
   }, [dotykackaGroupsMergedForEditor]);
 
   const menuCategoriesForEditor = React.useMemo(() => {
+    const unnamed = t("admin.translations.sectionUnnamed");
     return sections.map((sec) => {
       const catKey = menuSectionCategoryKey(sec);
-      const dotykaName = sectionDisplayName(sec);
+      const dotykaName = sectionDisplayName(sec, t);
       const idLabel = sectionCategoryIdLabel(sec);
       const ambiguous =
-        dotykaName !== "Bez názvu" && dotykackaGroupLabelKeys.has(normLabelKey(dotykaName));
+        dotykaName !== unnamed && dotykackaGroupLabelKeys.has(normLabelKey(dotykaName));
       return { sec, catKey, dotykaName, idLabel, ambiguous };
     });
-  }, [sections, dotykackaGroupLabelKeys]);
+  }, [sections, dotykackaGroupLabelKeys, t]);
 
   const setDotykackaGroupLabel = React.useCallback(
     (locale: string, merged: Pick<DotykackaEditorGroupMerged, "aliasIds">, val: string) => {
@@ -590,7 +593,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       };
 
       if (!rText.ok || !jText.ok || !jText.byLocale) {
-        const msg = jText.error ?? "Uložení se nezdařilo.";
+        const msg = jText.error ?? t("admin.translations.saveTextFailed");
         if (silent) setAutoSaveErr(msg);
         else setErr(msg);
         setAutoSaveState("error");
@@ -604,7 +607,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           error?: string;
         };
         if (!rIng.ok || !jIng.ok || !jIng.byLocale) {
-          const msg = jIng.error ?? "Uložení ingrediencí se nezdařilo.";
+          const msg = jIng.error ?? t("admin.translations.saveIngredientsFailed");
           if (silent) setAutoSaveErr(msg);
           else setErr(msg);
           setAutoSaveState("error");
@@ -625,9 +628,9 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
             options: dl.options,
           }),
         });
-        if (!rDl.ok && !silent) setErr("Úpravy pro Dotykačku se nepodařilo uložit. Zkuste to prosím znovu.");
+        if (!rDl.ok && !silent) setErr(t("admin.translations.saveDotykackaFailed"));
       } catch {
-        if (!silent) setErr("Úpravy pro Dotykačku se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+        if (!silent) setErr(t("admin.translations.saveDotykackaNetworkErr"));
       }
 
       setSavedAt(Date.now());
@@ -636,7 +639,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       // Lokální stav nepřepisujeme odpovědí serveru — při psaní by mizely znaky.
       lastSavedKeyRef.current = currentSaveKey();
     } catch {
-      const msg = "Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.";
+      const msg = t("admin.translations.saveNetworkErr");
       if (silent) setAutoSaveErr(msg);
       else setErr(msg);
       setAutoSaveState("error");
@@ -652,7 +655,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       }
     }
     },
-    [currentSaveKey, dotykackaGroupsMergedForEditor, enabledLocaleCodes, restaurantId],
+    [currentSaveKey, dotykackaGroupsMergedForEditor, enabledLocaleCodes, restaurantId, t],
   );
 
   const saveWhenDirty = React.useCallback(() => {
@@ -725,16 +728,14 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       e.stopPropagation();
 
       if (hasMissingIngredientTranslations) {
-        const ok = window.confirm(
-          "Chybí překlady ingrediencí v některých jazycích. Opravdu chcete odejít z Překladů menu?",
-        );
+        const ok = window.confirm(t("admin.translations.leaveConfirm"));
         if (!ok) return;
       }
 
       void (async () => {
         const ok = await flushPendingSaves();
         if (!ok) {
-          window.alert("Nepodařilo se uložit změny. Zkuste prosím kliknout na Uložit nebo zkontrolujte připojení.");
+          window.alert(t("admin.translations.flushFailed"));
           return;
         }
         window.location.href = href;
@@ -745,7 +746,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       window.removeEventListener("beforeunload", onBeforeUnload);
       document.removeEventListener("click", onDocClick, true);
     };
-  }, [autoSaveKey, flushPendingSaves, hasMissingIngredientTranslations]);
+  }, [autoSaveKey, flushPendingSaves, hasMissingIngredientTranslations, t]);
 
   React.useEffect(() => {
     if (!restaurantId || loading) return;
@@ -783,13 +784,13 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
     return (
       <div style={{ padding: 24, maxWidth: 720 }}>
         <h1 style={{ marginTop: 0, fontSize: 26, fontWeight: 700 }}>
-          Překlady menu
+          {t("admin.translations.title")}
         </h1>
         <p className="textMuted2">
-          Nejdřív dokončete nastavení v Přehledu administrace. Potom tu můžete upravovat překlady položek a kategorií.
+          {t("admin.translations.needSetup")}
         </p>
         <AdminChipLink href="/admin">
-          Zpět do adminu
+          {t("admin.translations.backAdmin")}
         </AdminChipLink>
       </div>
     );
@@ -800,17 +801,17 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "baseline", justifyContent: "space-between" }}>
         <div>
           <h1 style={{ marginTop: 0, fontSize: 26, fontWeight: 700 }}>
-            Překlady menu
+            {t("admin.translations.title")}
           </h1>
           <p className="textMuted2" style={{ margin: "4px 0 0" }}>
-            {restaurantName} — ruční názvy sekcí a položek podle jazyka. Hostům se sloučí s daty z Dotykačky podle zvoleného jazyka.
+            {t("admin.translations.subtitle", { name: restaurantName })}
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <AdminChipLink href={`/admin/restaurants/${encodeURIComponent(restaurantId)}/menu`}>
-            Úpravy menu (pořadí, foto) ↗
+            {t("admin.translations.linkMenu")}
           </AdminChipLink>
-          <AdminChipLink href={publicMenuUrlFromAdmin({ rid: restaurantId })}>Veřejné menu ↗</AdminChipLink>
+          <AdminChipLink href={publicMenuUrlFromAdmin({ rid: restaurantId })}>{t("admin.translations.linkPublic")}</AdminChipLink>
         </div>
       </div>
 
@@ -823,26 +824,18 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           background: "rgba(255,255,255,0.02)",
         }}
       >
-        <div style={{ fontWeight: 650, marginBottom: 6 }}>Co se tu dá upravit</div>
+        <div style={{ fontWeight: 650, marginBottom: 6 }}>{t("admin.translations.whatTitle")}</div>
         <ul className="textMuted2" style={{ margin: 0, paddingLeft: 18, lineHeight: 1.6 }}>
-          <li>
-            <strong>Položky menu</strong> — stejné pořadí kategorií a jídel jako na tabletu (včetně úprav pořadí v admin menu).
-          </li>
-          <li>
-            <strong>Kategorie v seznamu menu</strong> — nadpisy sekcí; kategorie „Doplňky“ a podobné jsou až na konci.
-          </li>
-          <li>
-            <strong>Výběr přílohy / úpravy u jídla</strong> — až dole (Dotykačka, detail objednávky).
-          </li>
-          <li>Ingredience — ruční text „odebrat z jídla“ (bez ID z Dotykačky).</li>
+          <li>{t("admin.translations.whatItems")}</li>
+          <li>{t("admin.translations.whatCategories")}</li>
+          <li>{t("admin.translations.whatAddons")}</li>
+          <li>{t("admin.translations.whatIngredients")}</li>
         </ul>
         <p className="textMuted2" style={{ margin: "10px 0 0", lineHeight: 1.55 }}>
-          Tip: v <strong>češtině</strong> většinou nemusíte nic vyplňovat. Když necháte pole prázdné, použije se původní český
-          text z Dotykačky. Překlady vyplňujte hlavně pro <strong>ostatní jazyky</strong>.
+          {t("admin.translations.tipCs")}
         </p>
         <p className="textMuted2" style={{ margin: "8px 0 0", lineHeight: 1.55 }}>
-          Změny se ukládají po <strong>opuštění pole</strong> (klik jinam nebo Tab), při přepnutí jazyka nebo tlačítkem Uložit — během
-          psaní se nic neposílá na server.
+          {t("admin.translations.tipAutosave")}
         </p>
       </div>
 
@@ -860,12 +853,16 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
       {hasMissingIngredientTranslations ? (
         <p role="alert" style={{ color: "#fde68a", marginTop: 12, lineHeight: 1.55 }}>
-          Chybí překlady ingrediencí v některých jazycích ({missingIngredientTranslations.length}). Doporučujeme doplnit
-          pole <strong>Zobrazení v menu</strong> v chybějících jazycích.
+          {t("admin.translations.missingIngredients", { count: missingIngredientTranslations.length })}
           <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
             {missingIngredientTranslations
               .slice(0, 3)
-              .map((m) => `${m.sourceName} → chybí: ${m.missingLocales.join(", ")}`)
+              .map((m) =>
+                t("admin.translations.missingIngredientLine", {
+                  source: m.sourceName,
+                  locales: m.missingLocales.join(", "),
+                }),
+              )
               .join(" • ")}
             {missingIngredientTranslations.length > 3 ? "…" : ""}
           </span>
@@ -874,13 +871,13 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
       {savedAt ? (
         <p role="status" style={{ color: "#86efac", marginTop: 8, fontSize: 14 }}>
-          Uloženo.
+          {t("admin.translations.saved")}
         </p>
       ) : null}
 
       <div style={{ marginTop: 20, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <span className="textMuted2" style={{ fontSize: 13 }}>
-          Jazyk úprav:
+          {t("admin.translations.editLocale")}
         </span>
         {enabledLocales.map((l) => (
           <button
@@ -891,14 +888,12 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
               void (async () => {
                 if (activeLocale === l.code) return;
                 if (hasMissingIngredientTranslations) {
-                  const ok = window.confirm(
-                    "Chybí překlady ingrediencí v některých jazycích. Chcete přesto přepnout jazyk úprav?",
-                  );
+                  const ok = window.confirm(t("admin.translations.switchConfirm"));
                   if (!ok) return;
                 }
                 const saved = await flushPendingSaves();
                 if (!saved) {
-                  window.alert("Nepodařilo se uložit změny. Zkuste prosím Uložit nebo zkontrolujte připojení.");
+                  window.alert(t("admin.translations.flushFailedShort"));
                   return;
                 }
                 setActiveLocale(l.code);
@@ -909,26 +904,25 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
           </button>
         ))}
         <button type="button" className="btnPrimary" disabled={saving || loading} onClick={() => void onSave()} style={{ cursor: "pointer" }}>
-          {saving ? "Ukládám…" : "Uložit"}
+          {saving ? t("admin.translations.saving") : t("admin.translations.save")}
         </button>
-        {autoSaveState === "dirty" ? <span className="textMuted2">Neuloženo — opuste pole nebo uložte</span> : null}
-        {autoSaveState === "saving" ? <span className="textMuted2">Ukládám…</span> : null}
-        {autoSaveState === "saved" ? <span className="textMuted2">Uloženo</span> : null}
+        {autoSaveState === "dirty" ? <span className="textMuted2">{t("admin.translations.dirty")}</span> : null}
+        {autoSaveState === "saving" ? <span className="textMuted2">{t("admin.translations.saving")}</span> : null}
+        {autoSaveState === "saved" ? <span className="textMuted2">{t("admin.translations.savedShort")}</span> : null}
         {autoSaveState === "error" ? (
           <span className="textMuted2" style={{ color: "#fecaca" }}>
-            Uložení selhalo{autoSaveErr ? `: ${autoSaveErr}` : ""}.
+            {t("admin.translations.saveFailed", { detail: autoSaveErr ? `: ${autoSaveErr}` : "" })}
           </span>
         ) : null}
-        {loading ? <span className="textMuted2">Načítám…</span> : null}
+        {loading ? <span className="textMuted2">{t("admin.translations.loading")}</span> : null}
       </div>
 
       <section style={{ marginTop: 24, display: "grid", gap: 28 }}>
         {menuCategoriesForEditor.length > 0 ? (
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Kategorie v seznamu menu (Dotykačka)</h2>
+            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>{t("admin.translations.categoriesTitle")}</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
-              Nadpisy <strong>řádků v seznamu jídel</strong> na tabletu (ne výběr přílohy v detailu jídla). Každá kategorie má
-              vlastní ID — liší se od skupin customizace výše.
+              {t("admin.translations.categoriesHint")}
             </p>
             <div style={{ display: "grid", gap: 12 }}>
               {menuCategoriesForEditor.map(({ sec, catKey, dotykaName, idLabel, ambiguous }) => (
@@ -937,10 +931,10 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                   style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}
                 >
                   <div className="textMuted2" style={{ fontSize: 13, marginBottom: 4 }}>
-                    Kategorie v menu (id {idLabel})
+                    {t("admin.translations.categoryId", { id: idLabel })}
                   </div>
                   <div className="textMuted2" style={{ fontSize: 12, marginBottom: ambiguous ? 6 : 8, lineHeight: 1.45 }}>
-                    Česky v Dotyce: <strong>{dotykaName}</strong>
+                    {t("admin.translations.csInDotyka")} <strong>{dotykaName}</strong>
                   </div>
                   {ambiguous ? (
                     <p
@@ -954,13 +948,12 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                         paddingLeft: 8,
                       }}
                     >
-                      Stejný název jako skupina customizace výše — jde o <strong>kategorii v menu</strong>, ne o výběr přílohy
-                      u jídla. Překládejte podle ID kategorie.
+                      {t("admin.translations.ambiguousCategory")}
                     </p>
                   ) : null}
                   <label style={{ display: "grid", gap: 6 }}>
                     <span className="textMuted2" style={{ fontSize: 13 }}>
-                      Název kategorie v menu ({activeLocale}) — volitelné
+                      {t("admin.translations.categoryName", { locale: activeLocale })}
                     </span>
                     <input
                       className="chip"
@@ -979,19 +972,19 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
         ) : null}
 
         <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Položky menu</h2>
+          <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>{t("admin.translations.itemsTitle")}</h2>
           <p className="textMuted2" style={{ margin: "0 0 16px", lineHeight: 1.55 }}>
-            Názvy a popisy jednotlivých jídel ve stejném pořadí jako na tabletu. Názvy kategorií upravujte v sekci výše.
+            {t("admin.translations.itemsHint")}
           </p>
         {sections.map((sec, secIdx) => {
           const catKey = menuSectionCategoryKey(sec);
-          const dotykaName = sectionDisplayName(sec);
+          const dotykaName = sectionDisplayName(sec, t);
           const idLabel = sectionCategoryIdLabel(sec);
           return (
             <div key={`${sec.sortOrder}-${catKey}`} style={{ marginTop: secIdx === 0 ? 0 : 20 }}>
               <h3 style={{ margin: "0 0 12px", fontSize: 15, fontWeight: 600 }}>
                 <span className="textMuted2" style={{ fontWeight: 500 }}>
-                  Kategorie (id {idLabel})
+                  {t("admin.translations.itemCategoryHeading", { id: idLabel })}
                 </span>
                 {" · "}
                 {dotykaName}
@@ -1011,12 +1004,12 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                     <div style={{ fontWeight: 600 }}>
                       {item.name}
                       <span className="textMuted2" style={{ fontWeight: 500, fontSize: 12, marginLeft: 8 }}>
-                        (produkt id {item.id})
+                        {t("admin.translations.productId", { id: item.id })}
                       </span>
                     </div>
                     <label style={{ display: "grid", gap: 6 }}>
                       <span className="textMuted2" style={{ fontSize: 13 }}>
-                        Název položky ({activeLocale})
+                        {t("admin.translations.itemName", { locale: activeLocale })}
                       </span>
                       <input
                         className="chip"
@@ -1031,14 +1024,14 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
                     <label style={{ display: "grid", gap: 6 }}>
                       <span className="textMuted2" style={{ fontSize: 13 }}>
-                        Popis ({activeLocale}) — volitelné
+                        {t("admin.translations.itemDescription", { locale: activeLocale })}
                       </span>
                       <textarea
                         className="chip"
                         value={(byLocale[activeLocale] ?? emptyLocale()).items[item.id]?.description ?? ""}
                         onChange={(e) => setItemDescription(activeLocale, item.id, e.target.value)}
                         onBlur={saveOnBlur}
-                        placeholder={item.description ?? "Popis položky (původně z Dotykačky)"}
+                        placeholder={item.description ?? t("admin.translations.itemDescriptionPlaceholder")}
                         style={{
                           padding: "10px 12px",
                           width: "100%",
@@ -1052,11 +1045,10 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
                     <div style={{ marginTop: 4, display: "grid", gap: 8 }}>
                       <div className="textMuted2" style={{ fontSize: 13 }}>
-                        Ingredience / „odebrat z jídla“ ({activeLocale}) — volitelné
+                        {t("admin.translations.ingredientsTitle", { locale: activeLocale })}
                       </div>
                       <div className="textMuted2" style={{ fontSize: 13, lineHeight: 1.45 }}>
-                        Ruční texty bez ID z Dotykačky — <strong>ne</strong> placené přílohy (ty jsou výše u skupin customizace).
-                        <strong> Interní název</strong> = stabilní klíč; v menu host vidí <strong>Zobrazení v menu</strong>.
+                        {t("admin.translations.ingredientsHint")}
                       </div>
                       <div style={{ display: "grid", gap: 8 }}>
                         {(() => {
@@ -1075,28 +1067,28 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                             >
                               <label style={{ display: "grid", gap: 6 }}>
                                 <span className="textMuted2" style={{ fontSize: 13 }}>
-                                  Interní název (klíč)
+                                  {t("admin.translations.ingredientSource")}
                                 </span>
                                 <input
                                   className="chip"
                                   value={l.sourceName}
                                   onChange={(e) => setIngredientLine(activeLocale, item.id, idx, { sourceName: e.target.value }, list)}
                                   onBlur={saveOnBlur}
-                                  placeholder="Např. Rajče"
+                                  placeholder={t("admin.translations.ingredientPlaceholder")}
                                   style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                                   autoComplete="off"
                                 />
                               </label>
                               <label style={{ display: "grid", gap: 6 }}>
                                 <span className="textMuted2" style={{ fontSize: 13 }}>
-                                  Zobrazení v menu ({activeLocale})
+                                  {t("admin.translations.ingredientLabel", { locale: activeLocale })}
                                 </span>
                                 <input
                                   className="chip"
                                   value={l.label}
                                   onChange={(e) => setIngredientLine(activeLocale, item.id, idx, { label: e.target.value }, list)}
                                   onBlur={saveOnBlur}
-                                  placeholder="Např. Rajče"
+                                  placeholder={t("admin.translations.ingredientPlaceholder")}
                                   style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                                   autoComplete="off"
                                 />
@@ -1110,7 +1102,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                                     window.setTimeout(() => saveWhenDirty(), 0);
                                   }}
                                 />
-                                <span className="textMuted2" style={{ fontSize: 13 }}>Odebrat</span>
+                                <span className="textMuted2" style={{ fontSize: 13 }}>{t("admin.translations.ingredientAllowExclude")}</span>
                               </label>
                               <button
                                 type="button"
@@ -1121,7 +1113,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                                 }}
                                 style={{ cursor: "pointer" }}
                               >
-                                Odebrat
+                                {t("admin.translations.ingredientRemove")}
                               </button>
                             </div>
                           ));
@@ -1136,7 +1128,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                         }}
                         style={{ cursor: "pointer", justifySelf: "start" }}
                       >
-                        + Přidat ingredienci
+                        {t("admin.translations.ingredientAdd")}
                       </button>
                     </div>
                   </div>
@@ -1149,31 +1141,31 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
 
         {dotykackaGroupsMergedForEditor.length > 0 ? (
           <div style={{ borderTop: "1px solid var(--border)", paddingTop: 20 }}>
-            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>Doplňky — výběr přílohy a úprav u jídla (Dotykačka)</h2>
+            <h2 style={{ margin: "0 0 12px", fontSize: 18 }}>{t("admin.translations.addonsTitle")}</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", lineHeight: 1.55 }}>
-              Nadpis sekce a názvy voleb v <strong>detailu objednávky</strong> (burger, řízek…) pro jazyk{" "}
-              <strong>{activeLocale}</strong>. Stejné skupiny z Dotykačky jsou <strong>sloučeny</strong> — stačí jeden překlad.
-              {activeLocale === "cs" ? (
-                <> Prázdné pole = původní český text z Dotykačky.</>
-              ) : null}
+              {t("admin.translations.addonsHint", { locale: activeLocale })}
+              {activeLocale === "cs" ? t("admin.translations.addonsHintCs") : null}
             </p>
             <div style={{ display: "grid", gap: 14 }}>
               {dotykackaGroupsMergedForEditor.map((g) => (
                 <div key={g.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 12 }}>
                   <div className="textMuted2" style={{ fontSize: 13, marginBottom: 4 }}>
-                    Skupina customizace (id {g.id}
-                    {g.merged ? ` · sloučeno s ${g.aliasIds.filter((x) => x !== g.id).join(", ")}` : ""})
+                    {t("admin.translations.groupId", {
+                      id: g.merged
+                        ? `${g.id}${t("admin.translations.groupMerged", { ids: g.aliasIds.filter((x) => x !== g.id).join(", ") })}`
+                        : g.id,
+                    })}
                   </div>
                   <div className="textMuted2" style={{ fontSize: 12, marginBottom: 6, lineHeight: 1.45 }}>
-                    Česky v Dotyce: <strong>{g.label.trim() ? g.label : "—"}</strong>
+                    {t("admin.translations.csInDotyka")} <strong>{g.label.trim() ? g.label : "—"}</strong>
                   </div>
                   {g.usedBy.length > 0 ? (
                     <div className="textMuted2" style={{ fontSize: 12, marginBottom: 8, lineHeight: 1.45 }}>
-                      Používá u jídel:{" "}
+                      {t("admin.translations.usedBy")}{" "}
                       <strong>
                         {g.usedBy.length <= 6
                           ? g.usedBy.join(", ")
-                          : `${g.usedBy.slice(0, 6).join(", ")} … (+${g.usedBy.length - 6})`}
+                          : `${g.usedBy.slice(0, 6).join(", ")}${t("admin.translations.usedByMore", { count: g.usedBy.length - 6 })}`}
                       </strong>
                     </div>
                   ) : null}
@@ -1182,7 +1174,7 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                     value={getMergedDotykackaGroupLabel(dotykackaLabelsByLocale[activeLocale]?.groups, g)}
                     onChange={(e) => setDotykackaGroupLabel(activeLocale, g, e.target.value)}
                     onBlur={saveOnBlur}
-                    placeholder={g.label || "Překlad názvu skupiny"}
+                    placeholder={g.label || t("admin.translations.groupPlaceholder")}
                     style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                     autoComplete="off"
                   />
@@ -1191,14 +1183,14 @@ export function MenuTranslationsClient({ restaurantId, restaurantName, sections,
                       {g.options.map((o) => (
                         <div key={o.id} style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
                           <span className="textMuted2" style={{ fontSize: 13 }}>
-                            Volba / produkt (id {o.id})
+                            {t("admin.translations.optionId", { id: o.id })}
                           </span>
                           <input
                             className="chip"
                             value={(dotykackaLabelsByLocale[activeLocale]?.options ?? {})[o.id] ?? ""}
                             onChange={(e) => setDotykackaOptionLabel(activeLocale, o.id, e.target.value)}
                             onBlur={saveOnBlur}
-                            placeholder={o.label || "Překlad volby"}
+                            placeholder={o.label || t("admin.translations.optionPlaceholder")}
                             style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                             autoComplete="off"
                           />

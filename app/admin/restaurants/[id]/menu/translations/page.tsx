@@ -1,4 +1,8 @@
+import { cookies } from "next/headers";
+
 import { SyncActiveRestaurantCookie } from "../../../../../../components/admin/SyncActiveRestaurantCookie";
+import { ADMIN_LOCALE_COOKIE, normalizeAdminLocale } from "../../../../../../lib/i18n/adminLocale";
+import { tAdmin } from "../../../../../../lib/i18n/tAdmin";
 import { fetchRestaurantMenu } from "../../../../../../lib/menu/fetchRestaurantMenu";
 import { applyMenuItemOverrides } from "../../../../../../lib/dotykacka/menuItemOverrides";
 import { orderMenuSectionsLikeKiosk } from "../../../../../../lib/menu/menuSectionsDisplayOrder";
@@ -15,25 +19,26 @@ export default async function RestaurantMenuTranslationsPage({
   const access = await resolveAdminRestaurantPageAccess(idRaw);
 
   if (!access.ok) {
+    const locale = normalizeAdminLocale((await cookies()).get(ADMIN_LOCALE_COOKIE)?.value);
     const title =
       access.error === "unauthorized"
-        ? "Přihlaste se"
+        ? tAdmin(locale, "admin.translations.access.unauthorizedTitle")
         : access.error === "forbidden"
-          ? "Nemáte přístup"
-          : "Provozovna nenalezena";
+          ? tAdmin(locale, "admin.translations.access.forbiddenTitle")
+          : tAdmin(locale, "admin.translations.access.notFoundTitle");
     const body =
       access.error === "unauthorized"
-        ? "Pro překlady menu se přihlaste do administrace."
+        ? tAdmin(locale, "admin.translations.access.unauthorizedBody")
         : access.error === "forbidden"
-          ? "K této provozovně nemáte oprávnění upravovat překlady."
-          : "Tato provozovna neexistuje.";
+          ? tAdmin(locale, "admin.translations.access.forbiddenBody")
+          : tAdmin(locale, "admin.translations.access.notFoundBody");
     return (
       <main className="adminPage">
         <h1 style={{ fontSize: "1.25rem", marginBottom: "0.75rem" }}>{title}</h1>
         <p style={{ lineHeight: 1.5 }}>{body}</p>
         <p>
           <a href="/admin" className="adminBreadcrumb__link">
-            ← Přehled admin
+            {tAdmin(locale, "admin.translations.access.backAdmin")}
           </a>
         </p>
       </main>

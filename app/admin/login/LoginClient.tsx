@@ -4,9 +4,12 @@ import * as React from "react";
 
 import { isKioskWebView } from "../../../lib/kiosk/isKioskWebView";
 import { navigateToKioskMode } from "../../../lib/kiosk/modeSwitch";
+import { AdminLanguageMenu } from "../../../components/admin/AdminLanguageMenu";
+import { useAdminLanguage } from "../../../components/admin/AdminLanguageProvider";
 import { TableflowBrand } from "../../../components/admin/TableflowBrand";
 
 export function LoginClient({ nextPath }: { nextPath: string }) {
+  const { t } = useAdminLanguage();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [err, setErr] = React.useState<string | null>(null);
@@ -31,21 +34,21 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
       });
       const data = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !data.ok) {
-        setErr(data.error ?? "Nepodařilo se přihlásit. Zkontrolujte e‑mail a heslo a zkuste to znovu.");
+        setErr(data.error ?? t("admin.login.failed"));
         return;
       }
       window.setTimeout(() => {
         window.location.replace(nextPath);
       }, 50);
     } catch {
-      setErr("Nepodařilo se přihlásit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.login.networkErr"));
     } finally {
       setLoading(false);
     }
   };
 
   const backToHost = async () => {
-    const ok = window.confirm("Vrátit tablet do režimu Host (kiosk pro hosty u stolu)?");
+    const ok = window.confirm(t("admin.login.backToHostConfirm"));
     if (!ok) return;
     setHostSwitching(true);
     try {
@@ -58,14 +61,19 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
   return (
     <div className="adminLoginPage">
       <main style={{ maxWidth: 520, margin: "0 auto", padding: "40px 16px 64px" }}>
-        <h1 style={{ margin: "0 0 8px", fontSize: "1.6rem" }}>Admin</h1>
-        <p className="textMuted" style={{ margin: "0 0 20px" }}>
-          Přihlášení pro správu vaší restaurace.
-        </p>
+        <div className="adminLoginLang">
+          <div>
+            <h1 style={{ margin: "0 0 8px", fontSize: "1.6rem" }}>{t("admin.login.title")}</h1>
+            <p className="textMuted" style={{ margin: "0 0 20px" }}>
+              {t("admin.login.subtitle")}
+            </p>
+          </div>
+          <AdminLanguageMenu />
+        </div>
 
         <form onSubmit={onSubmit} style={{ display: "grid", gap: 12 }}>
           <label style={{ display: "grid", gap: 6 }}>
-            <span>Email</span>
+            <span>{t("admin.login.email")}</span>
             <input
               className="chip"
               style={{
@@ -81,7 +89,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
             />
           </label>
           <label style={{ display: "grid", gap: 6 }}>
-            <span>Heslo</span>
+            <span>{t("admin.login.password")}</span>
             <input
               type="password"
               className="chip"
@@ -99,7 +107,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
           </label>
 
           <button type="submit" className="btnPrimary" disabled={loading} style={{ cursor: "pointer", justifySelf: "start" }}>
-            {loading ? "…" : "Přihlásit"}
+            {loading ? "…" : t("admin.login.submit")}
           </button>
         </form>
 
@@ -111,7 +119,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
 
         {kiosk ? (
           <p className="textMuted" style={{ marginTop: 28, fontSize: 13, lineHeight: 1.45 }}>
-            Tablet je v Admin režimu.{" "}
+            {t("admin.login.kioskHint")}{" "}
             <button
               type="button"
               onClick={() => void backToHost()}
@@ -126,7 +134,7 @@ export function LoginClient({ nextPath }: { nextPath: string }) {
                 font: "inherit",
               }}
             >
-              {hostSwitching ? "…" : "Zpět na Host (kiosk)"}
+              {hostSwitching ? "…" : t("admin.login.backToHost")}
             </button>
           </p>
         ) : null}

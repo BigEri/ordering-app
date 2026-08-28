@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { useAdminLanguage } from "./AdminLanguageProvider";
+
 export type UsersAdminClientProps = {
   /** Restaurant whose memberships to manage — preferred over cookie alone. */
   restaurantId: string;
@@ -20,27 +22,12 @@ type UsersResponse =
     }
   | { ok: false; error: string };
 
-function errCs(msg: string | undefined): string {
-  if (!msg) return "Operace selhala.";
-  const m: Record<string, string> = {
-    Error: "Něco se pokazilo. Zkuste to prosím znovu.",
-    "Cannot remove yourself": "Sebe z vaší restaurace nemůžete odebrat.",
-    "User not in restaurant": "Uživatel ve vaší restauraci není.",
-    "Only superadmin can remove restaurant admins": "Odebrat vedoucího může jen superadmin.",
-    Forbidden: "Nemáte oprávnění.",
-    Unauthorized: "Nejste přihlášeni.",
-    "No restaurant selected": "Nejdřív dokončete nastavení v Přehledu administrace.",
-    "User not found": "Uživatel neexistuje.",
-    "Password too short": "Heslo je moc krátké (min. 8 znaků).",
-  };
-  return m[msg] ?? msg;
-}
-
 export function UsersAdminClient({
   restaurantId,
   restaurantName = null,
   embedded = false,
 }: UsersAdminClientProps) {
+  const { t } = useAdminLanguage();
   const rid = restaurantId.trim();
 
   const [data, setData] = React.useState<UsersResponse | null>(null);
@@ -57,6 +44,25 @@ export function UsersAdminClient({
   const [resetOpenId, setResetOpenId] = React.useState<string | null>(null);
   const [resetNewPassword, setResetNewPassword] = React.useState("");
 
+  const errMsg = React.useCallback(
+    (msg: string | undefined): string => {
+      if (!msg) return t("admin.users.err.generic");
+      const m: Record<string, string> = {
+        Error: t("admin.users.err.unknown"),
+        "Cannot remove yourself": t("admin.users.err.cannotRemoveSelf"),
+        "User not in restaurant": t("admin.users.err.userNotInRestaurant"),
+        "Only superadmin can remove restaurant admins": t("admin.users.err.onlySuperRemoveAdmin"),
+        Forbidden: t("admin.users.err.forbidden"),
+        Unauthorized: t("admin.users.err.unauthorized"),
+        "No restaurant selected": t("admin.users.err.noRestaurant"),
+        "User not found": t("admin.users.err.userNotFound"),
+        "Password too short": t("admin.users.passwordTooShort"),
+      };
+      return m[msg] ?? msg;
+    },
+    [t],
+  );
+
   const usersListUrl = React.useMemo(() => {
     if (!rid) return "/api/admin/users";
     return `/api/admin/users?restaurantId=${encodeURIComponent(rid)}`;
@@ -66,7 +72,7 @@ export function UsersAdminClient({
     setLoading(true);
     setErr(null);
     if (!rid) {
-      setErr("Chybí identifikátor restaurace.");
+      setErr(t("admin.users.missingRestaurantId"));
       setData(null);
       setLoading(false);
       return;
@@ -78,18 +84,18 @@ export function UsersAdminClient({
       if (!r.ok || !j.ok) {
         setErr(
           !r.ok
-            ? "Nepodařilo se načíst seznam uživatelů."
+            ? t("admin.users.loadErr")
             : "error" in j
-              ? errCs(j.error)
-              : "Nepodařilo se načíst seznam uživatelů.",
+              ? errMsg(j.error)
+              : t("admin.users.loadErr"),
         );
       }
     } catch {
-      setErr("Nepodařilo se načíst seznam uživatelů (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.users.loadNetworkErr"));
     } finally {
       setLoading(false);
     }
-  }, [rid, usersListUrl]);
+  }, [rid, usersListUrl, t, errMsg]);
 
   React.useEffect(() => {
     void load();
@@ -110,7 +116,7 @@ export function UsersAdminClient({
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(errCs(j.error) || "Uložení se nepodařilo. Zkuste to prosím znovu.");
+        setErr(errMsg(j.error) || t("admin.users.saveFailed"));
         return;
       }
       setEmail("");
@@ -119,7 +125,7 @@ export function UsersAdminClient({
       setSaved(true);
       await load();
     } catch {
-      setErr("Uložení se nepodařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.users.saveNetworkErr"));
     } finally {
       setSaving(false);
     }
@@ -138,7 +144,7 @@ export function UsersAdminClient({
 
   const onRemove = async (userId: string, userEmail: string) => {
     if (!rid) return;
-    if (!window.confirm(`Odebrat uživatele „${userEmail}“ z této restaurace? Ztratí přístup do administrace.`)) {
+    if (!window.confirm(t("admin.users.removeConfirm", { email: userEmail }))) {
       return;
     }
     setErr(null);
@@ -152,12 +158,12 @@ export function UsersAdminClient({
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(errCs(j.error));
+        setErr(errMsg(j.error));
         return;
       }
       await load();
     } catch {
-      setErr("Odebrání se nepodařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.users.removeNetworkErr"));
     } finally {
       setRemovingId(null);
     }
@@ -173,10 +179,10 @@ export function UsersAdminClient({
     const newPassword = resetNewPassword;
     if (!newPassword) return;
     if (newPassword.length < 8) {
-      setErr("Heslo je moc krátké (min. 8 znaků).");
+      setErr(t("admin.users.passwordTooShort"));
       return;
     }
-    if (!window.confirm(`Opravdu nastavit nové heslo pro „${userEmail}“?`)) return;
+    if (!window.confirm(t("admin.users.resetConfirm", { email: userEmail }))) return;
 
     setErr(null);
     setResettingId(userId);
@@ -189,15 +195,15 @@ export function UsersAdminClient({
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(errCs(j.error));
+        setErr(errMsg(j.error));
         return;
       }
       setResetOpenId(null);
       setResetNewPassword("");
       await load();
-      window.alert(`Heslo pro „${userEmail}“ bylo nastaveno.`);
+      window.alert(t("admin.users.resetOk", { email: userEmail }));
     } catch {
-      setErr("Změna hesla se nepodařila (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.users.resetNetworkErr"));
     } finally {
       setResettingId(null);
     }
@@ -205,21 +211,14 @@ export function UsersAdminClient({
 
   const body = (
     <>
-      {!embedded ? <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>Uživatelé</h1> : null}
+      {!embedded ? <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{t("admin.users.title")}</h1> : null}
       {embedded ? (
-        <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Uživatelé restaurace</h2>
+        <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.users.titleEmbedded")}</h2>
       ) : null}
       <p className="textMuted" style={{ margin: "0 0 18px" }}>
-        Správa přístupů pro vedoucího a personál
-        {restaurantName ? (
-          <>
-            {" "}
-            v provozovně <strong>{restaurantName}</strong>
-          </>
-        ) : (
-          " v této restauraci"
-        )}
-        . Odebráním se zruší přístup do administrace této provozovny.
+        {restaurantName
+          ? t("admin.users.subtitleNamed", { name: restaurantName })
+          : t("admin.users.subtitle")}
       </p>
 
       {err ? (
@@ -237,10 +236,10 @@ export function UsersAdminClient({
           marginBottom: 18,
         }}
       >
-        <h2 style={{ margin: "0 0 12px", fontSize: "1.1rem" }}>Přidat / obnovit účet</h2>
+        <h2 style={{ margin: "0 0 12px", fontSize: "1.1rem" }}>{t("admin.users.addTitle")}</h2>
         <form onSubmit={(e) => void onCreate(e)} style={{ display: "grid", gap: 12, maxWidth: 520 }}>
           <label style={{ display: "grid", gap: 6 }}>
-            <span>Email</span>
+            <span>{t("admin.users.email")}</span>
             <input
               className="chip"
               style={{
@@ -256,7 +255,7 @@ export function UsersAdminClient({
             />
           </label>
           <label style={{ display: "grid", gap: 6 }}>
-            <span>Heslo (nastaví / resetuje)</span>
+            <span>{t("admin.users.password")}</span>
             <input
               type="password"
               className="chip"
@@ -273,7 +272,7 @@ export function UsersAdminClient({
             />
           </label>
           <label style={{ display: "grid", gap: 6 }}>
-            <span>Role</span>
+            <span>{t("admin.users.role")}</span>
             <select
               className="chip"
               value={role}
@@ -286,22 +285,22 @@ export function UsersAdminClient({
                 color: "var(--text)",
               }}
             >
-              <option value="STAFF">Personál</option>
-              <option value="RESTAURANT_ADMIN">Vedoucí (admin)</option>
+              <option value="STAFF">{t("admin.users.roleStaff")}</option>
+              <option value="RESTAURANT_ADMIN">{t("admin.users.roleAdmin")}</option>
             </select>
           </label>
           <button type="submit" className="btnPrimary" disabled={saving || !rid} style={{ cursor: "pointer", justifySelf: "start" }}>
-            {saving ? "…" : "Uložit"}
+            {saving ? "…" : t("admin.users.save")}
           </button>
-          {saved ? <p style={{ margin: 0, color: "var(--success)" }}>Uloženo.</p> : null}
+          {saved ? <p style={{ margin: 0, color: "var(--success)" }}>{t("admin.users.saved")}</p> : null}
         </form>
       </section>
 
       <section>
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
-          <h2 style={{ margin: 0, fontSize: "1.1rem" }}>Seznam</h2>
+          <h2 style={{ margin: 0, fontSize: "1.1rem" }}>{t("admin.users.listTitle")}</h2>
           <button type="button" className="chip" onClick={() => void load()} disabled={loading} style={{ cursor: "pointer" }}>
-            {loading ? "…" : "Obnovit"}
+            {loading ? "…" : t("admin.users.refresh")}
           </button>
         </div>
 
@@ -318,9 +317,9 @@ export function UsersAdminClient({
             >
               <thead>
                 <tr style={{ background: "var(--panel)" }}>
-                  <th style={{ textAlign: "left", padding: "10px 12px" }}>Email</th>
-                  <th style={{ textAlign: "left", padding: "10px 12px" }}>Role</th>
-                  <th style={{ textAlign: "right", padding: "10px 12px", width: 120 }}>Akce</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.users.colEmail")}</th>
+                  <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.users.colRole")}</th>
+                  <th style={{ textAlign: "right", padding: "10px 12px", width: 120 }}>{t("admin.users.colActions")}</th>
                 </tr>
               </thead>
               <tbody>
@@ -337,7 +336,9 @@ export function UsersAdminClient({
                         </span>
                       ) : null}
                     </td>
-                    <td style={{ padding: "10px 12px" }}>{u.role === "RESTAURANT_ADMIN" ? "Vedoucí" : "Personál"}</td>
+                    <td style={{ padding: "10px 12px" }}>
+                      {u.role === "RESTAURANT_ADMIN" ? t("admin.users.roleLabelAdmin") : t("admin.users.roleLabelStaff")}
+                    </td>
                     <td style={{ padding: "10px 12px", textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
                         {data.sessionGlobalRole === "SUPER_ADMIN" ? (
@@ -347,9 +348,13 @@ export function UsersAdminClient({
                             style={{ cursor: "pointer" }}
                             disabled={resettingId === u.id}
                             onClick={() => onResetPasswordOpen(u.id)}
-                            title="Nastaví nové heslo uživateli"
+                            title={t("admin.users.resetTitle")}
                           >
-                            {resettingId === u.id ? "…" : resetOpenId === u.id ? "Zrušit reset" : "Reset hesla"}
+                            {resettingId === u.id
+                              ? "…"
+                              : resetOpenId === u.id
+                                ? t("admin.users.resetCancel")
+                                : t("admin.users.resetPassword")}
                           </button>
                         ) : null}
 
@@ -359,7 +364,7 @@ export function UsersAdminClient({
                               type="password"
                               value={resetNewPassword}
                               onChange={(e) => setResetNewPassword(e.target.value)}
-                              placeholder="Nové heslo (min. 8)"
+                              placeholder={t("admin.users.resetPlaceholder")}
                               autoComplete="new-password"
                               className="chip"
                               style={{
@@ -378,7 +383,7 @@ export function UsersAdminClient({
                               style={{ cursor: "pointer" }}
                               onClick={() => void onResetPasswordSubmit(u.id, u.email)}
                             >
-                              Uložit
+                              {t("admin.users.save")}
                             </button>
                           </span>
                         ) : null}
@@ -391,14 +396,14 @@ export function UsersAdminClient({
                             disabled={removingId === u.id}
                             onClick={() => void onRemove(u.id, u.email)}
                           >
-                            {removingId === u.id ? "…" : "Odebrat"}
+                            {removingId === u.id ? "…" : t("admin.users.remove")}
                           </button>
                         ) : u.id === data.sessionUserId ? (
                           <span className="textMuted2" style={{ fontSize: 12 }}>
-                            (já)
+                            {t("admin.users.me")}
                           </span>
                         ) : (
-                          <span className="textMuted2" style={{ fontSize: 12 }} title="Odebrat vedoucího může jen superadmin">
+                          <span className="textMuted2" style={{ fontSize: 12 }} title={t("admin.users.removeAdminHint")}>
                             —
                           </span>
                         )}
@@ -411,7 +416,7 @@ export function UsersAdminClient({
           </div>
         ) : (
           <p className="textMuted" style={{ marginTop: 12 }}>
-            {loading ? "Načítání…" : "—"}
+            {loading ? t("admin.users.loading") : "—"}
           </p>
         )}
       </section>

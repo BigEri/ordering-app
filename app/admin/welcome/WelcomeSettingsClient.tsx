@@ -4,20 +4,20 @@ import * as React from "react";
 import { FilePickButton } from "../../../components/FilePickButton";
 import { MenuItemPhoto } from "../../../components/MenuItemPhoto";
 import { AdminChipLink } from "../../../components/admin/AdminNavLink";
+import { useAdminLanguage } from "../../../components/admin/AdminLanguageProvider";
 import { WelcomePage } from "../../../components/WelcomePage";
 
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../../../lib/menu/welcomeLayoutPreset";
 import { WELCOME_SHOWCASE_IMAGE_URLS } from "../../../lib/menu/welcomeShowcaseImages";
+import { uniqueWelcomeImageUrls, welcomeLayoutVisibleSlotCount } from "../../../lib/menu/welcomeShowcaseSlots";
 import {
-  uniqueWelcomeImageUrls,
-  welcomeLayoutInsufficientMessage,
-  welcomeLayoutVisibleSlotCount,
-} from "../../../lib/menu/welcomeShowcaseSlots";
-import {
+  formatUploadSizeMb,
   isWelcomeUploadTooLarge,
-  messageFromWelcomeUploadFailure,
-  welcomeFileTooLargeMessage,
+  WELCOME_UPLOAD_MAX_LABEL,
 } from "../../../lib/upload/welcomeUploadLimits";
+import { localeTag } from "../../../lib/i18n/messages";
+
+type TFn = (key: string, vars?: Record<string, string | number>) => string;
 
 type MeOk = {
   ok: true;
@@ -53,17 +53,71 @@ function resolvePickerTargetIdx(idx: number | null, urls: string[]): number {
   return urls.length;
 }
 
-function findDuplicateUrlRows(urls: string[]): string[] {
+function findDuplicateUrlRows(urls: string[], t: TFn): string[] {
   const first = new Map<string, number>();
   const lines: string[] = [];
   urls.forEach((raw, i) => {
     const u = raw.trim();
     if (!u) return;
     const prev = first.get(u);
-    if (prev != null) lines.push(`řádky ${prev + 1} a ${i + 1} mají stejnou adresu`);
+    if (prev != null) lines.push(t("admin.welcome.dupRows", { a: prev + 1, b: i + 1 }));
     else first.set(u, i);
   });
   return lines;
+}
+
+function welcomeLayoutLabelKey(preset: WelcomeLayoutPreset): string {
+  switch (preset) {
+    case "split_half":
+      return "admin.welcome.layoutLabel.splitHalf";
+    case "grid_four":
+      return "admin.welcome.layoutLabel.gridFour";
+    case "fade":
+      return "admin.welcome.layoutLabel.fade";
+    default:
+      return "admin.welcome.layoutLabel.mosaic";
+  }
+}
+
+function fileTooLargeMessage(t: TFn, fileSize?: number): string {
+  if (fileSize != null && isWelcomeUploadTooLarge(fileSize)) {
+    return t("admin.welcome.fileTooLargeWithSize", {
+      max: WELCOME_UPLOAD_MAX_LABEL,
+      size: formatUploadSizeMb(fileSize),
+    });
+  }
+  return t("admin.welcome.fileTooLarge", { max: WELCOME_UPLOAD_MAX_LABEL });
+}
+
+function messageFromWelcomeUploadFailure(t: TFn, res: Response, bodyText: string, fileSize?: number): string {
+  if (res.status === 413 || (fileSize != null && isWelcomeUploadTooLarge(fileSize))) {
+    return fileTooLargeMessage(t, fileSize);
+  }
+
+  const trimmed = bodyText.trim();
+  if (trimmed) {
+    try {
+      const j = JSON.parse(trimmed) as { error?: string };
+      if (typeof j.error === "string" && j.error.trim()) return j.error.trim();
+    } catch {
+      const lower = trimmed.toLowerCase();
+      if (
+        lower.includes("too large") ||
+        lower.includes("entity too large") ||
+        lower.includes("payload too large") ||
+        lower.includes("request body exceeded")
+      ) {
+        return fileTooLargeMessage(t, fileSize);
+      }
+    }
+  }
+
+  if (res.status === 400) return t("admin.welcome.uploadInvalid");
+  if (res.status === 401) return t("admin.welcome.notLoggedIn");
+  if (res.status === 403) return t("admin.welcome.uploadForbidden");
+  if (res.status >= 500) return t("admin.welcome.uploadServerErr");
+  if (res.status >= 400) return t("admin.welcome.uploadHttpErr", { status: res.status });
+  return t("admin.welcome.uploadFailed");
 }
 
 const PREVIEW_DESIGN_W = 1280;
@@ -78,6 +132,7 @@ function WelcomeLivePreview({
   showcaseImageUrls: readonly string[];
   layoutPreset: WelcomeLayoutPreset;
 }) {
+  const { t } = useAdminLanguage();
   const stageRef = React.useRef<HTMLDivElement | null>(null);
   const [scale, setScale] = React.useState(0.3);
 
@@ -100,13 +155,11 @@ function WelcomeLivePreview({
   }, []);
 
   return (
-    <aside className="welcomeAdminPreview" aria-label="Náhled úvodní obrazovky">
+    <aside className="welcomeAdminPreview" aria-label={t("admin.welcome.previewAria")}>
       <div className="welcomeAdminPreviewLabel">
-        <span>Náhled pro hosty</span>
+        <span>{t("admin.welcome.previewLabel")}</span>
       </div>
-      <p className="textMuted2 welcomeAdminPreviewHint">
-        Živý náhled podle aktuálního formuláře (ještě nemusíte ukládat). Jazyková tlačítka v náhledu jsou jen vizuální.
-      </p>
+      <p className="textMuted2 welcomeAdminPreviewHint">{t("admin.welcome.previewHint")}</p>
       <div className="welcomeAdminPreviewFrame">
         <div className="welcomeAdminPreviewStage" ref={stageRef}>
           <div
@@ -135,6 +188,7 @@ export function WelcomeSettingsClient({
   restaurantName?: string;
   embedded?: boolean;
 } = {}) {
+  const { t, locale } = useAdminLanguage();
   const [me, setMe] = React.useState<MeOk | null>(null);
   const [loadErr, setLoadErr] = React.useState<string | null>(null);
   const [saveErr, setSaveErr] = React.useState<string | null>(null);
@@ -165,7 +219,7 @@ export function WelcomeSettingsClient({
   const ridFromProp = restaurantIdProp?.trim() || "";
   const rid = ridFromProp || (me?.ok ? me.activeRestaurantId : null);
   const brandName =
-    (restaurantNameProp?.trim() || fetchedRestaurantName?.trim() || "").trim() || "Restaurace";
+    (restaurantNameProp?.trim() || fetchedRestaurantName?.trim() || "").trim() || t("admin.welcome.brandFallback");
   const canEdit =
     me?.ok &&
     (me.session.globalRole === "SUPER_ADMIN" ||
@@ -193,7 +247,7 @@ export function WelcomeSettingsClient({
         const meR = await fetch("/api/admin/me", { cache: "no-store", credentials: "same-origin" });
         const meJ = (await meR.json()) as MeOk | { ok: false };
         if (!meR.ok || !meJ.ok) {
-          setLoadErr("Nejste přihlášeni.");
+          setLoadErr(t("admin.welcome.notLoggedIn"));
           setMe(null);
           setPageReady(true);
           setWelcomeLoading(false);
@@ -202,16 +256,16 @@ export function WelcomeSettingsClient({
         setMe(meJ);
         setPageReady(true);
         if (!ridFromProp && !meJ.activeRestaurantId?.trim()) {
-          setLoadErr("Nejdřív dokončete nastavení v Přehledu administrace.");
+          setLoadErr(t("admin.welcome.needSetup"));
           setWelcomeLoading(false);
         }
       } catch {
-        setLoadErr("Síťová chyba.");
+        setLoadErr(t("admin.welcome.networkErr"));
         setPageReady(true);
         setWelcomeLoading(false);
       }
     })();
-  }, [ridFromProp]);
+  }, [ridFromProp, t]);
 
   React.useEffect(() => {
     const active = rid?.trim() ?? "";
@@ -228,17 +282,17 @@ export function WelcomeSettingsClient({
         const j = (await r.json()) as WelcomePayload;
         if (gen !== welcomeLoadGenRef.current) return;
         if (!r.ok || !j.ok) {
-          setLoadErr(j.error ?? "Nelze načíst nastavení.");
+          setLoadErr(j.error ?? t("admin.welcome.loadFailed"));
           return;
         }
         applyWelcomePayload(j);
       } catch {
-        if (gen === welcomeLoadGenRef.current) setLoadErr("Síťová chyba při načítání welcome.");
+        if (gen === welcomeLoadGenRef.current) setLoadErr(t("admin.welcome.loadNetworkErr"));
       } finally {
         if (gen === welcomeLoadGenRef.current) setWelcomeLoading(false);
       }
     })();
-  }, [rid, applyWelcomePayload]);
+  }, [rid, applyWelcomePayload, t]);
 
   React.useEffect(() => {
     const active = rid?.trim() ?? "";
@@ -279,7 +333,7 @@ export function WelcomeSettingsClient({
         error?: string;
       };
       if (!r.ok || !j.ok) {
-        setHealthErr(j.error ?? "Nelze ověřit externí URL obrázků.");
+        setHealthErr(j.error ?? t("admin.welcome.healthErr"));
         setBrokenExternalUrls([]);
         setHealthCheckedAtIso(new Date().toISOString());
         setHealthCheckedCount(null);
@@ -294,14 +348,14 @@ export function WelcomeSettingsClient({
       setHealthCheckedAtIso(new Date().toISOString());
       setHealthCheckedCount(typeof j.checkedCount === "number" ? j.checkedCount : null);
     } catch {
-      setHealthErr("Nepodařilo se ověřit externí odkazy (zřejmě výpadek připojení).");
+      setHealthErr(t("admin.welcome.healthNetworkErr"));
       setBrokenExternalUrls([]);
       setHealthCheckedAtIso(new Date().toISOString());
       setHealthCheckedCount(null);
     } finally {
       setHealthChecking(false);
     }
-  }, [rid]);
+  }, [rid, t]);
 
   const setUrlAt = (idx: number, val: string) => {
     markDirty();
@@ -323,12 +377,16 @@ export function WelcomeSettingsClient({
     }
     return u.slice(0, 6);
   }, [uniqueSavedUrls]);
-  const duplicateRowMsgs = React.useMemo(() => findDuplicateUrlRows(imageUrls), [imageUrls]);
+  const duplicateRowMsgs = React.useMemo(() => findDuplicateUrlRows(imageUrls, t), [imageUrls, t]);
   const layoutNeeds = welcomeLayoutVisibleSlotCount(layoutPreset);
   const layoutInsufficient =
     uniqueSavedUrls.length > 0 && uniqueSavedUrls.length < layoutNeeds && duplicateRowMsgs.length === 0;
   const layoutWarnMsg = layoutInsufficient
-    ? welcomeLayoutInsufficientMessage(layoutPreset, uniqueSavedUrls.length)
+    ? t("admin.welcome.layoutInsufficient", {
+        label: t(welcomeLayoutLabelKey(layoutPreset)),
+        need: layoutNeeds,
+        count: uniqueSavedUrls.length,
+      })
     : null;
 
   const persistWelcome = React.useCallback(
@@ -355,7 +413,7 @@ export function WelcomeSettingsClient({
         });
         const j = (await r.json()) as WelcomePayload;
         if (!r.ok || !j.ok) {
-          setSaveErr(j.error ?? "Uložení selhalo.");
+          setSaveErr(j.error ?? t("admin.welcome.saveFailed"));
           return false;
         }
         applyWelcomePayload(j, true);
@@ -365,20 +423,23 @@ export function WelcomeSettingsClient({
         if (rejected.length > 0) {
           const preview = rejected.slice(0, 2).join(" · ");
           setSaveErr(
-            `Server odmítl ${rejected.length} URL (špatný formát, jiná restaurace, nebo neznámá doména). ${preview}${rejected.length > 2 ? "…" : ""}`,
+            t("admin.welcome.rejectedUrls", {
+              count: rejected.length,
+              preview: `${preview}${rejected.length > 2 ? "…" : ""}`,
+            }),
           );
           return false;
         }
-        setSaveOk(opts?.silent ? "Nahráno a uloženo do databáze." : "Uloženo.");
+        setSaveOk(opts?.silent ? t("admin.welcome.savedUploaded") : t("admin.welcome.saved"));
         return true;
       } catch {
-        setSaveErr("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+        setSaveErr(t("admin.welcome.saveNetworkErr"));
         return false;
       } finally {
         if (!opts?.silent) setSaving(false);
       }
     },
-    [rid, canEdit, saving, uploadingIdx, applyWelcomePayload],
+    [rid, canEdit, saving, uploadingIdx, applyWelcomePayload, t],
   );
 
   const openMenuPicker = React.useCallback(
@@ -401,7 +462,7 @@ export function WelcomeSettingsClient({
           error?: string;
         };
         if (!r.ok || !j.ok || !Array.isArray(j.images)) {
-          setMenuPickerErr(j.error ?? "Nelze načíst fotky z menu.");
+          setMenuPickerErr(j.error ?? t("admin.welcome.pickerLoadErr"));
           setMenuImages([]);
           return;
         }
@@ -413,13 +474,13 @@ export function WelcomeSettingsClient({
           .filter((x) => x.menuItemId && x.imageUrl);
         setMenuImages(cleaned);
       } catch {
-        setMenuPickerErr("Nepodařilo se načíst fotky z menu (zřejmě výpadek připojení).");
+        setMenuPickerErr(t("admin.welcome.pickerNetworkErr"));
         setMenuImages([]);
       } finally {
         setMenuPickerLoading(false);
       }
     },
-    [canEdit, rid, imageUrls],
+    [canEdit, rid, imageUrls, t],
   );
 
   const applyPickedMenuImage = React.useCallback(
@@ -432,7 +493,10 @@ export function WelcomeSettingsClient({
         const dupAt = prev.findIndex((u, i) => i !== idx && u.trim() === trimmed);
         if (dupAt >= 0) {
           setSaveErr(
-            `Fotka „${menuItemId || "menu"}“ má stejnou adresu jako řádek ${dupAt + 1}. Zvolte jinou položku nebo nahrajte nový soubor.`,
+            t("admin.welcome.pickerDup", {
+              id: menuItemId || "menu",
+              row: dupAt + 1,
+            }),
           );
           return prev;
         }
@@ -448,7 +512,7 @@ export function WelcomeSettingsClient({
       markDirty();
       setMenuPickerOpen(false);
     },
-    [layoutPreset, markDirty, persistWelcome],
+    [layoutPreset, markDirty, persistWelcome, t],
   );
 
   const addSlot = () => {
@@ -467,7 +531,7 @@ export function WelcomeSettingsClient({
   const onUpload = async (idx: number, file: File | null) => {
     if (!file || !rid || !canEdit) return;
     if (isWelcomeUploadTooLarge(file.size)) {
-      setSaveErr(welcomeFileTooLargeMessage(file.size));
+      setSaveErr(fileTooLargeMessage(t, file.size));
       return;
     }
     setSaveErr(null);
@@ -487,12 +551,12 @@ export function WelcomeSettingsClient({
         try {
           j = JSON.parse(raw) as typeof j;
         } catch {
-          setSaveErr(messageFromWelcomeUploadFailure(r, raw, file.size));
+          setSaveErr(messageFromWelcomeUploadFailure(t, r, raw, file.size));
           return;
         }
       }
       if (!r.ok || !j.ok || !j.imageUrl) {
-        setSaveErr(j.error ?? messageFromWelcomeUploadFailure(r, raw, file.size));
+        setSaveErr(j.error ?? messageFromWelcomeUploadFailure(t, r, raw, file.size));
         return;
       }
       const next = [...imageUrls];
@@ -504,8 +568,8 @@ export function WelcomeSettingsClient({
     } catch {
       setSaveErr(
         isWelcomeUploadTooLarge(file.size)
-          ? welcomeFileTooLargeMessage(file.size)
-          : "Nahrání se nezdařilo (síť nebo timeout). Zkuste menší soubor nebo stabilnější připojení.",
+          ? fileTooLargeMessage(t, file.size)
+          : t("admin.welcome.uploadNetworkErr"),
       );
     } finally {
       setUploadingIdx(null);
@@ -524,7 +588,7 @@ export function WelcomeSettingsClient({
   if (!pageReady) {
     return (
       <div className={embedded ? undefined : "adminPage"}>
-        <p className="textMuted2">Načítám…</p>
+        <p className="textMuted2">{t("admin.welcome.loading")}</p>
       </div>
     );
   }
@@ -536,35 +600,37 @@ export function WelcomeSettingsClient({
     <Root className={embedded ? undefined : "adminPage"}>
       {embedded ? null : (
         <>
-          <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>Úvodní obrazovka</h1>
+          <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{t("admin.welcome.title")}</h1>
           <p className="textMuted2" style={{ margin: "0 0 12px", maxWidth: 720 }}>
-            Max. velikost pro nahrání: <strong>10 MB</strong> na obrázek. Po nahrání se změny <strong>ukládají automaticky</strong> — tlačítkem Uložit potvrdíte i ručně zadané URL.
+            {t("admin.welcome.intro")}
           </p>
           <p className="textMuted2" style={{ margin: "0 0 20px", maxWidth: 720, lineHeight: 1.55 }}>
-            Nastavte fotky pro hosty na úvodní obrazovce. Maximum <strong>6 obrázků</strong>. Externí HTTPS odkazy lze zkontrolovat tlačítkem níže (nepřidává se při každém otevření stránky).
+            {t("admin.welcome.intro2")}
           </p>
         </>
       )}
       {embedded ? (
         <p className="textMuted2" style={{ margin: "0 0 16px", maxWidth: 720, lineHeight: 1.55 }}>
-          Max. <strong>10 MB</strong> na obrázek · max. <strong>6 fotek</strong>. Po nahrání se změny ukládají automaticky.
+          {t("admin.welcome.introEmbedded")}
         </p>
       ) : null}
 
       <div style={{ marginBottom: 16, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
         <button type="button" className="chip" disabled={!rid || healthChecking} onClick={() => void runHealthCheck()}>
-          {healthChecking ? "Kontroluji URL…" : "Zkontrolovat externí URL"}
+          {healthChecking ? t("admin.welcome.healthChecking") : t("admin.welcome.healthCheck")}
         </button>
         {healthCheckedAtIso ? (
           <span className="textMuted2" style={{ fontSize: 12 }}>
-            Poslední kontrola {new Date(healthCheckedAtIso).toLocaleString("cs-CZ")}
+            {t("admin.welcome.healthLastCheck", {
+              when: new Date(healthCheckedAtIso).toLocaleString(localeTag(locale)),
+            })}
           </span>
         ) : null}
       </div>
 
       {brokenExternalUrls.length > 0 ? (
         <p role="alert" style={{ color: "#fde68a", marginBottom: 16, maxWidth: 720, lineHeight: 1.55 }}>
-          Některé externí URL se nepodařilo ověřit ({brokenExternalUrls.length}). Nahrajte je raději přes „Nahrát“.{" "}
+          {t("admin.welcome.healthBroken", { count: brokenExternalUrls.length })}{" "}
           <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
             {brokenExternalUrls
               .slice(0, 3)
@@ -580,8 +646,8 @@ export function WelcomeSettingsClient({
       ) : healthCheckedCount != null && healthCheckedAtIso ? (
         <p style={{ color: "#86efac", marginBottom: 16, maxWidth: 720, fontSize: 14 }}>
           {healthCheckedCount === 0
-            ? "Žádné externí HTTPS URL k ověření."
-            : `Externí URL (${healthCheckedCount}): v pořádku.`}
+            ? t("admin.welcome.healthNone")
+            : t("admin.welcome.healthOk", { count: healthCheckedCount })}
         </p>
       ) : null}
 
@@ -593,7 +659,7 @@ export function WelcomeSettingsClient({
 
       {duplicateRowMsgs.length > 0 ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 16, maxWidth: 720, lineHeight: 1.55 }}>
-          {duplicateRowMsgs.join(". ")}. Upravte nebo odstraňte duplicitní řádek — každý slot musí mít jinou fotku.
+          {t("admin.welcome.dupHint", { details: duplicateRowMsgs.join(". ") })}
         </p>
       ) : null}
       {layoutWarnMsg ? (
@@ -604,20 +670,20 @@ export function WelcomeSettingsClient({
 
       {welcomeLoading ? (
         <p className="textMuted2" style={{ marginBottom: 16 }}>
-          Načítám uložené fotky…
+          {t("admin.welcome.loadingPhotos")}
         </p>
       ) : null}
 
       {!canEdit && me?.ok && rid ? (
         <p className="textMuted2" style={{ marginBottom: 16 }}>
-          Úpravy má jen <strong>vedoucí restaurace</strong> (RESTAURANT_ADMIN). Vy zatím můžete jen náhled.
+          {t("admin.welcome.readOnly")}
         </p>
       ) : null}
 
       <div className="welcomeAdminEditorLayout" style={{ opacity: welcomeLoading ? 0.65 : 1 }}>
         <section style={{ display: "grid", gap: 20, minWidth: 0 }}>
           <div>
-            <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>Rozložení</span>
+            <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>{t("admin.welcome.layoutTitle")}</span>
             <label style={{ display: "flex", gap: 10, alignItems: "center", cursor: canEdit ? "pointer" : "not-allowed" }}>
               <input
                 type="radio"
@@ -626,7 +692,7 @@ export function WelcomeSettingsClient({
                 disabled={!canEdit || formBusy}
                 onChange={() => onLayoutChange("mosaic")}
               />
-              Mozaika — velký vlevo, dva menší vpravo
+              {t("admin.welcome.layout.mosaic")}
             </label>
             <label
               style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, cursor: canEdit ? "pointer" : "not-allowed" }}
@@ -638,7 +704,7 @@ export function WelcomeSettingsClient({
                 disabled={!canEdit || formBusy}
                 onChange={() => onLayoutChange("split_half")}
               />
-              Dvě poloviny — 50 % / 50 % (ideálně 2+ obrázků v rotaci)
+              {t("admin.welcome.layout.splitHalf")}
             </label>
             <label
               style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, cursor: canEdit ? "pointer" : "not-allowed" }}
@@ -650,7 +716,7 @@ export function WelcomeSettingsClient({
                 disabled={!canEdit || formBusy}
                 onChange={() => onLayoutChange("grid_four")}
               />
-              Čtyři čtvrtiny — mřížka 2×2 přes celou obrazovku (4 sloty + rotace)
+              {t("admin.welcome.layout.gridFour")}
             </label>
             <label
               style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, cursor: canEdit ? "pointer" : "not-allowed" }}
@@ -662,15 +728,15 @@ export function WelcomeSettingsClient({
                 disabled={!canEdit || formBusy}
                 onChange={() => onLayoutChange("fade")}
               />
-              Jedna plocha — celá obrazovka, střídání fotek
+              {t("admin.welcome.layout.fade")}
             </label>
           </div>
 
           <div>
-            <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>Obrázky (pořadí = rotace na welcome)</span>
+            <span style={{ display: "block", fontWeight: 700, marginBottom: 8 }}>{t("admin.welcome.imagesTitle")}</span>
             {imageUrls.every((u) => !String(u ?? "").trim()) ? (
               <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.45 }}>
-                Zatím nemáte vlastní fotky — vyplňte URL, nahrajte soubor, nebo vyberte z menu.
+                {t("admin.welcome.imagesEmpty")}
               </p>
             ) : null}
             <div style={{ display: "grid", gap: 10 }}>
@@ -693,7 +759,7 @@ export function WelcomeSettingsClient({
                     style={{ padding: "8px 10px", flex: "1 1 200px", minWidth: 0, boxSizing: "border-box" }}
                     value={url}
                     disabled={!canEdit || formBusy}
-                    placeholder="https://… nebo /uploads/welcome/…"
+                    placeholder={t("admin.welcome.urlPlaceholder")}
                     onChange={(e) => setUrlAt(idx, e.target.value)}
                   />
                   <FilePickButton
@@ -702,7 +768,7 @@ export function WelcomeSettingsClient({
                     disabled={!canEdit || !rid || formBusy}
                     onFile={(f) => void onUpload(idx, f)}
                   >
-                    {uploadingIdx === idx ? "Nahrávám…" : "Nahrát"}
+                    {uploadingIdx === idx ? t("admin.welcome.uploading") : t("admin.welcome.upload")}
                   </FilePickButton>
                   <button
                     type="button"
@@ -710,17 +776,17 @@ export function WelcomeSettingsClient({
                     disabled={!canEdit || !rid || formBusy}
                     onClick={() => void openMenuPicker(idx)}
                   >
-                    Vybrat z menu…
+                    {t("admin.welcome.pickFromMenu")}
                   </button>
                   <button type="button" className="chip" disabled={!canEdit || formBusy} onClick={() => removeSlot(idx)}>
-                    Odstranit řádek
+                    {t("admin.welcome.removeRow")}
                   </button>
                 </div>
               ))}
             </div>
             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" className="chip" disabled={!canEdit || imageUrls.length >= 6 || formBusy} onClick={addSlot}>
-                Přidat URL řádek
+                {t("admin.welcome.addRow")}
               </button>
               <button
                 type="button"
@@ -728,7 +794,7 @@ export function WelcomeSettingsClient({
                 disabled={!canEdit || !rid || formBusy}
                 onClick={() => void openMenuPicker(null)}
               >
-                Vybrat z fotek menu…
+                {t("admin.welcome.pickFromMenuPhotos")}
               </button>
             </div>
           </div>
@@ -746,9 +812,9 @@ export function WelcomeSettingsClient({
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <button type="button" className="btnPrimary" disabled={!canEdit || !rid || formBusy} onClick={() => void onSave()}>
-              {saving ? "Ukládám…" : "Uložit"}
+              {saving ? t("admin.welcome.saving") : t("admin.welcome.save")}
             </button>
-            <AdminChipLink href="/">Otevřít welcome ↗</AdminChipLink>
+            <AdminChipLink href="/">{t("admin.welcome.openWelcome")}</AdminChipLink>
           </div>
         </section>
 
@@ -759,7 +825,7 @@ export function WelcomeSettingsClient({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Vybrat fotku z menu"
+          aria-label={t("admin.welcome.pickerAria")}
           onClick={() => setMenuPickerOpen(false)}
           style={{
             position: "fixed",
@@ -786,17 +852,17 @@ export function WelcomeSettingsClient({
           >
             <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
               <div>
-                <div style={{ fontWeight: 800, fontSize: 16 }}>Vybrat fotku z menu</div>
+                <div style={{ fontWeight: 800, fontSize: 16 }}>{t("admin.welcome.pickerTitle")}</div>
                 <div className="textMuted2" style={{ marginTop: 4, fontSize: 13 }}>
-                  Kliknutím vložíte fotku do řádku #{pickerTargetIdx + 1} a uložíte.
+                  {t("admin.welcome.pickerHint", { n: pickerTargetIdx + 1 })}
                 </div>
               </div>
               <button type="button" className="chip" onClick={() => setMenuPickerOpen(false)}>
-                Zavřít
+                {t("admin.welcome.pickerClose")}
               </button>
             </div>
 
-            {menuPickerLoading ? <p className="textMuted2" style={{ marginTop: 12 }}>Načítám fotky…</p> : null}
+            {menuPickerLoading ? <p className="textMuted2" style={{ marginTop: 12 }}>{t("admin.welcome.pickerLoading")}</p> : null}
             {menuPickerErr ? (
               <p role="alert" style={{ color: "#fecaca", marginTop: 12 }}>
                 {menuPickerErr}
@@ -804,8 +870,11 @@ export function WelcomeSettingsClient({
             ) : null}
             {!menuPickerLoading && !menuPickerErr && menuImages.length === 0 ? (
               <p className="textMuted2" style={{ marginTop: 12 }}>
-                V menu zatím nejsou žádné uložené fotky. Nahrajte fotky u položek v{" "}
-                <a href={rid ? `/admin/restaurants/${encodeURIComponent(rid)}/menu` : "/admin/menu"}>Úpravy menu</a>.
+                {t("admin.welcome.pickerEmptyLead")}{" "}
+                <a href={rid ? `/admin/restaurants/${encodeURIComponent(rid)}/menu` : "/admin/menu"}>
+                  {t("admin.welcome.pickerMenuLink")}
+                </a>
+                .
               </p>
             ) : null}
 

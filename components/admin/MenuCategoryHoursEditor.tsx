@@ -4,6 +4,7 @@ import * as React from "react";
 
 import type { CategoryHours, CategoryScheduleSave } from "../../lib/menu/categoryHours";
 import { formatCategoryHoursLabel, isCategoryVisibleAtHhmm, normalizeHhmm } from "../../lib/menu/categoryHours";
+import { useAdminLanguage } from "./AdminLanguageProvider";
 
 type MenuCategoryHoursEditorProps = {
   categoryKey: string;
@@ -25,6 +26,7 @@ export function MenuCategoryHoursEditor({
   disabled,
   onSave,
 }: MenuCategoryHoursEditorProps) {
+  const { t } = useAdminLanguage();
   const [from, setFrom] = React.useState(alwaysVisible ? "" : (hours?.visibleFrom ?? ""));
   const [until, setUntil] = React.useState(alwaysVisible ? "" : (hours?.visibleUntil ?? ""));
   const [saving, setSaving] = React.useState(false);
@@ -100,7 +102,7 @@ export function MenuCategoryHoursEditor({
   return (
     <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
       {alwaysOn ? (
-        <span style={{ fontSize: 12, fontWeight: 800, color: "#86efac" }}>Pořád zapnuto</span>
+        <span style={{ fontSize: 12, fontWeight: 800, color: "#86efac" }}>{t("admin.hours.alwaysOn")}</span>
       ) : hours ? (
         <span
           style={{
@@ -110,7 +112,7 @@ export function MenuCategoryHoursEditor({
           }}
         >
           {formatCategoryHoursLabel(hours)}
-          {inWindow ? "" : " · teď mimo čas"}
+          {inWindow ? "" : t("admin.hours.outsideNow")}
         </span>
       ) : (
         <span
@@ -120,11 +122,11 @@ export function MenuCategoryHoursEditor({
             color: timedMenuActive ? "rgba(251, 191, 36, 0.95)" : "rgba(148, 163, 184, 0.95)",
           }}
         >
-          {timedMenuActive ? "základní · teď skryté" : "základní"}
+          {timedMenuActive ? t("admin.hours.basicHidden") : t("admin.hours.basic")}
         </span>
       )}
       <label style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-        Od
+        {t("admin.hours.from")}
         <input
           type="time"
           value={from}
@@ -135,7 +137,7 @@ export function MenuCategoryHoursEditor({
         />
       </label>
       <label style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12 }}>
-        Do
+        {t("admin.hours.until")}
         <input
           type="time"
           value={until}
@@ -155,13 +157,9 @@ export function MenuCategoryHoursEditor({
           skipBlurPersistRef.current = true;
         }}
         onClick={() => void saveAlways()}
-        title={
-          alwaysOn
-            ? "Vypnout Pořád — sekce se zase bude chovat jako základní nabídka"
-            : "Sekce bude vidět vždy, i během poledního menu"
-        }
+        title={alwaysOn ? t("admin.hours.alwaysOnTitle") : t("admin.hours.alwaysOffTitle")}
       >
-        {alwaysOn ? "Pořád ✓" : "Pořád"}
+        {alwaysOn ? t("admin.hours.alwaysOnBtn") : t("admin.hours.always")}
       </button>
     </div>
   );

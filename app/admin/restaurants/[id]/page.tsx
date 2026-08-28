@@ -1,11 +1,13 @@
 "use client";
 
-import { useParams, usePathname, useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 import { DevicesAdminClient } from "../../../../components/admin/DevicesAdminClient";
 import { StoryousSettingsClient } from "../../../../components/admin/StoryousSettingsClient";
 import { UsersAdminClient } from "../../../../components/admin/UsersAdminClient";
+import { useAdminLanguage } from "../../../../components/admin/AdminLanguageProvider";
 import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
+import { localeTag } from "../../../../lib/i18n/messages";
 import { Suspense } from "react";
 import * as React from "react";
 
@@ -41,10 +43,15 @@ function tabFromSearch(raw: string | null): TabId {
   return "overview";
 }
 
+function formatAdminDate(iso: string, locale: string): string {
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(localeTag(locale));
+}
+
 function RestaurantDetailInner() {
   const params = useParams<{ id: string }>();
-  const pathname = usePathname() ?? "";
   const searchParams = useSearchParams();
+  const { t, locale } = useAdminLanguage();
   const id = params?.id ?? "";
   const tab = tabFromSearch(searchParams.get("tab"));
 
@@ -118,11 +125,11 @@ function RestaurantDetailInner() {
       const dR = await fetch(`/api/admin/restaurants/${id}`, { cache: "no-store" });
       const dJ = (await dR.json()) as RestaurantDetailResponse;
       setDetail(dJ);
-      if (!dR.ok || !dJ.ok) setErr(!dR.ok ? "Nelze načíst detail restaurace." : ("error" in dJ ? dJ.error : "Chyba"));
+      if (!dR.ok || !dJ.ok) setErr(!dR.ok ? t("admin.overview.loadDetailErr") : ("error" in dJ ? dJ.error : t("admin.overview.genericErr")));
     } catch {
-      setErr("Nepodařilo se načíst data (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.overview.networkErr"));
     }
-  }, [id]);
+  }, [id, t]);
 
   React.useEffect(() => {
     void load();
@@ -136,19 +143,19 @@ function RestaurantDetailInner() {
       const r = await fetch(`/api/admin/restaurants/${encodeURIComponent(id)}/locales`, { cache: "no-store" });
       const j = (await r.json()) as RestaurantLocalesResponse;
       if (!r.ok || !j.ok) {
-        setLocalesErr("Nelze načíst jazykové nastavení restaurace.");
+        setLocalesErr(t("admin.overview.localesLoadErr"));
         setLocales(null);
         return;
       }
       setLocales(Array.isArray(j.locales) ? j.locales : []);
       setLocalesHasConfig(Boolean(j.hasConfig));
     } catch {
-      setLocalesErr("Nepodařilo se načíst jazykové nastavení (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setLocalesErr(t("admin.overview.localesLoadNetworkErr"));
       setLocales(null);
     } finally {
       setLocalesLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   React.useEffect(() => {
     if (tab !== "overview") return;
@@ -165,18 +172,18 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; configured?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setPinErr(j.error ?? "Nelze načíst stav servisního PIN.");
+        setPinErr(j.error ?? t("admin.overview.pinLoadErr"));
         setPinConfigured(null);
         return;
       }
       setPinConfigured(Boolean(j.configured));
     } catch {
-      setPinErr("Nepodařilo se načíst stav PIN (připojení).");
+      setPinErr(t("admin.overview.pinLoadNetworkErr"));
       setPinConfigured(null);
     } finally {
       setPinLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   React.useEffect(() => {
     if (tab !== "overview" || !isSuper) return;
@@ -199,18 +206,18 @@ function RestaurantDetailInner() {
         error?: string;
       };
       if (!r.ok || !j.ok) {
-        setRebootErr(j.error ?? "Nelze načíst čas údržbového restartu.");
+        setRebootErr(j.error ?? t("admin.overview.rebootLoadErr"));
         return;
       }
       setRebootHour(typeof j.hour === "number" ? j.hour : 4);
       setRebootMinute(typeof j.minute === "number" ? j.minute : 0);
       setRebootIsDefault(Boolean(j.isDefault));
     } catch {
-      setRebootErr("Nepodařilo se načíst čas restartu (připojení).");
+      setRebootErr(t("admin.overview.rebootLoadNetworkErr"));
     } finally {
       setRebootLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   React.useEffect(() => {
     if (tab !== "overview" || !isSuper) return;
@@ -223,11 +230,11 @@ function RestaurantDetailInner() {
     setRebootMsg(null);
     setRebootErr(null);
     if (!Number.isInteger(rebootHour) || rebootHour < 0 || rebootHour > 23) {
-      setRebootErr("Hodina musí být 0–23.");
+      setRebootErr(t("admin.overview.rebootHourInvalid"));
       return;
     }
     if (!Number.isInteger(rebootMinute) || rebootMinute < 0 || rebootMinute > 59) {
-      setRebootErr("Minuta musí být 0–59.");
+      setRebootErr(t("admin.overview.rebootMinuteInvalid"));
       return;
     }
     setRebootSaving(true);
@@ -245,17 +252,15 @@ function RestaurantDetailInner() {
         error?: string;
       };
       if (!r.ok || !j.ok) {
-        setRebootErr(j.error ?? "Uložení času restartu selhalo.");
+        setRebootErr(j.error ?? t("admin.overview.rebootSaveFailed"));
         return;
       }
       setRebootHour(typeof j.hour === "number" ? j.hour : rebootHour);
       setRebootMinute(typeof j.minute === "number" ? j.minute : rebootMinute);
       setRebootIsDefault(false);
-      setRebootMsg(
-        "Čas údržbového restartu uložen. Spárované tablety ho stáhnou při dalším pollu (~15 s) a naplánují AlarmManager.",
-      );
+      setRebootMsg(t("admin.overview.rebootSaved"));
     } catch {
-      setRebootErr("Nepodařilo se uložit čas restartu (připojení).");
+      setRebootErr(t("admin.overview.rebootSaveNetworkErr"));
     } finally {
       setRebootSaving(false);
     }
@@ -263,9 +268,7 @@ function RestaurantDetailInner() {
 
   const onRebootTabletsNow = async () => {
     if (!id) return;
-    const ok = window.confirm(
-      "Restartovat teď všechny spárované tablety této provozovny? Tablety s Device Owner a APK ≥ 1.20 se do ~15 s tiše restartují a vrátí do Host kiosku.",
-    );
+    const ok = window.confirm(t("admin.overview.rebootNowConfirm"));
     if (!ok) return;
     setRebootNowMsg(null);
     setRebootNowErr(null);
@@ -277,17 +280,17 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; devicesSignaled?: number; error?: string };
       if (!r.ok || !j.ok) {
-        setRebootNowErr(j.error ?? "Požadavek na restart selhal.");
+        setRebootNowErr(j.error ?? t("admin.overview.rebootNowFailed"));
         return;
       }
       const n = typeof j.devicesSignaled === "number" ? j.devicesSignaled : 0;
       setRebootNowMsg(
         n > 0
-          ? `Signál odeslán na ${n} tablet(ů). Restart do ~15 s (vyžaduje APK 1.20+).`
-          : "Žádná spárovaná zařízení — není co restartovat.",
+          ? t("admin.overview.rebootNowOk", { count: n })
+          : t("admin.overview.rebootNowNone"),
       );
     } catch {
-      setRebootNowErr("Nepodařilo se odeslat požadavek (připojení).");
+      setRebootNowErr(t("admin.overview.rebootNowNetworkErr"));
     } finally {
       setRebootNowing(false);
     }
@@ -301,11 +304,11 @@ function RestaurantDetailInner() {
     const pin = pinDraft.trim();
     const confirm = pinConfirm.trim();
     if (!/^\d{4,12}$/.test(pin)) {
-      setPinErr("PIN musí mít 4–12 číslic.");
+      setPinErr(t("admin.overview.pinInvalid"));
       return;
     }
     if (pin !== confirm) {
-      setPinErr("PIN a potvrzení se neshodují.");
+      setPinErr(t("admin.overview.pinMismatch"));
       return;
     }
     setPinSaving(true);
@@ -317,15 +320,15 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; configured?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setPinErr(j.error ?? "Uložení PIN selhalo.");
+        setPinErr(j.error ?? t("admin.overview.pinSaveFailed"));
         return;
       }
       setPinConfigured(true);
       setPinDraft("");
       setPinConfirm("");
-      setPinMsg("Servisní PIN uložen. Spárované tablety ho stáhnou při dalším pollu (~15 s).");
+      setPinMsg(t("admin.overview.pinSaved"));
     } catch {
-      setPinErr("Nepodařilo se uložit PIN (připojení).");
+      setPinErr(t("admin.overview.pinSaveNetworkErr"));
     } finally {
       setPinSaving(false);
     }
@@ -381,11 +384,11 @@ function RestaurantDetailInner() {
         setApiBaseDraft(j.apiBase || "");
       }
     } catch {
-      setDotyk({ ok: false, error: "Nepodařilo se načíst nastavení Dotykačky (zřejmě výpadek připojení)." });
+      setDotyk({ ok: false, error: t("admin.overview.dotykacka.loadNetworkErr") });
     } finally {
       setDotykLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   const loadBranchesFromDotykacka = React.useCallback(async () => {
     if (!id) return;
@@ -397,18 +400,18 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; branches?: { id: number; name: string }[]; error?: string };
       if (!r.ok || !j.ok) {
-        setBranchesErr(j.error ?? "Nepodařilo se načíst pobočky z Dotykačky.");
+        setBranchesErr(j.error ?? t("admin.overview.dotykacka.branchesLoadErr"));
         setBranchesFromApi(null);
         return;
       }
       setBranchesFromApi(Array.isArray(j.branches) ? j.branches : []);
     } catch {
-      setBranchesErr("Nepodařilo se načíst pobočky (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setBranchesErr(t("admin.overview.dotykacka.branchesNetworkErr"));
       setBranchesFromApi(null);
     } finally {
       setBranchesLoading(false);
     }
-  }, [id]);
+  }, [id, t]);
 
   React.useEffect(() => {
     if (tab !== "dotykacka" || !id) return;
@@ -489,13 +492,13 @@ function RestaurantDetailInner() {
       try {
         const parsed = JSON.parse(mapDraft.trim() || "{}") as unknown;
         if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-          setDotykMsg("Mapa produktů musí být platný JSON objekt.");
+          setDotykMsg(t("admin.overview.dotykacka.mapInvalid"));
           setDotykSaving(false);
           return;
         }
         mapObj = { ...(parsed as Record<string, unknown>) };
       } catch {
-        setDotykMsg("Mapa produktů musí být platný JSON objekt.");
+        setDotykMsg(t("admin.overview.dotykacka.mapInvalid"));
         setDotykSaving(false);
         return;
       }
@@ -503,7 +506,7 @@ function RestaurantDetailInner() {
       if (staffCallRaw) {
         const staffCallId = Number(staffCallRaw);
         if (!Number.isFinite(staffCallId)) {
-          setDotykMsg("ID produktu pro přivolání obsluhy musí být číslo (product id z Dotykačky).");
+          setDotykMsg(t("admin.overview.dotykacka.staffCallInvalid"));
           setDotykSaving(false);
           return;
         }
@@ -515,7 +518,7 @@ function RestaurantDetailInner() {
       if (billRequestRaw) {
         const billRequestId = Number(billRequestRaw);
         if (!Number.isFinite(billRequestId)) {
-          setDotykMsg("ID produktu pro žádost o platbu musí být číslo (product id z Dotykačky).");
+          setDotykMsg(t("admin.overview.dotykacka.billRequestInvalid"));
           setDotykSaving(false);
           return;
         }
@@ -527,7 +530,7 @@ function RestaurantDetailInner() {
       if (signalTableRaw) {
         const signalTableId = Number(signalTableRaw);
         if (!Number.isFinite(signalTableId)) {
-          setDotykMsg("ID stolu pro volání obsluhy musí být číslo (table id z Dotykačky).");
+          setDotykMsg(t("admin.overview.dotykacka.signalTableInvalid"));
           setDotykSaving(false);
           return;
         }
@@ -547,13 +550,13 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setDotykMsg(j.error ?? "Uložení selhalo.");
+        setDotykMsg(j.error ?? t("admin.overview.dotykacka.saveFailed"));
         return;
       }
-      setDotykMsg("Uloženo.");
+      setDotykMsg(t("admin.overview.dotykacka.saved"));
       await loadDotykacka();
     } catch {
-      setDotykMsg("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setDotykMsg(t("admin.overview.dotykacka.saveNetworkErr"));
     } finally {
       setDotykSaving(false);
     }
@@ -563,9 +566,7 @@ function RestaurantDetailInner() {
     if (!id || !dotyk || !dotyk.ok || !dotyk.hasRow) return;
     const nextDisabled = !dotyk.disabled;
     if (nextDisabled) {
-      const ok = window.confirm(
-        "Opravdu chcete odpojit Dotykačku?\n\nNebudou se odesílat objednávky do POS (Dotykačky), dokud ji znovu nezapnete.",
-      );
+      const ok = window.confirm(t("admin.overview.dotykacka.disableConfirm"));
       if (!ok) return;
     }
     setDotykToggleSaving(true);
@@ -578,13 +579,13 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setDotykMsg(j.error ?? "Změna stavu selhala.");
+        setDotykMsg(j.error ?? t("admin.overview.dotykacka.toggleFailed"));
         return;
       }
-      setDotykMsg(nextDisabled ? "Dotykačka odpojena (disabled)." : "Dotykačka znovu zapnuta.");
+      setDotykMsg(nextDisabled ? t("admin.overview.dotykacka.disabledMsg") : t("admin.overview.dotykacka.enabledMsg"));
       await loadDotykacka();
     } catch {
-      setDotykMsg("Změna se nezdařila (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setDotykMsg(t("admin.overview.dotykacka.toggleNetworkErr"));
     } finally {
       setDotykToggleSaving(false);
     }
@@ -595,7 +596,7 @@ function RestaurantDetailInner() {
     if (!id) return;
     const name = nameDraft.trim();
     if (!name || name.length > 200) {
-      setErr("Zadejte platný název (1–200 znaků).");
+      setErr(t("admin.overview.nameInvalid"));
       return;
     }
     setSavingName(true);
@@ -608,13 +609,13 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(j.error ?? "Uložení názvu selhalo.");
+        setErr(j.error ?? t("admin.overview.nameSaveFailed"));
         return;
       }
       await load();
       window.dispatchEvent(new Event("oa-restaurant-updated"));
     } catch {
-      setErr("Název se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.overview.nameSaveNetworkErr"));
     } finally {
       setSavingName(false);
     }
@@ -623,9 +624,7 @@ function RestaurantDetailInner() {
   const onDeleteRestaurant = async () => {
     if (!id || !detail?.ok) return;
     const label = detail.restaurant.name.trim() || id;
-    const ok = window.confirm(
-      `Opravdu trvale smazat provozovnu „${label}“?\n\nSmaže se Dotykačka, tablety, menu, fotky a uživatelské vazby v této restauraci. Uživatelské účty v systému zůstanou.\n\nTuto akci nelze vrátit.`,
-    );
+    const ok = window.confirm(t("admin.overview.deleteConfirm", { name: label }));
     if (!ok) return;
     setDeleting(true);
     setErr(null);
@@ -636,12 +635,12 @@ function RestaurantDetailInner() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(j.error ?? "Smazání provozovny selhalo.");
+        setErr(j.error ?? t("admin.overview.deleteFailed"));
         return;
       }
       window.location.href = "/admin/restaurants";
     } catch {
-      setErr("Smazání se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setErr(t("admin.overview.deleteNetworkErr"));
     } finally {
       setDeleting(false);
     }
@@ -649,16 +648,10 @@ function RestaurantDetailInner() {
 
   const name = detail && detail.ok ? detail.restaurant.name : id;
 
-  const tabHref = (t: TabId) => {
-    if (t === "overview") return pathname;
-    if (t === "menu") return `${pathname}/menu`;
-    return `${pathname}?tab=${t}`;
-  };
-
   if (tab === "menu") {
     return (
       <main className="adminPage">
-        <p className="textMuted">Přesměrování na menu provozovny…</p>
+        <p className="textMuted">{t("admin.overview.redirectMenu")}</p>
       </main>
     );
   }
@@ -666,7 +659,7 @@ function RestaurantDetailInner() {
   if (tab === "overview" && (!roleKnown || !isSuper)) {
     return (
       <main className="adminPage">
-        <p className="textMuted">Přesměrování…</p>
+        <p className="textMuted">{t("admin.overview.redirecting")}</p>
       </main>
     );
   }
@@ -675,28 +668,28 @@ function RestaurantDetailInner() {
     <main className="adminPage">
       {contextSync === "syncing" ? (
         <div className="adminRestaurantContextBar" role="status">
-          <span className="textMuted2">Načítám nastavení vaší restaurace…</span>
+          <span className="textMuted2">{t("admin.overview.contextLoading")}</span>
         </div>
       ) : null}
       {contextSync === "err" ? (
         <div className="adminRestaurantContextBar adminRestaurantContextBar--warn" role="alert">
-          Nepodařilo se načíst nastavení vaší restaurace. Zkuste obnovit stránku.
+          {t("admin.overview.contextErr")}
         </div>
       ) : null}
 
       <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
         <div>
           <p className="textMuted2" style={{ margin: "0 0 4px", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Nastavení restaurace
+            {t("admin.overview.eyebrow")}
           </p>
           <h1 style={{ margin: "0 0 6px", fontSize: "1.5rem" }}>{name}</h1>
           <p className="textMuted2" style={{ margin: 0, fontSize: 12, fontFamily: "ui-monospace, monospace", wordBreak: "break-all" }}>
-            ID: {id}
+            {t("admin.overview.idLabel", { id })}
           </p>
         </div>
         {tab === "overview" || tab === "dotykacka" || tab === "storyous" ? (
           <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
-            Obnovit
+            {t("admin.overview.refresh")}
           </button>
         ) : null}
       </div>
@@ -718,13 +711,13 @@ function RestaurantDetailInner() {
               background: "var(--panel)",
             }}
           >
-            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Název restaurace</h2>
+            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.overview.nameTitle")}</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
-              Stejný text se ukazuje hostům na úvodní stránce, v menu a v záhlaví.
+              {t("admin.overview.nameHint")}
             </p>
             <form onSubmit={(e) => void onSaveRestaurantName(e)} style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
               <label style={{ display: "grid", gap: 6, flex: "1 1 220px" }}>
-                <span>Název</span>
+                <span>{t("admin.overview.nameLabel")}</span>
                 <input
                   className="chip"
                   style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
@@ -735,7 +728,7 @@ function RestaurantDetailInner() {
                 />
               </label>
               <button type="submit" className="btnPrimary" disabled={savingName} style={{ cursor: "pointer" }}>
-                {savingName ? "…" : "Uložit"}
+                {savingName ? "…" : t("admin.overview.save")}
               </button>
             </form>
           </section>
@@ -750,10 +743,9 @@ function RestaurantDetailInner() {
               background: "var(--panel)",
             }}
           >
-            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Servisní PIN tabletu</h2>
+            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.overview.pinTitle")}</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
-              PIN pro dlouhý stisk na kiosk tabletu (Host → Admin). Z tabletu se měnit nedá — jen tady jako
-              superadmin. Dokud nenastavíš vlastní, tablety používají výchozí <code>2580</code>.
+              {t("admin.overview.pinHint", { defaultPin: "2580" })}
             </p>
             {pinLoading ? (
               <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
@@ -761,19 +753,19 @@ function RestaurantDetailInner() {
               </p>
             ) : (
               <p style={{ margin: "0 0 12px", fontSize: 13 }}>
-                Stav:{" "}
+                {t("admin.overview.pinStatus")}{" "}
                 {pinConfigured === true ? (
-                  <strong>vlastní PIN nastaven</strong>
+                  <strong>{t("admin.overview.pinConfigured")}</strong>
                 ) : pinConfigured === false ? (
-                  <span className="textMuted2">výchozí 2580</span>
+                  <span className="textMuted2">{t("admin.overview.pinDefault", { defaultPin: "2580" })}</span>
                 ) : (
-                  <span className="textMuted2">neznámý</span>
+                  <span className="textMuted2">{t("admin.overview.pinUnknown")}</span>
                 )}
               </p>
             )}
             <form onSubmit={(e) => void onSaveKioskPin(e)} style={{ display: "grid", gap: 12, maxWidth: 360 }}>
               <label style={{ display: "grid", gap: 6 }}>
-                <span>Nový PIN (4–12 číslic)</span>
+                <span>{t("admin.overview.pinNew")}</span>
                 <input
                   className="chip"
                   type="password"
@@ -792,7 +784,7 @@ function RestaurantDetailInner() {
                 />
               </label>
               <label style={{ display: "grid", gap: 6 }}>
-                <span>Potvrzení PIN</span>
+                <span>{t("admin.overview.pinConfirm")}</span>
                 <input
                   className="chip"
                   type="password"
@@ -811,7 +803,7 @@ function RestaurantDetailInner() {
                 />
               </label>
               <button type="submit" className="btnPrimary" disabled={pinSaving} style={{ cursor: "pointer", justifySelf: "start" }}>
-                {pinSaving ? "…" : "Uložit PIN"}
+                {pinSaving ? "…" : t("admin.overview.pinSave")}
               </button>
             </form>
             {pinMsg ? (
@@ -837,12 +829,9 @@ function RestaurantDetailInner() {
               background: "var(--panel)",
             }}
           >
-            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Údržbový restart tabletu</h2>
+            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.overview.rebootTitle")}</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
-              1× týdně v nastaveném <strong>místním čase tabletu</strong> Device Owner tiše restartuje
-              kiosk. Po restartu se vždy vrátí do Host zámku. Pokud byl tablet vypnutý, restart se
-              odloží na další výskyt tohoto času (nikdy dopoledne / přes den). Výchozí:{" "}
-              <code>04:00</code>.
+              {t("admin.overview.rebootHint", { defaultTime: "04:00" })}
             </p>
             {rebootLoading ? (
               <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
@@ -850,9 +839,9 @@ function RestaurantDetailInner() {
               </p>
             ) : (
               <p style={{ margin: "0 0 12px", fontSize: 13 }}>
-                Stav:{" "}
+                {t("admin.overview.rebootStatus")}{" "}
                 {rebootIsDefault ? (
-                  <span className="textMuted2">výchozí 04:00</span>
+                  <span className="textMuted2">{t("admin.overview.rebootDefault", { defaultTime: "04:00" })}</span>
                 ) : (
                   <strong>
                     {String(rebootHour).padStart(2, "0")}:{String(rebootMinute).padStart(2, "0")}
@@ -865,7 +854,7 @@ function RestaurantDetailInner() {
               style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "flex-end" }}
             >
               <label style={{ display: "grid", gap: 6 }}>
-                <span>Hodina (0–23)</span>
+                <span>{t("admin.overview.rebootHour")}</span>
                 <input
                   className="chip"
                   type="number"
@@ -885,7 +874,7 @@ function RestaurantDetailInner() {
                 />
               </label>
               <label style={{ display: "grid", gap: 6 }}>
-                <span>Minuta (0–59)</span>
+                <span>{t("admin.overview.rebootMinute")}</span>
                 <input
                   className="chip"
                   type="number"
@@ -905,7 +894,7 @@ function RestaurantDetailInner() {
                 />
               </label>
               <button type="submit" className="btnPrimary" disabled={rebootSaving} style={{ cursor: "pointer" }}>
-                {rebootSaving ? "…" : "Uložit čas"}
+                {rebootSaving ? "…" : t("admin.overview.rebootSave")}
               </button>
             </form>
             {rebootMsg ? (
@@ -928,8 +917,7 @@ function RestaurantDetailInner() {
               }}
             >
               <p className="textMuted2" style={{ margin: 0, fontSize: 13, lineHeight: 1.5 }}>
-                Manuální restart (test / údržba): pošle signál všem spárovaným tabletům. Ignoruje týdenní interval.
-                Vyžaduje Device Owner a APK 1.20+.
+                {t("admin.overview.rebootNowHint")}
               </p>
               <button
                 type="button"
@@ -938,7 +926,7 @@ function RestaurantDetailInner() {
                 onClick={() => void onRebootTabletsNow()}
                 style={{ cursor: rebootNowing ? "wait" : "pointer", justifySelf: "start" }}
               >
-                {rebootNowing ? "…" : "Restartovat tablety teď"}
+                {rebootNowing ? "…" : t("admin.overview.rebootNow")}
               </button>
               {rebootNowMsg ? (
                 <p role="status" style={{ margin: 0, fontSize: 13, color: "var(--success, #86efac)" }}>
@@ -956,9 +944,9 @@ function RestaurantDetailInner() {
 
           {detail && detail.ok ? (
             <section style={{ marginTop: 16 }}>
-              <h2 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>Údaje</h2>
+              <h2 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>{t("admin.overview.metaTitle")}</h2>
               <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
-                Vytvořeno: {detail.restaurant.createdAtIso}
+                {t("admin.overview.createdAt", { iso: formatAdminDate(detail.restaurant.createdAtIso, locale) })}
               </p>
             </section>
           ) : null}
@@ -972,13 +960,9 @@ function RestaurantDetailInner() {
               background: "var(--panel)",
             }}
           >
-            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Jazyky pro hosty</h2>
+            <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.overview.localesTitle")}</h2>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13, lineHeight: 1.55 }}>
-              Nastavení platí pro vaši restauraci. Ovlivňuje přepínač jazyka v menu. Překlady menu upravíte v záložce{" "}
-              <a href={tabHref("menu")} className="adminBreadcrumb__link">
-                Menu
-              </a>{" "}
-              → Překlady.
+              {t("admin.overview.localesHint")}
               {id ? (
                 <>
                   {" "}
@@ -987,14 +971,14 @@ function RestaurantDetailInner() {
                     href={`/admin/restaurants/${encodeURIComponent(id)}/menu/translations`}
                     className="adminBreadcrumb__link"
                   >
-                    otevřít překlady
+                    {t("admin.overview.localesOpenLink")}
                   </a>
                   ).
                 </>
               ) : null}
             </p>
 
-            {localesLoading ? <p className="textMuted">Načítání…</p> : null}
+            {localesLoading ? <p className="textMuted">{t("admin.overview.loading")}</p> : null}
             {localesErr ? (
               <p role="alert" style={{ color: "#fecaca", margin: "0 0 12px" }}>
                 {localesErr}
@@ -1019,13 +1003,13 @@ function RestaurantDetailInner() {
                       });
                       const j = (await r.json()) as { ok?: boolean; error?: string };
                       if (!r.ok || !j.ok) {
-                        setLocalesErr(j.error ?? "Uložení selhalo.");
+                        setLocalesErr(j.error ?? t("admin.overview.localesSaveFailed"));
                         return;
                       }
-                      setLocalesSavedMsg("Uloženo.");
+                      setLocalesSavedMsg(t("admin.overview.localesSaved"));
                       await loadLocales();
                     } catch {
-                      setLocalesErr("Uložení se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+                      setLocalesErr(t("admin.overview.localesSaveNetworkErr"));
                     } finally {
                       setLocalesSaving(false);
                     }
@@ -1067,8 +1051,8 @@ function RestaurantDetailInner() {
 
                 <p className="textMuted2" style={{ margin: 0, fontSize: 12 }}>
                   {localesHasConfig
-                    ? "Vaše restaurace má vlastní sadu jazyků (liší se od výchozí)."
-                    : "Zatím není uložené vlastní nastavení — aktuálně platí výchozí globální jazyky."}
+                    ? t("admin.overview.localesCustom")
+                    : t("admin.overview.localesDefault")}
                 </p>
 
                 {localesSavedMsg ? (
@@ -1078,7 +1062,7 @@ function RestaurantDetailInner() {
                 ) : null}
 
                 <button type="submit" className="btnPrimary" disabled={localesSaving} style={{ cursor: localesSaving ? "wait" : "pointer", justifySelf: "start" }}>
-                  {localesSaving ? "…" : "Uložit jazyky"}
+                  {localesSaving ? "…" : t("admin.overview.localesSave")}
                 </button>
               </form>
             ) : null}
@@ -1094,11 +1078,9 @@ function RestaurantDetailInner() {
                 background: "rgba(248, 113, 113, 0.06)",
               }}
             >
-              <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem", color: "#fecaca" }}>Smazat provozovnu</h2>
+              <h2 style={{ margin: "0 0 8px", fontSize: "1.1rem", color: "#fecaca" }}>{t("admin.overview.deleteTitle")}</h2>
               <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
-                Trvale odstraní provozovnu <strong>{detail.restaurant.name}</strong> včetně Dotykačky, tabletů, úprav menu a
-                fotek. Uživatelské účty (e-mail) v systému zůstanou — zmizí jen jejich vazba na tuto restauraci.
-                Provozovnu nastavenou jako <code style={{ fontSize: 12 }}>PUBLIC_RESTAURANT_ID</code> na serveru nelze smazat.
+                {t("admin.overview.deleteHint")}
               </p>
               <button
                 type="button"
@@ -1111,7 +1093,7 @@ function RestaurantDetailInner() {
                   color: "#fecaca",
                 }}
               >
-                {deleting ? "Mažu…" : "Smazat provozovnu"}
+                {deleting ? t("admin.overview.deleting") : t("admin.overview.deleteBtn")}
               </button>
             </section>
           ) : null}
@@ -1161,13 +1143,11 @@ function RestaurantDetailInner() {
             background: "var(--panel)",
           }}
         >
-          <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Dotykačka</h2>
+          <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.overview.dotykacka.title")}</h2>
           <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
-            <strong>Cloud ID</strong> identifikuje váš účet v Dotypos (číslo z OAuth). <strong>ID pobočky (branch)</strong> je
-            jiné číslo — konkrétní pobočka v tom cloudu, kde běží vaše pokladna. Nejprve OAuth, pak vyberte pobočku ze seznamu
-            nebo zadejte číslo ručně, a mapu produktů (jako dříve v <code style={{ fontSize: 12 }}>.env</code>).
+            {t("admin.overview.dotykacka.intro")}
           </p>
-          {dotykLoading ? <p className="textMuted">Načítání…</p> : null}
+          {dotykLoading ? <p className="textMuted">{t("admin.overview.loading")}</p> : null}
           {!dotykLoading && dotyk && !dotyk.ok ? (
             <p role="alert" style={{ color: "#fecaca" }}>
               {dotyk.error}
@@ -1176,33 +1156,37 @@ function RestaurantDetailInner() {
           {!dotykLoading && dotyk && dotyk.ok ? (
             <>
               <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13 }}>
-                Cloud ID: <strong>{dotyk.cloudId ?? "—"}</strong>
-                {dotyk.hasRefreshToken ? " · refresh token v databázi" : " · refresh token chybí — spusťte OAuth níže"}
+                {t("admin.overview.dotykacka.cloudId")} <strong>{dotyk.cloudId ?? "—"}</strong>
+                {dotyk.hasRefreshToken
+                  ? ` · ${t("admin.overview.dotykacka.tokenOk")}`
+                  : ` · ${t("admin.overview.dotykacka.tokenMissing")}`}
               </p>
               <div style={{ display: "grid", gap: 6, margin: "0 0 12px" }}>
                 <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
-                  Stav:{" "}
+                  {t("admin.overview.dotykacka.status")}{" "}
                   {dotyk.disabled ? (
-                    <strong style={{ color: "#fca5a5" }}>odpojeno (disabled)</strong>
+                    <strong style={{ color: "#fca5a5" }}>{t("admin.overview.dotykacka.statusDisabled")}</strong>
                   ) : dotyk.hasRefreshToken ? (
-                    <strong style={{ color: "var(--success)" }}>aktivní</strong>
+                    <strong style={{ color: "var(--success)" }}>{t("admin.overview.dotykacka.statusActive")}</strong>
                   ) : (
-                    <strong>nepřipojeno</strong>
+                    <strong>{t("admin.overview.dotykacka.statusDisconnected")}</strong>
                   )}
                   {dotyk.revokedAtIso ? (
                     <span className="textMuted2" style={{ marginLeft: 8 }}>
-                      (revoked: {dotyk.revokedAtIso})
+                      {t("admin.overview.dotykacka.revoked", { iso: formatAdminDate(dotyk.revokedAtIso, locale) })}
                     </span>
                   ) : null}
                 </p>
                 {dotyk.lastOkAtIso ? (
                   <p className="textMuted2" style={{ margin: 0, fontSize: 12 }}>
-                    Poslední OK: <span style={{ fontFamily: "ui-monospace, monospace" }}>{dotyk.lastOkAtIso}</span>
+                    {t("admin.overview.dotykacka.lastOk")}{" "}
+                    <span style={{ fontFamily: "ui-monospace, monospace" }}>{formatAdminDate(dotyk.lastOkAtIso, locale)}</span>
                   </p>
                 ) : null}
                 {dotyk.lastError ? (
                   <p role="alert" style={{ margin: 0, fontSize: 12, color: "#fecaca" }}>
-                    Poslední chyba: <span style={{ fontFamily: "ui-monospace, monospace" }}>{dotyk.lastError}</span>
+                    {t("admin.overview.dotykacka.lastError")}{" "}
+                    <span style={{ fontFamily: "ui-monospace, monospace" }}>{dotyk.lastError}</span>
                   </p>
                 ) : null}
               </div>
@@ -1212,7 +1196,7 @@ function RestaurantDetailInner() {
                   style={{ textDecoration: "none", display: "inline-block", padding: "8px 14px", borderRadius: 10 }}
                   href={`/api/integrations/dotykacka/connect?restaurantId=${encodeURIComponent(id)}`}
                 >
-                  Připojit Dotykačku (OAuth)
+                  {t("admin.overview.dotykacka.connect")}
                 </a>
                 {dotyk.hasRow ? (
                   <button
@@ -1225,12 +1209,12 @@ function RestaurantDetailInner() {
                     {dotykToggleSaving
                       ? "…"
                       : dotyk.disabled
-                        ? "Zapnout Dotykačku"
-                        : "Odpojit Dotykačku"}
+                        ? t("admin.overview.dotykacka.enable")
+                        : t("admin.overview.dotykacka.disable")}
                   </button>
                 ) : null}
                 <button type="button" className="chip" onClick={() => void loadDotykacka()} style={{ cursor: "pointer" }}>
-                  Obnovit stav
+                  {t("admin.overview.dotykacka.refreshStatus")}
                 </button>
                 {dotyk.hasRefreshToken ? (
                   <button
@@ -1240,7 +1224,9 @@ function RestaurantDetailInner() {
                     disabled={branchesLoading}
                     style={{ cursor: branchesLoading ? "wait" : "pointer" }}
                   >
-                    {branchesLoading ? "Načítám pobočky…" : "Znovu načíst seznam poboček"}
+                    {branchesLoading
+                      ? t("admin.overview.dotykacka.loadingBranches")
+                      : t("admin.overview.dotykacka.reloadBranches")}
                   </button>
                 ) : null}
               </div>
@@ -1251,11 +1237,11 @@ function RestaurantDetailInner() {
               ) : null}
               <form onSubmit={(e) => void onSaveDotykacka(e)} style={{ display: "grid", gap: 12 }}>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>ID pobočky (branch) — výběr z Dotykačky nebo ručně</span>
+                  <span>{t("admin.overview.dotykacka.branchLabel")}</span>
                   {branchesFromApi && branchesFromApi.length > 0 ? (
                     <select
                       className="chip"
-                      aria-label="Vyberte pobočku z Dotykačky"
+                      aria-label={t("admin.overview.dotykacka.branchAria")}
                       value={
                         branchesFromApi.some((b) => String(b.id) === branchDraft.trim()) ? branchDraft.trim() : ""
                       }
@@ -1272,24 +1258,24 @@ function RestaurantDetailInner() {
                         maxWidth: "100%",
                       }}
                     >
-                      <option value="">— vyberte pobočku nebo zadejte ID níže —</option>
+                      <option value="">{t("admin.overview.dotykacka.branchPlaceholderOption")}</option>
                       {branchesFromApi.map((b) => (
                         <option key={b.id} value={String(b.id)}>
-                          {b.name} (ID {b.id})
+                          {t("admin.overview.dotykacka.branchOption", { name: b.name, id: b.id })}
                         </option>
                       ))}
                     </select>
                   ) : branchesLoading ? (
                     <span className="textMuted" style={{ fontSize: 13 }}>
-                      Načítám seznam poboček…
+                      {t("admin.overview.dotykacka.loadingBranchesList")}
                     </span>
                   ) : branchesFromApi !== null && branchesFromApi.length === 0 && dotyk.hasRefreshToken ? (
                     <span className="textMuted" style={{ fontSize: 13 }}>
-                      API nevrátilo žádné pobočky — zadejte ID pobočky ručně (nebo zkuste znovu načíst).
+                      {t("admin.overview.dotykacka.branchesEmpty")}
                     </span>
                   ) : branchesFromApi === null && dotyk.hasRefreshToken && !branchesErr ? (
                     <span className="textMuted" style={{ fontSize: 13 }}>
-                      Seznam se načítá… pokud se neobjeví, použijte ruční pole nebo „Znovu načíst seznam poboček“.
+                      {t("admin.overview.dotykacka.branchesPending")}
                     </span>
                   ) : null}
                   <input
@@ -1298,59 +1284,56 @@ function RestaurantDetailInner() {
                     value={branchDraft}
                     onChange={(e) => setBranchDraft(e.target.value)}
                     inputMode="numeric"
-                    placeholder="číslo pobočky (branch), ne cloud ID"
+                    placeholder={t("admin.overview.dotykacka.branchPlaceholder")}
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Cloud ID je výše u OAuth; sem patří jen číslo pobočky, kam má chodit objednávka (pos-actions).
+                    {t("admin.overview.dotykacka.branchHint")}
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>Produkt „Přivolání obsluhy“ (product ID v Dotykačce)</span>
+                  <span>{t("admin.overview.dotykacka.staffCallLabel")}</span>
                   <input
                     className="chip"
                     style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
                     value={staffCallProductIdDraft}
                     onChange={(e) => setStaffCallProductIdDraft(e.target.value)}
                     inputMode="numeric"
-                    placeholder="např. 123456789 — skrytá položka 0 Kč"
+                    placeholder={t("admin.overview.dotykacka.staffCallPlaceholder")}
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    V Dotykačce založte produkt 0 Kč se štítkem <code>oa-volani</code>. Položka se zaúčtuje
-                    na účet stolu hosta (viditelné v pokladně). Uloží se jako <code>oa-staff-call</code>.
+                    {t("admin.overview.dotykacka.staffCallHint")}
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>Produkt „Žádost o platbu“ (product ID v Dotykačce)</span>
+                  <span>{t("admin.overview.dotykacka.billRequestLabel")}</span>
                   <input
                     className="chip"
                     style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
                     value={billRequestProductIdDraft}
                     onChange={(e) => setBillRequestProductIdDraft(e.target.value)}
                     inputMode="numeric"
-                    placeholder="např. 123456789 — skrytá položka 0 Kč"
+                    placeholder={t("admin.overview.dotykacka.billRequestPlaceholder")}
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Stejný princip: 0 Kč na účet stolu hosta, štítek <code>oa-volani</code>. Bez tohoto ID
-                    žádost o účet neodejde. Uloží se jako <code>oa-bill-request</code>.
+                    {t("admin.overview.dotykacka.billRequestHint")}
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>Stůl „Tableflow obsluha“ (table ID v Dotykačce)</span>
+                  <span>{t("admin.overview.dotykacka.signalTableLabel")}</span>
                   <input
                     className="chip"
                     style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
                     value={signalTableIdDraft}
                     onChange={(e) => setSignalTableIdDraft(e.target.value)}
                     inputMode="numeric"
-                    placeholder="ID stolu mimo účty hostů"
+                    placeholder={t("admin.overview.dotykacka.signalTablePlaceholder")}
                   />
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Teď se nepoužívá — volání jdou na účet hosta. Pole nechte prázdné, nebo vyplňte až při
-                    pozdějším přepnutí. Uloží se jako <code>oa-signal-table</code>.
+                    {t("admin.overview.dotykacka.signalTableHint")}
                   </span>
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>Mapa produktů (JSON: naše menu ID → číslo produktu v Dotyce)</span>
+                  <span>{t("admin.overview.dotykacka.mapLabel")}</span>
                   <textarea
                     className="chip"
                     style={{
@@ -1369,13 +1352,13 @@ function RestaurantDetailInner() {
                   />
                 </label>
                 <label style={{ display: "grid", gap: 6 }}>
-                  <span>Volitelně vlastní API base (prázdné = výchozí z .env nebo api.dotykacka.cz)</span>
+                  <span>{t("admin.overview.dotykacka.apiBaseLabel")}</span>
                   <input
                     className="chip"
                     style={{ padding: "10px 12px", border: "1px solid var(--border)", borderRadius: 10, background: "var(--bg-elevated)", color: "var(--text)" }}
                     value={apiBaseDraft}
                     onChange={(e) => setApiBaseDraft(e.target.value)}
-                    placeholder="https://api.dotykacka.cz"
+                    placeholder={t("admin.overview.dotykacka.apiBasePlaceholder")}
                   />
                 </label>
                 {dotykMsg ? (
@@ -1385,11 +1368,11 @@ function RestaurantDetailInner() {
                 ) : null}
                 <div>
                   <button type="submit" className="btnPrimary" disabled={dotykSaving || !dotyk.hasRow} style={{ cursor: dotykSaving || !dotyk.hasRow ? "not-allowed" : "pointer" }}>
-                    {dotykSaving ? "…" : "Uložit pobočku a mapu"}
+                    {dotykSaving ? "…" : t("admin.overview.dotykacka.save")}
                   </button>
                   {!dotyk.hasRow ? (
                     <span className="textMuted2" style={{ marginLeft: 10, fontSize: 13 }}>
-                      Nejprve dokončete OAuth.
+                      {t("admin.overview.dotykacka.oauthFirst")}
                     </span>
                   ) : null}
                 </div>
@@ -1403,9 +1386,10 @@ function RestaurantDetailInner() {
 }
 
 function RestaurantDetailFallback() {
+  const { t } = useAdminLanguage();
   return (
     <main className="adminPage">
-      <p className="textMuted">Načítání…</p>
+      <p className="textMuted">{t("admin.overview.loading")}</p>
     </main>
   );
 }

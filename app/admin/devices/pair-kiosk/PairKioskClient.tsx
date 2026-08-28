@@ -5,7 +5,7 @@ import * as React from "react";
 import { AdminChipLink } from "../../../../components/admin/AdminNavLink";
 import { publicMenuUrlFromAdmin } from "../../../../lib/admin/publicMenuPreviewUrl";
 
-import { tStaff } from "../../../../lib/i18n/tStaff";
+import { useAdminLanguage } from "../../../../components/admin/AdminLanguageProvider";
 
 type MePayload = {
   ok?: boolean;
@@ -27,6 +27,7 @@ export function PairKioskClient({
   restaurantId?: string | null;
   backHref?: string;
 }) {
+  const { t } = useAdminLanguage();
   const lockedRestaurantId = (restaurantIdProp ?? "").trim();
   const deviceFromWelcome = React.useMemo(
     () => (typeof initialDeviceId === "string" ? initialDeviceId.trim() : "").slice(0, 200),
@@ -61,18 +62,18 @@ export function PairKioskClient({
       const r = await fetch("/api/admin/dotykacka/tables", { cache: "no-store", credentials: "same-origin" });
       const j = (await r.json()) as { ok?: boolean; tables?: DotyTable[]; error?: string };
       if (!r.ok || !j.ok) {
-        setTablesErr(typeof j.error === "string" ? j.error : tStaff("admin.devices.pairKioskTablesErr"));
+        setTablesErr(typeof j.error === "string" ? j.error : t("admin.devices.pairKioskTablesErr"));
         setTables([]);
         return;
       }
       setTables(j.tables ?? []);
     } catch {
-      setTablesErr(tStaff("admin.devices.pairKioskTablesErr"));
+      setTablesErr(t("admin.devices.pairKioskTablesErr"));
       setTables([]);
     } finally {
       setTablesLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const applyActiveRestaurant = React.useCallback(
     async (rid: string) => {
@@ -85,12 +86,12 @@ export function PairKioskClient({
         body: JSON.stringify({ restaurantId: id }),
       });
       if (!r.ok) {
-        setTablesErr(tStaff("admin.devices.pairKioskSelectRestaurantErr"));
+        setTablesErr(t("admin.devices.pairKioskSelectRestaurantErr"));
         return;
       }
       await loadTables();
     },
-    [loadTables],
+    [loadTables, t],
   );
 
   React.useEffect(() => {
@@ -227,10 +228,10 @@ export function PairKioskClient({
       });
       const j = (await r.json()) as { ok?: boolean; error?: string; deviceId?: string };
       if (!r.ok || !j.ok) {
-        setErr(typeof j.error === "string" ? j.error : tStaff("admin.devices.bindErr"));
+        setErr(typeof j.error === "string" ? j.error : t("admin.devices.bindErr"));
         return;
       }
-      setMsg(tStaff("admin.devices.pairKioskSuccess"));
+      setMsg(t("admin.devices.pairKioskSuccess"));
       const did = typeof j.deviceId === "string" ? j.deviceId.trim() : "";
       setPairedDeviceId(did && did.length <= 200 ? did : deviceFromWelcome || null);
       setCode("");
@@ -238,7 +239,7 @@ export function PairKioskClient({
       setTableId("");
       setTableLabel("");
     } catch {
-      setErr(tStaff("admin.devices.bindErr"));
+      setErr(t("admin.devices.bindErr"));
     } finally {
       setSubmitting(false);
     }
@@ -261,7 +262,7 @@ export function PairKioskClient({
   if (meLoading) {
     return (
       <main className="adminPage">
-        <p className="textMuted">{tStaff("admin.devices.loading")}</p>
+        <p className="textMuted">{t("admin.devices.loading")}</p>
       </main>
     );
   }
@@ -278,38 +279,38 @@ export function PairKioskClient({
     const loginHref = `/admin/login?next=${encodeURIComponent(nextPair)}`;
     return (
       <main className="adminPage">
-        <h1 style={{ margin: "0 0 12px", fontSize: "1.35rem" }}>{tStaff("admin.devices.pairKioskTitle")}</h1>
+        <h1 style={{ margin: "0 0 12px", fontSize: "1.35rem" }}>{t("admin.devices.pairKioskTitle")}</h1>
         <p className="textMuted" style={{ marginBottom: 12 }}>
-          {tStaff("admin.devices.pairKioskLoginHint")}
+          {t("admin.devices.pairKioskLoginHint")}
         </p>
         {deviceFromWelcome ? (
           <p className="textMuted" style={{ marginBottom: 16, fontSize: 14, lineHeight: 1.5 }}>
-            {tStaff("admin.devices.pairKioskFromQrHint")}
+            {t("admin.devices.pairKioskFromQrHint")}
           </p>
         ) : null}
-        <AdminChipLink href={loginHref}>{tStaff("admin.devices.pairKioskLoginCta")}</AdminChipLink>
+        <AdminChipLink href={loginHref}>{t("admin.devices.pairKioskLoginCta")}</AdminChipLink>
       </main>
     );
   }
 
   return (
     <main className="adminPage">
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{tStaff("admin.devices.pairKioskTitle")}</h1>
+      <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{t("admin.devices.pairKioskTitle")}</h1>
       <p className="textMuted" style={{ margin: "0 0 20px", maxWidth: 56 * 16, lineHeight: 1.55 }}>
-        {tStaff("admin.devices.pairKioskSubtitle")}
+        {t("admin.devices.pairKioskSubtitle")}
       </p>
 
       {deviceFromWelcome ? (
         <p className="textMuted2" style={{ margin: "-8px 0 16px", fontSize: 13, lineHeight: 1.5, wordBreak: "break-all" }}>
-          {tStaff("admin.devices.pairKioskDeviceLinked")}: <code>{deviceFromWelcome}</code>
+          {t("admin.devices.pairKioskDeviceLinked")}: <code>{deviceFromWelcome}</code>
         </p>
       ) : null}
 
       <div style={{ display: "flex", gap: 10, marginBottom: 20, flexWrap: "wrap" }}>
-        <AdminChipLink href={devicesBackHref}>← {tStaff("admin.devices.title")}</AdminChipLink>
+        <AdminChipLink href={devicesBackHref}>← {t("admin.devices.title")}</AdminChipLink>
         {pairedDeviceId ? (
           <AdminChipLink href={publicMenuUrlFromAdmin({ deviceId: pairedDeviceId })}>
-            Otevřít kiosk menu →
+            {t("admin.devices.openKioskMenu")}
           </AdminChipLink>
         ) : null}
       </div>
@@ -330,7 +331,7 @@ export function PairKioskClient({
         {isSuper && !lockedRestaurantId && restaurants && restaurants.length > 0 ? (
           <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             <span className="textMuted2" style={{ fontSize: 13 }}>
-              {tStaff("admin.devices.pairKioskRestaurant")}
+              {t("admin.devices.pairKioskRestaurant")}
             </span>
             <select
               className="chip"
@@ -344,7 +345,7 @@ export function PairKioskClient({
                 color: "var(--text)",
               }}
             >
-              <option value="">{tStaff("admin.devices.pairKioskRestaurantPlaceholder")}</option>
+              <option value="">{t("admin.devices.pairKioskRestaurantPlaceholder")}</option>
               {restaurants.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
@@ -356,13 +357,13 @@ export function PairKioskClient({
 
         {!isSuper && !me.activeRestaurantId ? (
           <p role="alert" style={{ color: "#fecaca", margin: 0 }}>
-            {tStaff("admin.devices.pairKioskNoActiveRestaurant")}
+            {t("admin.devices.pairKioskNoActiveRestaurant")}
           </p>
         ) : null}
 
         <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           <span className="textMuted2" style={{ fontSize: 13 }}>
-            {tStaff("admin.devices.pairKioskCode")}
+            {t("admin.devices.pairKioskCode")}
           </span>
           <input
             className="chip"
@@ -388,9 +389,9 @@ export function PairKioskClient({
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="textMuted2" style={{ fontSize: 13 }}>
-            {tStaff("admin.devices.pairKioskTableFromDoty")}
+            {t("admin.devices.pairKioskTableFromDoty")}
           </span>
-          {tablesLoading ? <p className="textMuted" style={{ margin: 0 }}>{tStaff("admin.devices.loading")}</p> : null}
+          {tablesLoading ? <p className="textMuted" style={{ margin: 0 }}>{t("admin.devices.loading")}</p> : null}
           {!tablesLoading && tablesErr ? (
             <p role="alert" style={{ color: "#fecaca", margin: 0, fontSize: 14 }}>
               {tablesErr}
@@ -409,18 +410,18 @@ export function PairKioskClient({
                 color: "var(--text)",
               }}
             >
-              <option value="">{tStaff("admin.devices.pairKioskTablePlaceholder")}</option>
+              <option value="">{t("admin.devices.pairKioskTablePlaceholder")}</option>
               {tables.map((t) => (
                 <option key={t.id} value={String(t.id)}>
                   {t.name} (id {t.id})
                 </option>
               ))}
-              <option value="__manual__">{tStaff("admin.devices.pairKioskTableManualOption")}</option>
+              <option value="__manual__">{t("admin.devices.pairKioskTableManualOption")}</option>
             </select>
           ) : null}
           {!tablesLoading && !tablesErr && tables && tables.length === 0 && restaurantId ? (
             <p className="textMuted" style={{ margin: 0, fontSize: 14 }}>
-              {tStaff("admin.devices.pairKioskNoTables")}
+              {t("admin.devices.pairKioskNoTables")}
             </p>
           ) : null}
         </div>
@@ -429,7 +430,7 @@ export function PairKioskClient({
           <div style={{ display: "grid", gap: 10 }}>
             <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="textMuted2" style={{ fontSize: 13 }}>
-                {tStaff("admin.devices.bindTableId")}
+                {t("admin.devices.bindTableId")}
               </span>
               <input
                 className="chip"
@@ -446,7 +447,7 @@ export function PairKioskClient({
             </label>
             <label style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <span className="textMuted2" style={{ fontSize: 13 }}>
-                {tStaff("admin.devices.bindTableLabel")}
+                {t("admin.devices.bindTableLabel")}
               </span>
               <input
                 className="chip"
@@ -481,7 +482,7 @@ export function PairKioskClient({
           disabled={submitting || !canSubmit}
           style={{ cursor: submitting || !canSubmit ? "not-allowed" : "pointer", alignSelf: "flex-start" }}
         >
-          {submitting ? tStaff("admin.devices.pairKioskSubmitting") : tStaff("admin.devices.pairKioskSubmit")}
+          {submitting ? t("admin.devices.pairKioskSubmitting") : t("admin.devices.pairKioskSubmit")}
         </button>
       </form>
     </main>

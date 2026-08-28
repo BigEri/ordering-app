@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { useAdminLanguage } from "../../components/admin/AdminLanguageProvider";
 import { useAdminShellBootstrap } from "../../components/admin/AdminShellContext";
 
 type MeResponse =
@@ -20,7 +21,8 @@ type MeResponse =
  */
 export default function AdminHomeRedirectPage() {
   const bootstrap = useAdminShellBootstrap();
-  const [msg, setMsg] = React.useState("Načítám…");
+  const { t } = useAdminLanguage();
+  const [msg, setMsg] = React.useState(() => t("admin.shell.loading"));
 
   React.useEffect(() => {
     let cancelled = false;
@@ -50,15 +52,15 @@ export default function AdminHomeRedirectPage() {
           window.location.replace(`/admin/restaurants/${encodeURIComponent(rid)}/menu`);
           return;
         }
-        setMsg("Nemáte přiřazenou provozovnu. Kontaktujte administrátora.");
+        setMsg(t("admin.shell.noRestaurant"));
       } catch {
-        if (!cancelled) setMsg("Nepodařilo se načíst účet. Obnovte stránku.");
+        if (!cancelled) setMsg(t("admin.shell.loadAccountFailed"));
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [bootstrap]);
+  }, [bootstrap, t]);
 
   return (
     <main className="adminPage">

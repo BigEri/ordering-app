@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminRedirecting } from "../../../components/admin/AdminRedirecting";
 import * as React from "react";
 
 /**
@@ -28,8 +29,6 @@ export default function AdminMenuRedirectPage() {
   }, []);
 
   return (
-    <main className="adminPage">
-      <p className="textMuted">Přesměrování na menu provozovny…</p>
-    </main>
+    <AdminRedirecting messageKey="admin.overview.redirectMenu" />
   );
 }

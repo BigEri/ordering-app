@@ -7,14 +7,14 @@ export type RestaurantWorkspaceSection =
   | "dotykacka"
   | "storyous";
 
-export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; label: string }[] = [
-  { id: "overview", label: "Přehled" },
-  { id: "menu", label: "Menu" },
-  { id: "users", label: "Uživatelé" },
-  { id: "devices", label: "Zařízení" },
-  { id: "welcome", label: "Úvodní obrazovka" },
-  { id: "dotykacka", label: "Dotykačka" },
-  { id: "storyous", label: "Storyous" },
+export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; labelKey: string }[] = [
+  { id: "overview", labelKey: "admin.nav.overview" },
+  { id: "menu", labelKey: "admin.nav.menu" },
+  { id: "users", labelKey: "admin.nav.users" },
+  { id: "devices", labelKey: "admin.nav.devices" },
+  { id: "welcome", labelKey: "admin.nav.welcome" },
+  { id: "dotykacka", labelKey: "admin.nav.dotykacka" },
+  { id: "storyous", labelKey: "admin.nav.storyous" },
 ];
 
 /** Vedoucí nevidí Přehled (název, jazyky, PIN, restart, mazání) — jen SUPER_ADMIN. */

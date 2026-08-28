@@ -3122,6 +3122,49 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   padding: 4px 4px 8px;
 }
 
+.adminShell__brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.adminLangMenu__btn {
+  width: auto;
+  min-width: auto;
+  height: 32px;
+  padding: 4px 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  background: transparent;
+}
+
+.adminLangMenu__btn .topbarLangFlagSvg--cz,
+.adminLangMenu__btn .topbarLangFlagSvg--gb {
+  width: 24px;
+}
+
+.adminLangMenu__btn .topbarLangFlagSvg--cz {
+  height: 16px;
+}
+
+.adminLangMenu__btn .topbarLangFlagSvg--gb {
+  height: 12px;
+}
+
+.adminLangMenu__dropdown {
+  z-index: 30;
+}
+
+.adminLoginLang {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .adminShell__brandTitle {
   font-weight: 800;
   font-size: 1.1rem;

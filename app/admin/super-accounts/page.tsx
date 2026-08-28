@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { useAdminLanguage } from "../../../components/admin/AdminLanguageProvider";
+
 type SuperUsersResponse =
   | {
       ok: true;
@@ -11,6 +13,7 @@ type SuperUsersResponse =
   | { ok: false; error: string };
 
 export default function SuperAccountsPage() {
+  const { t } = useAdminLanguage();
   const [data, setData] = React.useState<SuperUsersResponse | null>(null);
   const [err, setErr] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
@@ -27,14 +30,14 @@ export default function SuperAccountsPage() {
       const j = (await r.json()) as SuperUsersResponse;
       setData(j);
       if (!r.ok || !j.ok) {
-        setErr(!r.ok ? "Nepodařilo se načíst SUPER účty." : "error" in j ? j.error : "Chyba");
+        setErr(!r.ok ? t("admin.super.loadErr") : "error" in j ? (j.error ?? t("admin.super.genericErr")) : t("admin.super.genericErr"));
       }
     } catch {
-      setErr("Nepodařilo se načíst SUPER účty (připojení).");
+      setErr(t("admin.super.loadNetworkErr"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     void load();
@@ -44,7 +47,7 @@ export default function SuperAccountsPage() {
     setMsg(null);
     setErr(null);
     if (resetNewPassword.length < 8) {
-      setErr("Heslo musí mít aspoň 8 znaků.");
+      setErr(t("admin.super.passwordTooShort"));
       return;
     }
     setResettingId(userId);
@@ -57,14 +60,14 @@ export default function SuperAccountsPage() {
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(j.error ?? "Reset hesla selhal.");
+        setErr(j.error ?? t("admin.super.resetFailed"));
         return;
       }
-      setMsg(`Heslo pro ${email} bylo změněno.`);
+      setMsg(t("admin.super.resetOk", { email }));
       setResetOpenId(null);
       setResetNewPassword("");
     } catch {
-      setErr("Reset hesla selhal (připojení).");
+      setErr(t("admin.super.resetNetworkErr"));
     } finally {
       setResettingId(null);
     }
@@ -72,13 +75,12 @@ export default function SuperAccountsPage() {
 
   return (
     <main className="adminPage">
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>SUPER účty</h1>
+      <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{t("admin.super.title")}</h1>
       <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
-        Globální administrátoři Tableflow. Tady můžeš resetovat heslo jinému SUPER účtu (záloha, když se
-        zamkneš).
+        {t("admin.super.subtitle")}
       </p>
 
-      {loading ? <p className="textMuted">Načítám…</p> : null}
+      {loading ? <p className="textMuted">{t("admin.super.loading")}</p> : null}
       {err ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
           {err}
@@ -95,9 +97,9 @@ export default function SuperAccountsPage() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
             <thead>
               <tr style={{ background: "var(--panel)" }}>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>Email</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>Vytvořeno</th>
-                <th style={{ textAlign: "right", padding: "10px 12px", width: 280 }}>Akce</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.super.colEmail")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.super.colCreated")}</th>
+                <th style={{ textAlign: "right", padding: "10px 12px", width: 280 }}>{t("admin.super.colActions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -107,7 +109,7 @@ export default function SuperAccountsPage() {
                     <strong>{u.email}</strong>
                     {u.isMe ? (
                       <span className="textMuted2" style={{ marginLeft: 8, fontSize: 12 }}>
-                        (já)
+                        {t("admin.super.me")}
                       </span>
                     ) : null}
                   </td>
@@ -128,7 +130,7 @@ export default function SuperAccountsPage() {
                           setResetNewPassword("");
                         }}
                       >
-                        {resetOpenId === u.id ? "Zrušit" : "Reset hesla"}
+                        {resetOpenId === u.id ? t("admin.super.cancel") : t("admin.super.resetPassword")}
                       </button>
                       {resetOpenId === u.id ? (
                         <>
@@ -136,7 +138,7 @@ export default function SuperAccountsPage() {
                             type="password"
                             value={resetNewPassword}
                             onChange={(e) => setResetNewPassword(e.target.value)}
-                            placeholder="Nové heslo (min. 8)"
+                            placeholder={t("admin.super.resetPlaceholder")}
                             autoComplete="new-password"
                             className="chip"
                             style={{
@@ -155,7 +157,7 @@ export default function SuperAccountsPage() {
                             style={{ cursor: "pointer" }}
                             onClick={() => void onReset(u.id, u.email)}
                           >
-                            {resettingId === u.id ? "…" : "Uložit"}
+                            {resettingId === u.id ? "…" : t("admin.super.save")}
                           </button>
                         </>
                       ) : null}
@@ -170,7 +172,7 @@ export default function SuperAccountsPage() {
 
       <p style={{ marginTop: 16 }}>
         <a href="/admin/restaurants" className="adminBreadcrumb__link">
-          ← Zpět na provozovny
+          {t("admin.super.backRestaurants")}
         </a>
       </p>
     </main>

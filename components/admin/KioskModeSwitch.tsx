@@ -5,9 +5,11 @@ import * as React from "react";
 import { isKioskWebView } from "../../lib/kiosk/isKioskWebView";
 
 import { KioskModeChooserModal } from "../kiosk/KioskModeChooserModal";
+import { useAdminLanguage } from "./AdminLanguageProvider";
 
 /** V kiosk APK na přihlášení: přepnutí mezi režimem Host a Admin. */
 export function KioskModeSwitch() {
+  const { t } = useAdminLanguage();
   const [kiosk, setKiosk] = React.useState(false);
   const [open, setOpen] = React.useState(false);
 
@@ -28,12 +30,9 @@ export function KioskModeSwitch() {
         background: "var(--panel)",
       }}
     >
-      <p style={{ margin: "0 0 10px", fontSize: 14, lineHeight: 1.45 }}>
-        Tablet je v režimu <strong>Admin</strong>. Pro hosty a objednávání přepněte na režim kiosk (host), nebo znovu
-        zvolte režim tabletu.
-      </p>
+      <p style={{ margin: "0 0 10px", fontSize: 14, lineHeight: 1.45 }}>{t("admin.kiosk.adminHint")}</p>
       <button type="button" className="chip" onClick={() => setOpen(true)} style={{ cursor: "pointer" }}>
-        Zvolit režim tabletu (Host / Admin)
+        {t("admin.kiosk.chooseMode")}
       </button>
       <KioskModeChooserModal open={open} onClose={() => setOpen(false)} />
     </section>

@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 
 import { SyncActiveRestaurantCookie } from "../../../../../components/admin/SyncActiveRestaurantCookie";
+import { ADMIN_LOCALE_COOKIE, normalizeAdminLocale } from "../../../../../lib/i18n/adminLocale";
+import { tAdmin } from "../../../../../lib/i18n/tAdmin";
 import { fetchRestaurantMenu } from "../../../../../lib/menu/fetchRestaurantMenu";
 import { applyMenuItemOverrides } from "../../../../../lib/dotykacka/menuItemOverrides";
 import { resolveAdminRestaurantPageAccess } from "../../../../../lib/server/adminRestaurantPageAccess";
@@ -21,25 +23,26 @@ export default async function RestaurantMenuEditorPage({
   const access = await resolveAdminRestaurantPageAccess(idRaw);
 
   if (!access.ok) {
+    const locale = normalizeAdminLocale((await cookies()).get(ADMIN_LOCALE_COOKIE)?.value);
     const title =
       access.error === "unauthorized"
-        ? "Přihlaste se"
+        ? tAdmin(locale, "admin.editor.access.unauthorizedTitle")
         : access.error === "forbidden"
-          ? "Nemáte přístup"
-          : "Provozovna nenalezena";
+          ? tAdmin(locale, "admin.editor.access.forbiddenTitle")
+          : tAdmin(locale, "admin.editor.access.notFoundTitle");
     const body =
       access.error === "unauthorized"
-        ? "Pro úpravy menu se přihlaste do administrace."
+        ? tAdmin(locale, "admin.editor.access.unauthorizedBody")
         : access.error === "forbidden"
-          ? "K této provozovně nemáte oprávnění upravovat menu."
-          : "Tato provozovna neexistuje.";
+          ? tAdmin(locale, "admin.editor.access.forbiddenBody")
+          : tAdmin(locale, "admin.editor.access.notFoundBody");
     return (
       <main className="adminPage">
         <h1 style={{ fontSize: "1.25rem", marginBottom: "0.75rem" }}>{title}</h1>
         <p style={{ lineHeight: 1.5 }}>{body}</p>
         <p>
           <a href="/admin" className="adminBreadcrumb__link">
-            ← Zpět do adminu
+            {tAdmin(locale, "admin.editor.access.backAdmin")}
           </a>
         </p>
       </main>

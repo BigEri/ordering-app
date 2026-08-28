@@ -28,6 +28,8 @@ import type { MenuTextOverridesForLocale } from "../../lib/menu/menuTextOverride
 import type { MenuIngredientOverridesForLocale } from "../../lib/menu/menuIngredientOverridesTypes";
 import { usePosTableFields } from "../../components/DeviceTableProvider";
 import { useLanguage } from "../../components/LanguageProvider";
+import { useAdminLanguage } from "../../components/admin/AdminLanguageProvider";
+import { localeTag } from "../../lib/i18n/messages";
 import { useMenuCart, type MenuCartState } from "../../components/MenuCartProvider";
 import { useOrders } from "../../components/OrdersProvider";
 import { requestTableBillSyncBurst } from "../../lib/client/tableBillSync";
@@ -116,28 +118,31 @@ type MenuBrowseClientProps = {
   menuSource?: RestaurantMenuSource | null;
 };
 
-function posRefreshCopy(source: RestaurantMenuSource | null | undefined) {
+function posRefreshCopy(
+  source: RestaurantMenuSource | null | undefined,
+  tAdminUi: (key: string, vars?: Record<string, string | number>) => string,
+) {
   if (source === "storyous") {
     return {
-      button: "Obnovit ze Storyous",
-      title: "Stáhne aktuální menu ze Storyous a obnoví tablety provozovny.",
-      fail: "Obnovení menu ze Storyous se nezdařilo.",
-      prefetchFail: (err: string) => `Cache zrušena, ale Storyous vrátil chybu: ${err}`,
+      button: tAdminUi("admin.editor.refresh.storyous"),
+      title: tAdminUi("admin.editor.refresh.storyousTitle"),
+      fail: tAdminUi("admin.editor.refresh.storyousFail"),
+      prefetchFail: (err: string) => tAdminUi("admin.editor.refresh.storyousPrefetchFail", { err }),
     };
   }
   if (source === "dotykacka") {
     return {
-      button: "Obnovit z Dotykačky",
-      title: "Stáhne aktuální menu z Dotykačky a obnoví tablety provozovny.",
-      fail: "Obnovení menu z Dotykačky se nezdařilo.",
-      prefetchFail: (err: string) => `Cache zrušena, ale Dotykačka vrátila chybu: ${err}`,
+      button: tAdminUi("admin.editor.refresh.dotykacka"),
+      title: tAdminUi("admin.editor.refresh.dotykackaTitle"),
+      fail: tAdminUi("admin.editor.refresh.dotykackaFail"),
+      prefetchFail: (err: string) => tAdminUi("admin.editor.refresh.dotykackaPrefetchFail", { err }),
     };
   }
   return {
-    button: "Obnovit z pokladny",
-    title: "Stáhne aktuální menu z pokladny a obnoví tablety provozovny.",
-    fail: "Obnovení menu z pokladny se nezdařilo.",
-    prefetchFail: (err: string) => `Cache zrušena, ale stažení z pokladny selhalo: ${err}`,
+    button: tAdminUi("admin.editor.refresh.pos"),
+    title: tAdminUi("admin.editor.refresh.posTitle"),
+    fail: tAdminUi("admin.editor.refresh.posFail"),
+    prefetchFail: (err: string) => tAdminUi("admin.editor.refresh.posPrefetchFail", { err }),
   };
 }
 
@@ -197,6 +202,7 @@ export function MenuBrowseClient({
     needsPairing,
   } = usePosTableFields();
   const { locale, t, availableLocales } = useLanguage();
+  const { t: tAdminUi, locale: adminLocale } = useAdminLanguage();
   const menuLocale = (locale === "cs" || locale === "en" || locale === "ko" ? locale : "cs") as "cs" | "en" | "ko";
   const [added, setAdded] = React.useState<string | null>(null);
   // Pravý sloupec košíku držíme otevřený, ať je pořád vidět, co se bude objednávat.
@@ -391,14 +397,14 @@ export function MenuBrowseClient({
 
   const canEditMenu = menuVariant === "editor" && Boolean(restaurantId && editorStatus?.canEdit);
 
-  const posRefresh = posRefreshCopy(menuSource);
+  const posRefresh = posRefreshCopy(menuSource, tAdminUi);
 
   const onRefreshDotykackaMenu = React.useCallback(async () => {
     if (!restaurantId || dotykackaRefreshLoading) return;
     setDotykackaRefreshMsg(null);
     setMenuEditorErr(null);
     setDotykackaRefreshLoading(true);
-    const copy = posRefreshCopy(menuSource);
+    const copy = posRefreshCopy(menuSource, tAdminUi);
     try {
       const r = await fetch("/api/admin/menu/refresh-from-dotykacka", {
         method: "POST",
@@ -423,7 +429,9 @@ export function MenuBrowseClient({
       } else {
         const sec = typeof j.sectionCount === "number" ? j.sectionCount : "?";
         const dev = typeof j.devicesNotified === "number" ? j.devicesNotified : 0;
-        setDotykackaRefreshMsg(`Menu obnoveno (${sec} sekcí). ${dev} tablet(ů) dostane signál k obnovení.`);
+        setDotykackaRefreshMsg(
+          tAdminUi("admin.editor.refreshOk", { sections: String(sec), devices: String(dev) }),
+        );
       }
       router.refresh();
     } catch {
@@ -431,7 +439,7 @@ export function MenuBrowseClient({
     } finally {
       setDotykackaRefreshLoading(false);
     }
-  }, [restaurantId, dotykackaRefreshLoading, router, menuSource]);
+  }, [restaurantId, dotykackaRefreshLoading, router, menuSource, tAdminUi]);
 
   React.useEffect(() => {
     if (menuVariant !== "editor" || !restaurantId || !editorStatus) return;
@@ -451,7 +459,7 @@ export function MenuBrowseClient({
         };
         if (cancelled) return;
         if (!r.ok || !j.ok) {
-          setMenuImagesHealthErr(j.error ?? "Nelze ověřit externí URL obrázků v menu.");
+          setMenuImagesHealthErr(j.error ?? tAdminUi("admin.editor.imagesHealthErr"));
           setBrokenMenuImageUrls([]);
           setMenuImagesHealthCheckedAtIso(new Date().toISOString());
           setMenuImagesHealthCheckedCount(null);
@@ -467,7 +475,7 @@ export function MenuBrowseClient({
         setMenuImagesHealthCheckedCount(typeof j.checkedCount === "number" ? j.checkedCount : null);
       } catch {
         if (cancelled) return;
-        setMenuImagesHealthErr("Nepodařilo se ověřit externí odkazy na obrázky (zřejmě výpadek připojení).");
+        setMenuImagesHealthErr(tAdminUi("admin.editor.imagesHealthNetworkErr"));
         setBrokenMenuImageUrls([]);
         setMenuImagesHealthCheckedAtIso(new Date().toISOString());
         setMenuImagesHealthCheckedCount(null);
@@ -478,7 +486,7 @@ export function MenuBrowseClient({
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [menuVariant, restaurantId, editorStatus]);
+  }, [menuVariant, restaurantId, editorStatus, tAdminUi]);
 
   const displaySections = React.useMemo(() => {
     const base = !restaurantId ? sections : applyMenuOverrides(sections, overrides.images, overrides.orderByCategory);
@@ -537,7 +545,7 @@ export function MenuBrowseClient({
         });
         const j = (await r.json()) as { ok?: boolean; error?: string };
         if (!r.ok || !j.ok) {
-          setMenuEditorErr(j.error ?? "Uložení viditelnosti selhalo.");
+          setMenuEditorErr(j.error ?? tAdminUi("admin.editor.visibilitySaveFailed"));
           // Re-sync from server.
           const rr = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
           const jo = (await rr.json()) as { ok?: boolean; images?: Record<string, string>; orderByCategory?: Record<string, string[]>; hiddenItemIds?: string[]; hiddenCategoryKeys?: string[]; categoryHours?: unknown };
@@ -546,10 +554,10 @@ export function MenuBrowseClient({
           }
         }
       } catch {
-        setMenuEditorErr("Nepodařilo se uložit změnu (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+        setMenuEditorErr(tAdminUi("admin.editor.saveNetworkErr"));
       }
     },
-    [restaurantId, canEditMenu],
+    [restaurantId, canEditMenu, tAdminUi],
   );
 
   const setCategoryHidden = React.useCallback(
@@ -570,7 +578,7 @@ export function MenuBrowseClient({
         });
         const j = (await r.json()) as { ok?: boolean; error?: string };
         if (!r.ok || !j.ok) {
-          setMenuEditorErr(j.error ?? "Uložení viditelnosti kategorie selhalo.");
+          setMenuEditorErr(j.error ?? tAdminUi("admin.editor.categoryVisibilitySaveFailed"));
           const rr = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
           const jo = (await rr.json()) as { ok?: boolean; images?: Record<string, string>; orderByCategory?: Record<string, string[]>; hiddenItemIds?: string[]; hiddenCategoryKeys?: string[]; categoryHours?: unknown };
           if (rr.ok && jo.ok) {
@@ -578,10 +586,10 @@ export function MenuBrowseClient({
           }
         }
       } catch {
-        setMenuEditorErr("Nepodařilo se uložit změnu (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+        setMenuEditorErr(tAdminUi("admin.editor.saveNetworkErr"));
       }
     },
-    [restaurantId, canEditMenu],
+    [restaurantId, canEditMenu, tAdminUi],
   );
 
   const setCategoryHours = React.useCallback(
@@ -619,16 +627,16 @@ export function MenuBrowseClient({
         });
         const j = (await r.json()) as { ok?: boolean; error?: string };
         if (!r.ok || !j.ok) {
-          setMenuEditorErr(j.error ?? "Uložení času kategorie selhalo.");
+          setMenuEditorErr(j.error ?? tAdminUi("admin.editor.hoursSaveFailed"));
           const rr = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
           const jo = (await rr.json()) as { ok?: boolean; images?: Record<string, string>; orderByCategory?: Record<string, string[]>; hiddenItemIds?: string[]; hiddenCategoryKeys?: string[]; categoryHours?: unknown };
           if (rr.ok && jo.ok) setOverrides(menuOverridesFromApiJson(jo));
         }
       } catch {
-        setMenuEditorErr("Nepodařilo se uložit čas kategorie (připojení).");
+        setMenuEditorErr(tAdminUi("admin.editor.hoursNetworkErr"));
       }
     },
-    [restaurantId, canEditMenu],
+    [restaurantId, canEditMenu, tAdminUi],
   );
 
   const categoryKeys = React.useMemo(
@@ -681,18 +689,18 @@ export function MenuBrowseClient({
         });
         const j = (await r.json()) as { ok?: boolean };
         if (!r.ok || !j.ok) {
-          setMenuEditorErr("Pořadí se nepodařilo uložit.");
+          setMenuEditorErr(tAdminUi("admin.editor.orderSaveFailed"));
           return false;
         }
         return true;
       } catch {
-        setMenuEditorErr("Pořadí se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+        setMenuEditorErr(tAdminUi("admin.editor.orderNetworkErr"));
         return false;
       } finally {
         setOrderSavingKey(null);
       }
     },
-    [restaurantId],
+    [restaurantId, tAdminUi],
   );
 
   const moveItem = React.useCallback(
@@ -742,7 +750,7 @@ export function MenuBrowseClient({
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setMenuEditorErr(j.error ?? "Fotku se nepodařilo uložit.");
+        setMenuEditorErr(j.error ?? tAdminUi("admin.editor.photoSaveFailed"));
         return;
       }
       setOverrides((o) => {
@@ -753,11 +761,11 @@ export function MenuBrowseClient({
       });
       setPhotoModal(null);
     } catch {
-      setMenuEditorErr("Fotku se nepodařilo uložit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setMenuEditorErr(tAdminUi("admin.editor.photoSaveNetworkErr"));
     } finally {
       setPhotoSaving(false);
     }
-  }, [restaurantId, photoModal, photoUrlDraft]);
+  }, [restaurantId, photoModal, photoUrlDraft, tAdminUi]);
 
   const deletePhoto = React.useCallback(async () => {
     if (!restaurantId || !photoModal) return;
@@ -771,7 +779,7 @@ export function MenuBrowseClient({
       });
       const j = (await r.json()) as { ok?: boolean };
       if (!r.ok || !j.ok) {
-        setMenuEditorErr("Fotku se nepodařilo odstranit.");
+        setMenuEditorErr(tAdminUi("admin.editor.photoDeleteFailed"));
         return;
       }
       setOverrides((o) => {
@@ -781,11 +789,11 @@ export function MenuBrowseClient({
       });
       setPhotoModal(null);
     } catch {
-      setMenuEditorErr("Fotku se nepodařilo odstranit (zřejmě výpadek připojení). Zkuste to prosím znovu.");
+      setMenuEditorErr(tAdminUi("admin.editor.photoDeleteNetworkErr"));
     } finally {
       setPhotoSaving(false);
     }
-  }, [restaurantId, photoModal]);
+  }, [restaurantId, photoModal, tAdminUi]);
 
   const uploadMenuPhotoFile = React.useCallback(
     async (file: File) => {
@@ -805,7 +813,7 @@ export function MenuBrowseClient({
         });
         const j = (await r.json()) as { ok?: boolean; imageUrl?: string; error?: string };
         if (!r.ok || !j.ok || !j.imageUrl) {
-          const msg = j.error ?? "Nahrání fotky se nezdařilo.";
+          const msg = j.error ?? tAdminUi("admin.editor.photoUploadFailed");
           setMenuEditorErr(msg);
           setPhotoUploadErr(msg);
           return;
@@ -815,14 +823,14 @@ export function MenuBrowseClient({
         setPhotoUploadErr(null);
         setPhotoModal(null);
       } catch {
-        const msg = "Nahrání se nezdařilo (zřejmě výpadek připojení). Zkuste to prosím znovu.";
+        const msg = tAdminUi("admin.editor.photoUploadNetworkErr");
         setMenuEditorErr(msg);
         setPhotoUploadErr(msg);
       } finally {
         setPhotoUploading(false);
       }
     },
-    [restaurantId, photoModal],
+    [restaurantId, photoModal, tAdminUi],
   );
 
   React.useEffect(() => {
@@ -1169,10 +1177,10 @@ export function MenuBrowseClient({
                 className="chip"
                 style={{ textDecoration: "none", display: "inline-flex" }}
               >
-                ← Zpět do administrace
+                {tAdminUi("admin.editor.previewBack")}
               </KioskAnchor>
               <span className="menuPageMetaChip" style={{ fontSize: 13 }}>
-                Náhled — horní lišta a košík bez Dotykačky
+                {tAdminUi("admin.editor.previewBarHint")}
               </span>
             </div>
           ) : null}
@@ -1184,13 +1192,9 @@ export function MenuBrowseClient({
 
           {menuVariant === "editor" ? (
             <p className="menuEditorHint" role="note">
-              <strong>Úprava veřejného menu.</strong> Změny se projeví i na stránce{" "}
-              <KioskAnchor href="/menu">/menu</KioskAnchor> pro zákazníky.{" "}
+              {tAdminUi("admin.editor.hint")}
               <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
-                <strong>Tip k fotkám:</strong> pro lepší zobrazení na kartách a v detailu používejte spíš fotky na šířku
-                (např. poměr 16:9), ne čistě na výšku. U sekce: <strong>Od–Do</strong> = jen v tu dobu (v 14:00 už polední
-                není). Bez času = základní nabídka, která se schová, když zrovna běží časové menu. <strong>Pořád</strong> =
-                vidět vždy (nápoje). Skrytá kategorie má přednost.
+                {tAdminUi("admin.editor.hintTip")}
               </span>
             </p>
           ) : null}
@@ -1198,8 +1202,7 @@ export function MenuBrowseClient({
           {menuVariant === "editor" && editorStatus?.canEdit ? (
             brokenMenuImageUrls.length > 0 ? (
               <p className="menuEditorHint menuEditorHint--warn" role="alert">
-                Některé externí URL obrázků v menu se nepodařilo ověřit ({brokenMenuImageUrls.length}). Položky mohou být
-                bez fotky.{" "}
+                {tAdminUi("admin.editor.imagesBroken", { count: brokenMenuImageUrls.length })}{" "}
                 <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
                   {brokenMenuImageUrls
                     .slice(0, 3)
@@ -1215,11 +1218,15 @@ export function MenuBrowseClient({
             ) : (
               <p className="menuEditorHint" role="status" style={{ color: "#86efac" }}>
                 {menuImagesHealthCheckedCount === 0
-                  ? "Žádné externí URL obrázků v menu k ověření."
-                  : `Externí URL obrázků v menu ověřeny${typeof menuImagesHealthCheckedCount === "number" ? ` (${menuImagesHealthCheckedCount})` : ""}: vše v pořádku.`}
+                  ? tAdminUi("admin.editor.imagesHealthNone")
+                  : typeof menuImagesHealthCheckedCount === "number"
+                    ? tAdminUi("admin.editor.imagesHealthOk", { count: menuImagesHealthCheckedCount })
+                    : tAdminUi("admin.editor.imagesHealthOkNoCount")}
                 {menuImagesHealthCheckedAtIso ? (
                   <span className="textMuted2" style={{ display: "block", marginTop: 6 }}>
-                    Zkontrolováno {new Date(menuImagesHealthCheckedAtIso).toLocaleString("cs-CZ")}
+                    {tAdminUi("admin.editor.imagesCheckedAt", {
+                      when: new Date(menuImagesHealthCheckedAtIso).toLocaleString(localeTag(adminLocale)),
+                    })}
                   </span>
                 ) : null}
               </p>
@@ -1228,45 +1235,42 @@ export function MenuBrowseClient({
 
           {menuVariant === "editor" && !restaurantId ? (
             <p className="menuEditorHint menuEditorHint--muted" role="status">
-              Veřejné menu pro hosty zatím není správně nastavené — dokončete nastavení v{" "}
-              <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor>, nebo párujte tablet v detailu
-              provozovny (Zařízení).
+              {tAdminUi("admin.editor.needSetup")}
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "active_mismatch" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
-              <strong>Vaše restaurace</strong> nesedí s tímto menu. V{" "}
-              <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor> zkontrolujte nastavení.
+              {tAdminUi("admin.editor.activeMismatch")}
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "no_active" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
-              Dokončete nastavení v <KioskAnchor href="/admin">Přehledu administrace</KioskAnchor>, aby odpovídalo tomuto menu.
+              {tAdminUi("admin.editor.noActive")}
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "no_membership" ? (
             <p className="menuEditorHint menuEditorHint--warn" role="status">
-              K úpravám potřebujete roli vedoucího nebo personálu ve vaší restauraci.
+              {tAdminUi("admin.editor.noMembership")}
             </p>
           ) : null}
 
           {menuVariant === "editor" && restaurantId && editorStatus && !editorStatus.canEdit && editorStatus.reason === "unauthorized" ? (
             <p className="menuEditorHint">
-              <KioskAnchor href="/admin/login">Přihlaste se</KioskAnchor> do administrace.
+              <KioskAnchor href="/admin/login">{tAdminUi("admin.editor.unauthorizedLink")}</KioskAnchor>
             </p>
           ) : null}
 
           {menuVariant === "editor" ? (
             <div className="menuEditorBar">
-              <span className="menuEditorLangLabel">Jazyk náhledu</span>
+              <span className="menuEditorLangLabel">{tAdminUi("admin.editor.previewLang")}</span>
               <LanguageMenu />
               {canEditMenu ? (
                 <>
                   <KioskAnchor href={publicMenuUrlFromAdmin(restaurantId ? { rid: restaurantId } : undefined)} className="chip" style={{ textDecoration: "none" }}>
-                    Náhled pro zákazníka ↗
+                    {tAdminUi("admin.editor.previewCustomer")}
                   </KioskAnchor>
                   <KioskAnchor
                     href={
@@ -1277,7 +1281,7 @@ export function MenuBrowseClient({
                     className="chip"
                     style={{ textDecoration: "none" }}
                   >
-                    Překlady jazyků ↗
+                    {tAdminUi("admin.editor.translationsLink")}
                   </KioskAnchor>
                   <button
                     type="button"
@@ -1286,7 +1290,7 @@ export function MenuBrowseClient({
                     onClick={() => void onRefreshDotykackaMenu()}
                     title={posRefresh.title}
                   >
-                    {dotykackaRefreshLoading ? "Obnovuji…" : posRefresh.button}
+                    {dotykackaRefreshLoading ? tAdminUi("admin.editor.refreshing") : posRefresh.button}
                   </button>
                 </>
               ) : null}
@@ -1382,7 +1386,7 @@ export function MenuBrowseClient({
                     </h2>
                     {menuVariant === "editor" && canEditMenu && catHidden ? (
                       <div style={{ fontSize: 12, color: "rgba(251,191,36,0.95)", fontWeight: 700 }}>
-                        Kategorie skrytá pro hosty
+                        {tAdminUi("admin.editor.categoryHidden")}
                       </div>
                     ) : null}
                     {menuVariant === "editor" && canEditMenu ? (
@@ -1405,9 +1409,9 @@ export function MenuBrowseClient({
                       className="chip"
                       onClick={() => void setCategoryHidden(catKey, !catHidden)}
                       style={catHidden ? { borderColor: "rgba(251,191,36,0.55)" } : undefined}
-                      title={catHidden ? "Zobrazit kategorii pro hosty" : "Skrýt kategorii pro hosty"}
+                      title={catHidden ? tAdminUi("admin.editor.showCategoryTitle") : tAdminUi("admin.editor.hideCategoryTitle")}
                     >
-                      {catHidden ? "Zobrazit kategorii" : "Skrýt kategorii"}
+                      {catHidden ? tAdminUi("admin.editor.showCategory") : tAdminUi("admin.editor.hideCategory")}
                     </button>
                   ) : null}
                 </div>
@@ -1420,21 +1424,21 @@ export function MenuBrowseClient({
                           onClick={(e) => e.stopPropagation()}
                           onPointerDown={(e) => e.stopPropagation()}
                         >
-                          <span className="menuItemAdminToolsLabel">Úpravy</span>
+                          <span className="menuItemAdminToolsLabel">{tAdminUi("admin.editor.itemTools")}</span>
                           <button
                             type="button"
                             className="chip menuItemAdminToolBtn"
-                            title={hiddenSet.has(item.id) ? "Zobrazit v menu pro hosty" : "Skrýt v menu pro hosty"}
+                            title={hiddenSet.has(item.id) ? tAdminUi("admin.editor.showItemTitle") : tAdminUi("admin.editor.hideItemTitle")}
                             onClick={() => void setHidden(item.id, !hiddenSet.has(item.id))}
                             style={hiddenSet.has(item.id) ? { borderColor: "rgba(251,191,36,0.55)" } : undefined}
                           >
-                            {hiddenSet.has(item.id) ? "Zobrazit" : "Skrýt"}
+                            {hiddenSet.has(item.id) ? tAdminUi("admin.editor.showItem") : tAdminUi("admin.editor.hideItem")}
                           </button>
                           <button
                             type="button"
                             className="chip menuItemAdminToolBtn"
                             disabled={orderSavingKey === catKey || itemIdx === 0}
-                            title="Posunout nahoru v kategorii"
+                            title={tAdminUi("admin.editor.moveUpTitle")}
                             onClick={() => void moveItem(catKey, item.id, -1)}
                           >
                             ↑
@@ -1443,7 +1447,7 @@ export function MenuBrowseClient({
                             type="button"
                             className="chip menuItemAdminToolBtn"
                             disabled={orderSavingKey === catKey || itemIdx >= sec.items.length - 1}
-                            title="Posunout dolů v kategorii"
+                            title={tAdminUi("admin.editor.moveDownTitle")}
                             onClick={() => void moveItem(catKey, item.id, 1)}
                           >
                             ↓
@@ -1457,13 +1461,13 @@ export function MenuBrowseClient({
                               setPhotoUploadErr(null);
                             }}
                           >
-                            Foto
+                            {tAdminUi("admin.editor.photoBtn")}
                           </button>
                         </div>
                         <div style={hiddenSet.has(item.id) ? { opacity: 0.55 } : undefined}>
                           {hiddenSet.has(item.id) ? (
                             <div style={{ fontSize: 12, margin: "0 0 6px", color: "rgba(251,191,36,0.95)", fontWeight: 700 }}>
-                              Skryto pro hosty
+                              {tAdminUi("admin.editor.itemHidden")}
                             </div>
                           ) : null}
                           <MenuItem
@@ -1634,7 +1638,7 @@ export function MenuBrowseClient({
               ) : null}
               {adminPreview ? (
                 <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.45 }}>
-                  Náhled — objednávka se uloží jen v prohlížeči (pro test lišty Účet / Objednávky), do Dotykačky nejde.
+                  {tAdminUi("admin.editor.previewCartNote")}
                 </p>
               ) : null}
               <button
@@ -1646,7 +1650,7 @@ export function MenuBrowseClient({
                   void confirmOrder();
                 }}
                 style={{ width: "100%", cursor: "pointer" }}
-                title={adminPreview ? "Náhled — bez odeslání do Dotykačky" : undefined}
+                title={adminPreview ? tAdminUi("admin.editor.previewConfirmTitle") : undefined}
               >
                 {orderConfirmLoading ? "…" : t("menu.order.confirm")}
               </button>
@@ -1739,7 +1743,7 @@ export function MenuBrowseClient({
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Úprava fotky jídla"
+          aria-label={tAdminUi("admin.editor.photoModalAria")}
           onClick={() => setPhotoModal(null)}
           className="modalOverlay modalOverlay--60"
         >
@@ -1749,19 +1753,18 @@ export function MenuBrowseClient({
             className="modalCard"
             style={{ maxWidth: 480 }}
           >
-            <strong className="modalTitle">Fotka: {photoModal.name}</strong>
+            <strong className="modalTitle">{tAdminUi("admin.editor.photoModalTitle", { name: photoModal.name })}</strong>
             <p className="textMuted2" style={{ margin: "8px 0 12px", fontSize: 13 }}>
-              Nahrajte obrázek z počítače nebo z galerie (mobil), nebo vložte veřejnou HTTPS adresu (např. Cloudinary). Hosté ji uvidí na kartě jídla.
+              {tAdminUi("admin.editor.photoModalHint")}
             </p>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
-              Pro lepší kompatibilitu s rozložením menu doporučujeme fotky <strong>na šířku</strong> (např. 16:9); vysoké
-              snímky se na kartách zmenšují.
+              {tAdminUi("admin.editor.photoModalLandscape")}
             </p>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
-              Max. velikost pro nahrání: <strong>5&nbsp;MB</strong>. Podporované typy: <strong>JPEG/PNG/WebP</strong>.
+              {tAdminUi("admin.editor.photoModalMax")}
             </p>
             <p className="textMuted2" style={{ margin: "0 0 12px", fontSize: 13 }}>
-              Máte-li zároveň vyplněnou URL i nahrajete soubor, použije se <strong>nahraný soubor</strong> — ten se zobrazí hostům na kartě jídla.
+              {tAdminUi("admin.editor.photoModalPriority")}
             </p>
             <div style={{ marginBottom: 12 }}>
               <FilePickButton
@@ -1770,7 +1773,7 @@ export function MenuBrowseClient({
                 disabled={photoSaving || photoUploading || !restaurantId}
                 onFile={(f) => void uploadMenuPhotoFile(f)}
               >
-                {photoUploading ? "Nahrávám…" : "Vybrat soubor…"}
+                {photoUploading ? tAdminUi("admin.editor.photoUploading") : tAdminUi("admin.editor.photoPickFile")}
               </FilePickButton>
             </div>
             {photoUploadErr ? (
@@ -1779,12 +1782,12 @@ export function MenuBrowseClient({
               </p>
             ) : null}
             <label style={{ display: "grid", gap: 6 }}>
-              <span>URL obrázku</span>
+              <span>{tAdminUi("admin.editor.photoUrlLabel")}</span>
               <input
                 className="chip"
                 value={photoUrlDraft}
                 onChange={(e) => setPhotoUrlDraft(e.target.value)}
-                placeholder="https://… nebo /uploads/menu/…"
+                placeholder={tAdminUi("admin.editor.photoUrlPlaceholder")}
                 style={{ padding: "10px 12px", width: "100%", boxSizing: "border-box" }}
                 autoComplete="off"
                 disabled={photoUploading}
@@ -1798,7 +1801,7 @@ export function MenuBrowseClient({
                 disabled={photoUploading}
                 style={{ cursor: "pointer" }}
               >
-                Zrušit
+                {tAdminUi("admin.editor.photoCancel")}
               </button>
               <button
                 type="button"
@@ -1807,7 +1810,7 @@ export function MenuBrowseClient({
                 onClick={() => void deletePhoto()}
                 style={{ cursor: "pointer" }}
               >
-                Odstranit fotku
+                {tAdminUi("admin.editor.photoDelete")}
               </button>
               <button
                 type="button"
@@ -1816,7 +1819,7 @@ export function MenuBrowseClient({
                 onClick={() => void savePhotoUrl()}
                 style={{ cursor: "pointer" }}
               >
-                {photoSaving ? "…" : "Uložit"}
+                {photoSaving ? "…" : tAdminUi("admin.editor.photoSave")}
               </button>
             </div>
           </div>

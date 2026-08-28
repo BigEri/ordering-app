@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import { navigateToKioskMode } from "../../lib/kiosk/modeSwitch";
+import { useAdminLanguage } from "../admin/AdminLanguageProvider";
 
 type KioskModeChooserModalProps = {
   open: boolean;
@@ -10,6 +11,7 @@ type KioskModeChooserModalProps = {
 };
 
 export function KioskModeChooserModal({ open, onClose }: KioskModeChooserModalProps) {
+  const { t } = useAdminLanguage();
   const [switching, setSwitching] = React.useState<"host" | "admin" | null>(null);
 
   React.useEffect(() => {
@@ -25,20 +27,21 @@ export function KioskModeChooserModal({ open, onClose }: KioskModeChooserModalPr
     if (!open) setSwitching(null);
   }, [open]);
 
-  const choose = React.useCallback(async (target: "host" | "admin") => {
-    if (target === "host") {
-      const ok = window.confirm(
-        "Opravdu přepnout na Host (kiosk)? Zamkne to tablet — instalace APK z PC pak nepůjde, dokud znovu nezadáte servisní PIN.",
-      );
-      if (!ok) return;
-    }
-    setSwitching(target);
-    try {
-      await navigateToKioskMode(target);
-    } catch {
-      setSwitching(null);
-    }
-  }, []);
+  const choose = React.useCallback(
+    async (target: "host" | "admin") => {
+      if (target === "host") {
+        const ok = window.confirm(t("admin.kiosk.hostConfirm"));
+        if (!ok) return;
+      }
+      setSwitching(target);
+      try {
+        await navigateToKioskMode(target);
+      } catch {
+        setSwitching(null);
+      }
+    },
+    [t],
+  );
 
   if (!open) return null;
 
@@ -46,18 +49,18 @@ export function KioskModeChooserModal({ open, onClose }: KioskModeChooserModalPr
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Zvolte režim tabletu"
+      aria-label={t("admin.kiosk.modalAria")}
       onClick={() => {
         if (switching === null) onClose();
       }}
       className="modalOverlay modalOverlay--60"
     >
       <div onClick={(e) => e.stopPropagation()} className="modalCard">
-        <strong className="modalTitle">Zvolte režim tabletu</strong>
+        <strong className="modalTitle">{t("admin.kiosk.modalTitle")}</strong>
         <p className="textMuted" style={{ margin: "0 0 16px", lineHeight: 1.55 }}>
-          <strong>Host (kiosk)</strong> — úvodní stránka a objednávání pro hosty u stolu.
+          <strong>{t("admin.kiosk.modalHostLead")}</strong> — {t("admin.kiosk.modalHostBody")}
           <br />
-          <strong>Admin</strong> — přihlášení do správy restaurace.
+          <strong>{t("admin.kiosk.modalAdminLead")}</strong> — {t("admin.kiosk.modalAdminBody")}
         </p>
         <div style={{ display: "grid", gap: 8 }}>
           <button
@@ -67,7 +70,7 @@ export function KioskModeChooserModal({ open, onClose }: KioskModeChooserModalPr
             onClick={() => void choose("host")}
             style={{ cursor: switching !== null ? "wait" : "pointer", width: "100%" }}
           >
-            {switching === "host" ? "…" : "Host (kiosk)"}
+            {switching === "host" ? "…" : t("admin.kiosk.hostBtn")}
           </button>
           <button
             type="button"
@@ -76,7 +79,7 @@ export function KioskModeChooserModal({ open, onClose }: KioskModeChooserModalPr
             onClick={() => void choose("admin")}
             style={{ cursor: switching !== null ? "wait" : "pointer", width: "100%" }}
           >
-            {switching === "admin" ? "…" : "Admin — přihlášení"}
+            {switching === "admin" ? "…" : t("admin.kiosk.adminBtn")}
           </button>
           <button
             type="button"
@@ -85,7 +88,7 @@ export function KioskModeChooserModal({ open, onClose }: KioskModeChooserModalPr
             onClick={onClose}
             style={{ cursor: switching !== null ? "wait" : "pointer", width: "100%" }}
           >
-            Zrušit
+            {t("admin.kiosk.cancel")}
           </button>
         </div>
       </div>

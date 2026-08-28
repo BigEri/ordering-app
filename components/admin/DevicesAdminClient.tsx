@@ -2,7 +2,8 @@
 
 import * as React from "react";
 
-import { tStaff } from "../../lib/i18n/tStaff";
+import { localeTag } from "../../lib/i18n/messages";
+import { useAdminLanguage } from "./AdminLanguageProvider";
 
 export type DevicesAdminClientProps = {
   /** Restaurant to list/manage — preferred over cookie alone. */
@@ -63,13 +64,14 @@ function resolveDotykackaTableDisplay(
   tableId: string,
   tableLabel: string,
   dotyById: Map<string, DotyTable>,
+  tableFallback: (id: string) => string,
 ): { name: string; fromDotyka: boolean } {
   const tid = tableId.trim();
   const hit = tid ? dotyById.get(tid) : undefined;
   if (hit?.name) return { name: hit.name, fromDotyka: true };
   const lbl = tableLabel.trim();
   if (lbl) return { name: lbl, fromDotyka: false };
-  if (tid) return { name: `Stůl ${tid}`, fromDotyka: false };
+  if (tid) return { name: tableFallback(tid), fromDotyka: false };
   return { name: "—", fromDotyka: false };
 }
 
@@ -79,6 +81,7 @@ export function DevicesAdminClient({
   embedded = false,
   pairHref,
 }: DevicesAdminClientProps) {
+  const { t, locale } = useAdminLanguage();
   const rid = restaurantId.trim();
   const resolvedPairHref =
     pairHref?.trim() ||
@@ -196,7 +199,7 @@ export function DevicesAdminClient({
         setHealth(merged);
         setHealthErr(false);
         if (healthFailed) {
-          setHealthWarn(tStaff("admin.devices.healthDbWarn"));
+          setHealthWarn(t("admin.devices.healthDbWarn"));
         }
         return;
       }
@@ -209,7 +212,7 @@ export function DevicesAdminClient({
     } finally {
       setHealthLoading(false);
     }
-  }, []);
+  }, [t]);
 
   React.useEffect(() => {
     void load();
@@ -324,9 +327,10 @@ export function DevicesAdminClient({
     setApkUpdatePending(null);
     setApkUpdatingId(device.deviceId);
     const targetCode = kioskRelease.versionCode;
-    const targetLabel = tStaff("admin.devices.apkVersionFmt")
-      .replace("{name}", kioskRelease.versionName)
-      .replace("{code}", String(targetCode));
+    const targetLabel = t("admin.devices.apkVersionFmt", {
+      name: kioskRelease.versionName,
+      code: String(targetCode),
+    });
 
     let sentNonce: number | null = null;
     try {
@@ -354,23 +358,26 @@ export function DevicesAdminClient({
         const row = listData.devices.find((d) => d.deviceId === device.deviceId);
         const reported = row?.kioskApkVersionCode;
         if (reported != null && reported >= targetCode) {
-          const versionLabel = tStaff("admin.devices.apkVersionFmt")
-            .replace("{name}", kioskRelease.versionName)
-            .replace("{code}", String(reported));
+          const versionLabel = t("admin.devices.apkVersionFmt", {
+            name: kioskRelease.versionName,
+            code: String(reported),
+          });
           setApkUpdateOk(
-            tStaff("admin.devices.apkUpdateOk")
-              .replace("{table}", device.tableLabel)
-              .replace("{version}", versionLabel)
-              .replace("{code}", String(reported)),
+            t("admin.devices.apkUpdateOk", {
+              table: device.tableLabel,
+              version: versionLabel,
+              code: String(reported),
+            }),
           );
           return;
         }
       }
 
       setApkUpdatePending(
-        tStaff("admin.devices.apkUpdatePending")
-          .replace("{nonce}", sentNonce != null ? String(sentNonce) : "?")
-          .replace("{target}", targetLabel),
+        t("admin.devices.apkUpdatePending", {
+          nonce: sentNonce != null ? String(sentNonce) : "?",
+          target: targetLabel,
+        }),
       );
     } catch {
       setApkUpdateErr(true);
@@ -385,23 +392,24 @@ export function DevicesAdminClient({
   };
 
   const formatApkOnDevice = (code: number | null | undefined) => {
-    if (code == null) return tStaff("admin.devices.apkVersionUnknown");
+    if (code == null) return t("admin.devices.apkVersionUnknown");
     const name =
       kioskRelease && code === kioskRelease.versionCode ? kioskRelease.versionName : String(code);
-    return tStaff("admin.devices.apkVersionFmt").replace("{name}", name).replace("{code}", String(code));
+    return t("admin.devices.apkVersionFmt", { name, code: String(code) });
   };
 
   const formatApkOnServer = () => {
     if (!kioskRelease) return "—";
-    return tStaff("admin.devices.apkVersionFmt")
-      .replace("{name}", kioskRelease.versionName)
-      .replace("{code}", String(kioskRelease.versionCode));
+    return t("admin.devices.apkVersionFmt", {
+      name: kioskRelease.versionName,
+      code: String(kioskRelease.versionCode),
+    });
   };
 
   const renderBattery = (d: DeviceRow) => {
     if (d.batteryPercent == null) {
       return (
-        <span className="textMuted2" title={tStaff("admin.devices.batteryUnknown")}>
+        <span className="textMuted2" title={t("admin.devices.batteryUnknown")}>
           —
         </span>
       );
@@ -417,7 +425,7 @@ export function DevicesAdminClient({
         </span>
         {d.batteryCharging ? (
           <div className="textMuted2" style={{ marginTop: 4, fontSize: 11 }}>
-            {tStaff("admin.devices.batteryCharging")}
+            {t("admin.devices.batteryCharging")}
           </div>
         ) : null}
       </div>
@@ -444,9 +452,7 @@ export function DevicesAdminClient({
       }
       const n = typeof data.reloadNonce === "number" ? data.reloadNonce : "?";
       const shortId = `${deviceId.slice(0, 24)}${deviceId.length > 24 ? "…" : ""}`;
-      setReloadOk(
-        tStaff("admin.devices.reloadOk").replace("{device}", shortId).replace("{nonce}", String(n)),
-      );
+      setReloadOk(t("admin.devices.reloadOk", { device: shortId, nonce: String(n) }));
     } catch {
       setReloadErr(true);
     } finally {
@@ -472,7 +478,7 @@ export function DevicesAdminClient({
         return;
       }
       const n = typeof data.devicesSignaled === "number" ? data.devicesSignaled : 0;
-      setReloadOk(tStaff("admin.devices.reloadAllOk").replace("{devices}", String(n)));
+      setReloadOk(t("admin.devices.reloadAllOk", { devices: String(n) }));
     } catch {
       setReloadErr(true);
     } finally {
@@ -483,7 +489,7 @@ export function DevicesAdminClient({
   const onForceApkUpdateAll = async () => {
     if (!rid || !kioskRelease) return;
     const releaseSnapshot = kioskRelease;
-    const ok = window.confirm(tStaff("admin.devices.apkUpdateAllConfirm"));
+    const ok = window.confirm(t("admin.devices.apkUpdateAllConfirm"));
     if (!ok) return;
     setApkUpdateErr(false);
     setApkUpdateErrDetail(null);
@@ -508,10 +514,11 @@ export function DevicesAdminClient({
       }
       const n = typeof data.devicesSignaled === "number" ? data.devicesSignaled : 0;
       setApkUpdateOk(
-        tStaff("admin.devices.apkUpdateAllOk")
-          .replace("{devices}", String(n))
-          .replace("{version}", data.release?.versionName ?? releaseSnapshot.versionName)
-          .replace("{code}", String(data.release?.versionCode ?? releaseSnapshot.versionCode)),
+        t("admin.devices.apkUpdateAllOk", {
+          devices: String(n),
+          version: data.release?.versionName ?? releaseSnapshot.versionName,
+          code: String(data.release?.versionCode ?? releaseSnapshot.versionCode),
+        }),
       );
     } catch {
       setApkUpdateErr(true);
@@ -547,19 +554,19 @@ export function DevicesAdminClient({
       }
       if (data.menuPrefetchOk === false) {
         setMenuRefreshOk(
-          tStaff("admin.devices.refreshMenuFromDotykackaWarn").replace(
-            "{error}",
-            data.menuPrefetchError ?? "?",
-          ),
+          t("admin.devices.refreshMenuFromDotykackaWarn", {
+            error: data.menuPrefetchError ?? "?",
+          }),
         );
         return;
       }
       const sections = typeof data.sectionCount === "number" ? data.sectionCount : "?";
       const devices = typeof data.devicesNotified === "number" ? data.devicesNotified : 0;
       setMenuRefreshOk(
-        tStaff("admin.devices.refreshMenuFromDotykackaOk")
-          .replace("{sections}", String(sections))
-          .replace("{devices}", String(devices)),
+        t("admin.devices.refreshMenuFromDotykackaOk", {
+          sections: String(sections),
+          devices: String(devices),
+        }),
       );
     } catch {
       setMenuRefreshErr(true);
@@ -569,7 +576,13 @@ export function DevicesAdminClient({
   };
 
   const onRemoveDevice = async (d: DeviceRow) => {
-    const ok = window.confirm(`Opravdu odstranit zařízení?\n\n${d.tableLabel} (${d.tableId})\n${d.deviceId}`);
+    const ok = window.confirm(
+      t("admin.devices.removeConfirm", {
+        table: d.tableLabel,
+        tableId: d.tableId,
+        device: d.deviceId,
+      }),
+    );
     if (!ok) return;
     setRemovingId(d.deviceId);
     try {
@@ -589,7 +602,7 @@ export function DevicesAdminClient({
   };
 
   const fmtTime = (ts: number) =>
-    new Date(ts).toLocaleString("cs-CZ", {
+    new Date(ts).toLocaleString(localeTag(locale), {
       dateStyle: "short",
       timeStyle: "medium",
     });
@@ -606,9 +619,9 @@ export function DevicesAdminClient({
     <div className={embedded ? undefined : "adminPage"}>
       {embedded ? null : (
         <>
-          <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{tStaff("admin.devices.title")}</h1>
+          <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem" }}>{t("admin.devices.title")}</h1>
           <p className="textMuted" style={{ margin: "0 0 20px", maxWidth: 52 * 16 }}>
-            {tStaff("admin.devices.subtitle")}
+            {t("admin.devices.subtitle")}
           </p>
         </>
       )}
@@ -620,9 +633,9 @@ export function DevicesAdminClient({
           disabled={listRefreshing}
           onClick={() => void onRefreshList()}
           style={{ cursor: listRefreshing ? "wait" : "pointer" }}
-          title={tStaff("admin.devices.refreshAllHint")}
+          title={t("admin.devices.refreshAllHint")}
         >
-          {listRefreshing ? "…" : tStaff("admin.devices.refresh")}
+          {listRefreshing ? "…" : t("admin.devices.refresh")}
         </button>
         <button
           type="button"
@@ -630,9 +643,9 @@ export function DevicesAdminClient({
           disabled={reloadAllLoading || !activeRestaurantId}
           onClick={() => void onForceReloadAll()}
           style={{ cursor: reloadAllLoading || !activeRestaurantId ? "not-allowed" : "pointer" }}
-          title={tStaff("admin.devices.reloadAllHint")}
+          title={t("admin.devices.reloadAllHint")}
         >
-          {reloadAllLoading ? "…" : tStaff("admin.devices.reloadAll")}
+          {reloadAllLoading ? "…" : t("admin.devices.reloadAll")}
         </button>
         <button
           type="button"
@@ -640,12 +653,12 @@ export function DevicesAdminClient({
           disabled={menuRefreshLoading || !activeRestaurantId}
           onClick={() => void onRefreshMenuFromDotykacka()}
           style={{ cursor: menuRefreshLoading || !activeRestaurantId ? "not-allowed" : "pointer" }}
-          title={tStaff("admin.devices.refreshMenuFromDotykackaHint")}
+          title={t("admin.devices.refreshMenuFromDotykackaHint")}
         >
-          {menuRefreshLoading ? "…" : tStaff("admin.devices.refreshMenuFromDotykacka")}
+          {menuRefreshLoading ? "…" : t("admin.devices.refreshMenuFromDotykacka")}
         </button>
         <a href={resolvedPairHref} className="chip" style={{ textDecoration: "none" }}>
-          Párování u stolů (Dotykačka)
+          {t("admin.devices.pairTablesLink")}
         </a>
       </div>
 
@@ -658,20 +671,20 @@ export function DevicesAdminClient({
           background: "var(--panel)",
         }}
       >
-        <h2 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>{tStaff("admin.devices.healthTitle")}</h2>
+        <h2 style={{ margin: "0 0 8px", fontSize: "1.05rem" }}>{t("admin.devices.healthTitle")}</h2>
         {activeRestaurantName ? (
           <p className="textMuted2" style={{ margin: "0 0 8px", fontSize: 13 }}>
-            Kontrola Dotykačky pro: <strong>{activeRestaurantName}</strong>
+            {t("admin.devices.healthForRestaurant", { name: activeRestaurantName })}
           </p>
         ) : null}
         {healthLoading ? (
           <p className="textMuted" style={{ margin: 0 }}>
-            {tStaff("admin.devices.healthLoading")}
+            {t("admin.devices.healthLoading")}
           </p>
         ) : null}
         {healthErr ? (
           <p role="alert" style={{ margin: 0, color: "#fecaca" }}>
-            {tStaff("admin.devices.healthErr")}
+            {t("admin.devices.healthErr")}
           </p>
         ) : null}
         {healthWarn ? (
@@ -681,7 +694,7 @@ export function DevicesAdminClient({
         ) : null}
         {!healthLoading && !healthErr && health ? (
           <ul style={{ margin: 0, paddingLeft: 20, lineHeight: 1.6 }}>
-            <li style={{ color: "var(--success)" }}>{tStaff("admin.devices.healthOk")}</li>
+            <li style={{ color: "var(--success)" }}>{t("admin.devices.healthOk")}</li>
             {health.ts ? (
               <li className="textMuted2" style={{ fontSize: 13 }}>
                 {health.ts}
@@ -689,18 +702,18 @@ export function DevicesAdminClient({
             ) : null}
             <li className="textMuted2" style={{ fontSize: 13 }}>
               {health.imageStorageConfigured
-                ? tStaff("admin.devices.healthImageYes")
-                : tStaff("admin.devices.healthImageNo")}
+                ? t("admin.devices.healthImageYes")
+                : t("admin.devices.healthImageNo")}
             </li>
             <li className="textMuted2" style={{ fontSize: 13 }}>
               {health.pos?.configured
-                ? tStaff("admin.devices.healthPosYes")
-                : tStaff("admin.devices.healthPosNo")}
+                ? t("admin.devices.healthPosYes")
+                : t("admin.devices.healthPosNo")}
             </li>
             <li className="textMuted2" style={{ fontSize: 13 }}>
               {health.sentry?.configured
-                ? tStaff("admin.devices.healthSentryYes")
-                : tStaff("admin.devices.healthSentryNo")}
+                ? t("admin.devices.healthSentryYes")
+                : t("admin.devices.healthSentryNo")}
             </li>
             <li
               style={{
@@ -709,8 +722,8 @@ export function DevicesAdminClient({
               }}
             >
               {health.dotykacka?.syncConfigured
-                ? tStaff("admin.devices.healthDotykackaYes")
-                : tStaff("admin.devices.healthDotykackaNo")}
+                ? t("admin.devices.healthDotykackaYes")
+                : t("admin.devices.healthDotykackaNo")}
               {health.dotykacka?.syncConfigured === false && health.dotykacka?.hint ? (
                 <span className="textMuted2" style={{ display: "block", marginTop: 4, color: "var(--muted)" }}>
                   {health.dotykacka.hint}
@@ -733,18 +746,18 @@ export function DevicesAdminClient({
       ) : null}
       {menuRefreshErr ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
-          {menuRefreshErrDetail ?? tStaff("admin.devices.refreshMenuFromDotykackaErr")}
+          {menuRefreshErrDetail ?? t("admin.devices.refreshMenuFromDotykackaErr")}
         </p>
       ) : null}
       {reloadErr ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
-          {reloadErrDetail ?? tStaff("admin.devices.reloadErr")}
+          {reloadErrDetail ?? t("admin.devices.reloadErr")}
         </p>
       ) : null}
 
       {apkUpdateErr ? (
         <p role="alert" style={{ color: "#fecaca", marginBottom: 12 }}>
-          {apkUpdateErrDetail ?? tStaff("admin.devices.apkUpdateErr")}
+          {apkUpdateErrDetail ?? t("admin.devices.apkUpdateErr")}
         </p>
       ) : null}
       {apkUpdateOk ? (
@@ -772,7 +785,7 @@ export function DevicesAdminClient({
             type="button"
             disabled={apkUpdateAllLoading || !activeRestaurantId || !kioskRelease}
             onClick={() => void onForceApkUpdateAll()}
-            title={tStaff("admin.devices.apkUpdateAllHint")}
+            title={t("admin.devices.apkUpdateAllHint")}
             style={{
               padding: "10px 16px",
               borderRadius: 10,
@@ -786,40 +799,40 @@ export function DevicesAdminClient({
               opacity: apkUpdateAllLoading || !activeRestaurantId || !kioskRelease ? 0.55 : 1,
             }}
           >
-            {apkUpdateAllLoading ? "…" : tStaff("admin.devices.apkUpdateAll")}
+            {apkUpdateAllLoading ? "…" : t("admin.devices.apkUpdateAll")}
           </button>
           {kioskRelease ? (
             <span className="textMuted2" style={{ fontSize: 13 }}>
-              {tStaff("admin.devices.apkRelease")}: <strong style={{ color: "var(--text)" }}>{kioskRelease.versionName}</strong>{" "}
+              {t("admin.devices.apkRelease")}: <strong style={{ color: "var(--text)" }}>{kioskRelease.versionName}</strong>{" "}
               (code {kioskRelease.versionCode}).{" "}
               <a href={kioskRelease.apkUrl} download="tableflow-kiosk.apk">
-                {tStaff("admin.devices.apkDownload")}
+                {t("admin.devices.apkDownload")}
               </a>
             </span>
           ) : (
-            <span style={{ color: "#fecaca", fontSize: 13 }}>{tStaff("admin.devices.apkUpdateNoRelease")}</span>
+            <span style={{ color: "#fecaca", fontSize: 13 }}>{t("admin.devices.apkUpdateNoRelease")}</span>
           )}
         </div>
         <p className="textMuted" style={{ margin: 0, maxWidth: 52 * 16, lineHeight: 1.5, fontSize: 13 }}>
-          {tStaff("admin.devices.apkUpdateHint")}
+          {t("admin.devices.apkUpdateHint")}
         </p>
       </div>
 
       {loadErr ? (
         <p role="alert" style={{ color: "#fecaca" }}>
-          {tStaff("admin.devices.loadErr")}
+          {t("admin.devices.loadErr")}
         </p>
       ) : null}
 
       {!loadErr && devices === null ? (
         <p className="textMuted" style={{ marginBottom: 16 }}>
-          {tStaff("admin.devices.loading")}
+          {t("admin.devices.loading")}
         </p>
       ) : null}
 
       {!loadErr && devices && devices.length === 0 ? (
         <p className="textMuted" style={{ marginBottom: 16, maxWidth: 52 * 16, lineHeight: 1.5 }}>
-          {tStaff("admin.devices.emptyList")}
+          {t("admin.devices.emptyList")}
         </p>
       ) : null}
 
@@ -836,19 +849,21 @@ export function DevicesAdminClient({
           >
             <thead>
               <tr style={{ background: "var(--panel)" }}>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.device")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.table")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.dotykackaTable")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.apkOnDevice")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.battery")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.status")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.last")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{tStaff("admin.devices.col.actions")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.device")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.table")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.dotykackaTable")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.apkOnDevice")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.battery")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.status")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.last")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.actions")}</th>
               </tr>
             </thead>
             <tbody>
               {devices.map((d) => {
-                const doty = resolveDotykackaTableDisplay(d.tableId, d.tableLabel, dotyTableById);
+                const doty = resolveDotykackaTableDisplay(d.tableId, d.tableLabel, dotyTableById, (id) =>
+                  t("admin.devices.tableFallback", { id }),
+                );
                 return (
                 <tr key={d.deviceId} style={{ borderTop: "1px solid var(--border)" }}>
                   <td style={{ padding: "10px 12px", fontFamily: "ui-monospace, monospace", fontSize: 12 }}>
@@ -865,9 +880,9 @@ export function DevicesAdminClient({
                     <div className="textMuted2" style={{ marginTop: 4, fontSize: 12, fontFamily: "ui-monospace, monospace" }}>
                       ID {d.tableId || "—"}
                       {doty.fromDotyka ? (
-                        <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· z Dotykačky</span>
+                        <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· {t("admin.devices.fromDotykacka")}</span>
                       ) : (
-                        <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· jen v aplikaci</span>
+                        <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· {t("admin.devices.inAppOnly")}</span>
                       )}
                     </div>
                   </td>
@@ -882,19 +897,19 @@ export function DevicesAdminClient({
                         ) : null}
                       </>
                     ) : (
-                      <span className="textMuted2">{tStaff("admin.devices.apkVersionUnknown")}</span>
+                      <span className="textMuted2">{t("admin.devices.apkVersionUnknown")}</span>
                     )}
                   </td>
                   <td style={{ padding: "10px 12px" }}>{renderBattery(d)}</td>
                   <td style={{ padding: "10px 12px" }}>
                     {d.online ? (
-                      <span style={{ color: "var(--success)" }}>{tStaff("admin.devices.online")}</span>
+                      <span style={{ color: "var(--success)" }}>{t("admin.devices.online")}</span>
                     ) : (
-                      <span className="textMuted">{tStaff("admin.devices.offline")}</span>
+                      <span className="textMuted">{t("admin.devices.offline")}</span>
                     )}
                     {d.lastSeen > 0 ? (
                       <div className="textMuted2" style={{ marginTop: 4, fontSize: 11 }}>
-                        {tStaff("admin.devices.lastSeenHint")}: {fmtTime(d.lastSeen)}
+                        {t("admin.devices.lastSeenHint")}: {fmtTime(d.lastSeen)}
                       </div>
                     ) : null}
                   </td>
@@ -907,9 +922,9 @@ export function DevicesAdminClient({
                         disabled={!d.restaurantId && !activeRestaurantId}
                         onClick={() => openTableEdit(d)}
                         style={{ cursor: d.restaurantId || activeRestaurantId ? "pointer" : "not-allowed" }}
-                        title={!d.restaurantId && !activeRestaurantId ? "Chybí vazba na vaši restauraci" : undefined}
+                        title={!d.restaurantId && !activeRestaurantId ? t("admin.devices.missingRestaurantBind") : undefined}
                       >
-                        {tStaff("admin.devices.editTable")}
+                        {t("admin.devices.editTable")}
                       </button>
                       <button
                         type="button"
@@ -917,9 +932,9 @@ export function DevicesAdminClient({
                         disabled={!kioskRelease || apkUpdatingId === d.deviceId}
                         onClick={() => openApkConfirm(d)}
                         style={{ cursor: kioskRelease ? "pointer" : "not-allowed" }}
-                        title={!kioskRelease ? tStaff("admin.devices.apkUpdateNoRelease") : undefined}
+                        title={!kioskRelease ? t("admin.devices.apkUpdateNoRelease") : undefined}
                       >
-                        {apkUpdatingId === d.deviceId ? "…" : tStaff("admin.devices.apkUpdate")}
+                        {apkUpdatingId === d.deviceId ? "…" : t("admin.devices.apkUpdate")}
                       </button>
                       <button
                         type="button"
@@ -927,9 +942,9 @@ export function DevicesAdminClient({
                         disabled={reloadingId === d.deviceId}
                         onClick={() => void onForceReload(d.deviceId)}
                         style={{ cursor: "pointer" }}
-                        title={tStaff("admin.devices.reloadHint")}
+                        title={t("admin.devices.reloadHint")}
                       >
-                        {reloadingId === d.deviceId ? "…" : tStaff("admin.devices.reload")}
+                        {reloadingId === d.deviceId ? "…" : t("admin.devices.reload")}
                       </button>
                       <button
                         type="button"
@@ -938,7 +953,7 @@ export function DevicesAdminClient({
                         onClick={() => void onRemoveDevice(d)}
                         style={{ cursor: removingId === d.deviceId ? "wait" : "pointer" }}
                       >
-                        {removingId === d.deviceId ? "…" : "Odstranit zařízení"}
+                        {removingId === d.deviceId ? "…" : t("admin.devices.remove")}
                       </button>
                     </div>
                   </td>
@@ -983,27 +998,25 @@ export function DevicesAdminClient({
             }}
           >
             <h2 id="apk-update-confirm-title" style={{ margin: "0 0 12px", fontSize: "1.15rem" }}>
-              {tStaff("admin.devices.apkUpdateConfirmTitle")}
+              {t("admin.devices.apkUpdateConfirmTitle")}
             </h2>
             <p style={{ margin: "0 0 12px", fontSize: 14, lineHeight: 1.55, whiteSpace: "pre-line" }}>
-              {tStaff("admin.devices.apkUpdateConfirmBody")
-                .replace("{table}", apkConfirmDevice.tableLabel)
-                .replace(
-                  "{device}",
-                  `${apkConfirmDevice.deviceId.slice(0, 28)}${apkConfirmDevice.deviceId.length > 28 ? "…" : ""}`,
-                )
-                .replace("{current}", formatApkOnDevice(apkConfirmDevice.kioskApkVersionCode))
-                .replace("{target}", formatApkOnServer())}
+              {t("admin.devices.apkUpdateConfirmBody", {
+                table: apkConfirmDevice.tableLabel,
+                device: `${apkConfirmDevice.deviceId.slice(0, 28)}${apkConfirmDevice.deviceId.length > 28 ? "…" : ""}`,
+                current: formatApkOnDevice(apkConfirmDevice.kioskApkVersionCode),
+                target: formatApkOnServer(),
+              })}
             </p>
             {apkConfirmDevice.kioskApkVersionCode != null &&
             apkConfirmDevice.kioskApkVersionCode >= kioskRelease.versionCode ? (
               <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
-                {tStaff("admin.devices.apkUpdateAlreadyCurrent")}
+                {t("admin.devices.apkUpdateAlreadyCurrent")}
               </p>
             ) : null}
             <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button type="button" className="chip" onClick={() => setApkConfirmDevice(null)}>
-                {tStaff("admin.devices.editTableCancel")}
+                {t("admin.devices.editTableCancel")}
               </button>
               <button
                 type="button"
@@ -1012,7 +1025,7 @@ export function DevicesAdminClient({
                 onClick={() => void onApkUpdate(apkConfirmDevice)}
                 style={{ cursor: "pointer" }}
               >
-                {apkUpdatingId === apkConfirmDevice.deviceId ? "…" : tStaff("admin.devices.apkUpdate")}
+                {apkUpdatingId === apkConfirmDevice.deviceId ? "…" : t("admin.devices.apkUpdate")}
               </button>
             </div>
           </div>
@@ -1052,19 +1065,19 @@ export function DevicesAdminClient({
             }}
           >
             <h2 id="device-edit-table-title" style={{ margin: "0 0 8px", fontSize: "1.15rem" }}>
-              {tStaff("admin.devices.editTableTitle")}
+              {t("admin.devices.editTableTitle")}
             </h2>
             <p className="textMuted2" style={{ margin: "0 0 6px", fontSize: 12, fontFamily: "ui-monospace, monospace", wordBreak: "break-all" }}>
               {tableEditDevice.deviceId}
             </p>
             <p className="textMuted2" style={{ margin: "0 0 16px", fontSize: 13, lineHeight: 1.5 }}>
-              {tStaff("admin.devices.editTableHint")}
+              {t("admin.devices.editTableHint")}
             </p>
             <form onSubmit={(ev) => void onSaveTableEdit(ev)} style={{ display: "grid", gap: 12 }}>
               {(dotyTables?.length ?? 0) > 0 ? (
                 <label style={{ display: "grid", gap: 4 }}>
                   <span className="textMuted2" style={{ fontSize: 12 }}>
-                    Rychlý výběr ze seznamu Dotykačky
+                    {t("admin.devices.dotyQuickPick")}
                   </span>
                   <select
                     className="chip"
@@ -1081,10 +1094,10 @@ export function DevicesAdminClient({
                       if (!nextId) return;
                       setEditTableId(nextId);
                       const hit = dotyTables?.find((t) => String(t.id) === nextId);
-                      setEditTableLabel(hit ? hit.name : `Stůl ${nextId}`);
+                      setEditTableLabel(hit ? hit.name : t("admin.devices.tableFallback", { id: nextId }));
                     }}
                   >
-                    <option value="">— vyberte stůl —</option>
+                    <option value="">{t("admin.devices.pairKioskTablePlaceholder")}</option>
                     {dotyTables!.map((t) => (
                       <option key={t.id} value={String(t.id)}>
                         {t.name} ({t.id})
@@ -1094,7 +1107,7 @@ export function DevicesAdminClient({
                 </label>
               ) : null}
               <label style={{ display: "grid", gap: 4 }}>
-                <span>{tStaff("admin.devices.bindTableId")}</span>
+                <span>{t("admin.devices.bindTableId")}</span>
                 <input
                   className="chip"
                   style={{
@@ -1110,7 +1123,7 @@ export function DevicesAdminClient({
                 />
               </label>
               <label style={{ display: "grid", gap: 4 }}>
-                <span>{tStaff("admin.devices.bindTableLabel")}</span>
+                <span>{t("admin.devices.bindTableLabel")}</span>
                 <input
                   className="chip"
                   style={{
@@ -1127,15 +1140,15 @@ export function DevicesAdminClient({
               </label>
               {editTableMsg === "err" ? (
                 <p role="alert" style={{ margin: 0, color: "#fecaca", fontSize: 14 }}>
-                  {tStaff("admin.devices.editTableErr")}
+                  {t("admin.devices.editTableErr")}
                 </p>
               ) : null}
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
                 <button type="submit" className="btnPrimary" disabled={editTableSaving} style={{ cursor: editTableSaving ? "wait" : "pointer" }}>
-                  {editTableSaving ? tStaff("admin.devices.editTableSaving") : tStaff("admin.devices.editTableSave")}
+                  {editTableSaving ? t("admin.devices.editTableSaving") : t("admin.devices.editTableSave")}
                 </button>
                 <button type="button" className="chip" onClick={closeTableEdit} style={{ cursor: "pointer" }}>
-                  {tStaff("admin.devices.editTableCancel")}
+                  {t("admin.devices.editTableCancel")}
                 </button>
               </div>
             </form>

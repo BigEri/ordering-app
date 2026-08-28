@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminRedirecting } from "../../../../components/admin/AdminRedirecting";
 import * as React from "react";
 
 /**
@@ -30,8 +31,6 @@ export default function AdminMenuTranslationsRedirectPage() {
   }, []);
 
   return (
-    <main className="adminPage">
-      <p className="textMuted">Přesměrování na překlady menu provozovny…</p>
-    </main>
+    <AdminRedirecting messageKey="admin.redirect.translations" />
   );
 }

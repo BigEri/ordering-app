@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminRedirecting } from "../../../../components/admin/AdminRedirecting";
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
@@ -32,20 +33,14 @@ function PairKioskRedirectInner() {
   }, [searchParams]);
 
   return (
-    <main className="adminPage">
-      <p className="textMuted">Přesměrování na párování kiosku…</p>
-    </main>
+    <AdminRedirecting messageKey="admin.redirect.pairKiosk" />
   );
 }
 
 export default function AdminPairKioskRedirectPage() {
   return (
     <Suspense
-      fallback={
-        <main className="adminPage">
-          <p className="textMuted">Přesměrování…</p>
-        </main>
-      }
+      fallback={<AdminRedirecting messageKey="admin.overview.redirecting" />}
     >
       <PairKioskRedirectInner />
     </Suspense>

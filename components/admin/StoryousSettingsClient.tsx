@@ -2,6 +2,8 @@
 
 import * as React from "react";
 
+import { useAdminLanguage } from "./AdminLanguageProvider";
+
 type Desk = { deskId: string; name: string; code: string };
 type Place = { placeId: string; name: string; state: string | null };
 
@@ -30,6 +32,7 @@ type StoryousGet =
   | { ok: false; error: string };
 
 export function StoryousSettingsClient({ restaurantId }: { restaurantId: string }) {
+  const { t } = useAdminLanguage();
   const [loading, setLoading] = React.useState(true);
   const [saving, setSaving] = React.useState(false);
   const [toggling, setToggling] = React.useState(false);
@@ -64,16 +67,16 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
       const j = (await r.json()) as StoryousGet;
       if (!j.ok) {
         setData(j);
-        setErr(j.error);
+        setErr(j.error ?? t("admin.storyous.loadErr"));
         return;
       }
       applyGet(j);
     } catch {
-      setErr("Nepodařilo se načíst napojení Storyous.");
+      setErr(t("admin.storyous.loadErr"));
     } finally {
       setLoading(false);
     }
-  }, [applyGet, restaurantId]);
+  }, [applyGet, restaurantId, t]);
 
   React.useEffect(() => {
     void load();
@@ -82,7 +85,7 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
   const loadPlaces = React.useCallback(async () => {
     const mid = merchantId.trim();
     if (!mid) {
-      setErr("Nejdřív vyplňte Merchant ID.");
+      setErr(t("admin.storyous.needMerchantId"));
       return;
     }
     setPlacesLoading(true);
@@ -99,18 +102,18 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
         error?: string;
       };
       if (!r.ok || !j.ok) {
-        setErr(typeof j.error === "string" ? j.error : "Seznam provozoven se nepodařilo načíst.");
+        setErr(typeof j.error === "string" ? j.error : t("admin.storyous.placesLoadErr"));
         setPlaces([]);
         return;
       }
       setMerchantName(j.merchantName ?? null);
       setPlaces(j.places ?? []);
     } catch {
-      setErr("Seznam provozoven se nepodařilo načíst.");
+      setErr(t("admin.storyous.placesLoadErr"));
     } finally {
       setPlacesLoading(false);
     }
-  }, [merchantId]);
+  }, [merchantId, t]);
 
   const onSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -133,18 +136,22 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
         preview?: { desks?: Desk[]; menuItemCount?: number; deskCount?: number };
       };
       if (!r.ok || !j.ok) {
-        setErr(typeof j.error === "string" ? j.error : "Uložení selhalo.");
+        setErr(typeof j.error === "string" ? j.error : t("admin.storyous.saveFailed"));
         return;
       }
       setMerchantName(j.merchantName ?? null);
       setDesks(j.preview?.desks ?? []);
       setMenuItemCount(typeof j.preview?.menuItemCount === "number" ? j.preview.menuItemCount : null);
       setMsg(
-        `Napojeno: ${j.placeName ?? "provozovna"} · ${j.preview?.deskCount ?? 0} stolů · ${j.preview?.menuItemCount ?? 0} položek menu.`,
+        t("admin.storyous.connected", {
+          place: j.placeName ?? t("admin.storyous.placeFallback"),
+          desks: j.preview?.deskCount ?? 0,
+          items: j.preview?.menuItemCount ?? 0,
+        }),
       );
       await load();
     } catch {
-      setErr("Uložení selhalo.");
+      setErr(t("admin.storyous.saveFailed"));
     } finally {
       setSaving(false);
     }
@@ -163,12 +170,12 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
       });
       const j = (await r.json()) as { ok?: boolean; error?: string };
       if (!r.ok || !j.ok) {
-        setErr(typeof j.error === "string" ? j.error : "Změna stavu selhala.");
+        setErr(typeof j.error === "string" ? j.error : t("admin.storyous.toggleFailed"));
         return;
       }
       await load();
     } catch {
-      setErr("Změna stavu selhala.");
+      setErr(t("admin.storyous.toggleFailed"));
     } finally {
       setToggling(false);
     }
@@ -186,14 +193,12 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
         background: "var(--panel)",
       }}
     >
-      <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Storyous</h2>
+      <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.storyous.title")}</h2>
       <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
-        Napojení účtu pokladny k této restauraci. Client ID a Secret patří do prostředí serveru (Vercel → Environment
-        Variables, lokálně <code style={{ fontSize: 12 }}>.env.local</code>). Sem patří <strong>Merchant ID</strong> a{" "}
-        <strong>Place ID</strong> provozovny. Menu na tabletech a odesílání objednávek přidáme v dalším kroku.
+        {t("admin.storyous.intro")}
       </p>
 
-      {loading ? <p className="textMuted">Načítání…</p> : null}
+      {loading ? <p className="textMuted">{t("admin.storyous.loading")}</p> : null}
 
       {!loading && err ? (
         <p role="alert" style={{ color: "#fecaca", margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
@@ -203,14 +208,13 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
 
       {!loading && !(data && data.ok) ? (
         <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer", marginBottom: 12 }}>
-          Zkusit znovu
+          {t("admin.storyous.retry")}
         </button>
       ) : null}
 
       {!loading && data && data.ok && !data.hasAppCredentials ? (
         <p role="alert" style={{ color: "#fecaca" }}>
-          Na serveru chybí <code>STORYOUS_CLIENT_ID</code> / <code>STORYOUS_CLIENT_SECRET</code>. Na Vercelu je doplňte v
-          Environment Variables a proveďte Redeploy. Lokálně stačí <code>.env.local</code> a restart Next.js.
+          {t("admin.storyous.missingCreds")}
         </p>
       ) : null}
 
@@ -218,13 +222,13 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
         <>
           <div style={{ display: "grid", gap: 6, margin: "0 0 12px" }}>
             <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
-              Stav:{" "}
+              {t("admin.storyous.status")}{" "}
               {data.disabled ? (
-                <strong style={{ color: "#fca5a5" }}>odpojeno</strong>
+                <strong style={{ color: "#fca5a5" }}>{t("admin.storyous.statusDisabled")}</strong>
               ) : data.hasRow ? (
-                <strong style={{ color: "var(--success)" }}>aktivní</strong>
+                <strong style={{ color: "var(--success)" }}>{t("admin.storyous.statusActive")}</strong>
               ) : (
-                <strong>nenapojeno</strong>
+                <strong>{t("admin.storyous.statusNone")}</strong>
               )}
             </p>
             {data.merchantName || data.placeName ? (
@@ -235,19 +239,19 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
             ) : null}
             {data.lastOkAtIso ? (
               <p className="textMuted2" style={{ margin: 0, fontSize: 12 }}>
-                Poslední OK: <span style={{ fontFamily: "ui-monospace, monospace" }}>{data.lastOkAtIso}</span>
+                {t("admin.storyous.lastOk")} <span style={{ fontFamily: "ui-monospace, monospace" }}>{data.lastOkAtIso}</span>
               </p>
             ) : null}
             {data.lastError ? (
               <p role="alert" style={{ margin: 0, fontSize: 12, color: "#fecaca" }}>
-                Poslední chyba: <span style={{ fontFamily: "ui-monospace, monospace" }}>{data.lastError}</span>
+                {t("admin.storyous.lastError")} <span style={{ fontFamily: "ui-monospace, monospace" }}>{data.lastError}</span>
               </p>
             ) : null}
           </div>
 
           <form onSubmit={(e) => void onSave(e)} style={{ display: "grid", gap: 12 }}>
             <label style={{ display: "grid", gap: 6 }}>
-              <span>Merchant ID</span>
+              <span>{t("admin.storyous.merchantId")}</span>
               <input
                 className="chip"
                 style={{
@@ -260,7 +264,7 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
                 }}
                 value={merchantId}
                 onChange={(e) => setMerchantId(e.target.value)}
-                placeholder="ID účtu ve Storyous"
+                placeholder={t("admin.storyous.merchantPlaceholder")}
                 autoComplete="off"
               />
             </label>
@@ -272,7 +276,7 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
                 disabled={placesLoading || !data.hasAppCredentials}
                 style={{ cursor: placesLoading ? "wait" : "pointer" }}
               >
-                {placesLoading ? "Načítám provozovny…" : "Načíst provozovny"}
+                {placesLoading ? t("admin.storyous.loadingPlaces") : t("admin.storyous.loadPlaces")}
               </button>
               {data.hasRow ? (
                 <button
@@ -282,24 +286,24 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
                   disabled={toggling}
                   style={{ cursor: toggling ? "wait" : "pointer" }}
                 >
-                  {toggling ? "…" : data.disabled ? "Zapnout Storyous" : "Odpojit Storyous"}
+                  {toggling ? "…" : data.disabled ? t("admin.storyous.enable") : t("admin.storyous.disable")}
                 </button>
               ) : null}
               <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
-                Obnovit stav
+                {t("admin.storyous.refreshStatus")}
               </button>
             </div>
             {merchantName ? (
               <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
-                Merchant: <strong>{merchantName}</strong>
+                {t("admin.storyous.merchantLabel")} <strong>{merchantName}</strong>
               </p>
             ) : null}
             <label style={{ display: "grid", gap: 6 }}>
-              <span>Provozovna (Place ID)</span>
+              <span>{t("admin.storyous.placeLabel")}</span>
               {places && places.length > 0 ? (
                 <select
                   className="chip"
-                  aria-label="Vyberte provozovnu ze Storyous"
+                  aria-label={t("admin.storyous.placeAria")}
                   value={places.some((p) => p.placeId === placeId.trim()) ? placeId.trim() : ""}
                   onChange={(e) => {
                     if (e.target.value) setPlaceId(e.target.value);
@@ -313,7 +317,7 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
                     maxWidth: "100%",
                   }}
                 >
-                  <option value="">— vyberte provozovnu nebo zadejte ID níže —</option>
+                  <option value="">{t("admin.storyous.placePlaceholderOption")}</option>
                   {places.map((p) => (
                     <option key={p.placeId} value={p.placeId}>
                       {p.name}
@@ -334,7 +338,7 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
                 }}
                 value={placeId}
                 onChange={(e) => setPlaceId(e.target.value)}
-                placeholder="ID provozovny"
+                placeholder={t("admin.storyous.placePlaceholder")}
                 autoComplete="off"
               />
             </label>
@@ -350,30 +354,30 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
                 disabled={saving || !data.hasAppCredentials}
                 style={{ cursor: saving || !data.hasAppCredentials ? "not-allowed" : "pointer" }}
               >
-                {saving ? "Ověřuji…" : "Ověřit a uložit"}
+                {saving ? t("admin.storyous.verifying") : t("admin.storyous.verifySave")}
               </button>
             </div>
           </form>
 
           {connected && (desks != null || menuItemCount != null) ? (
             <div style={{ marginTop: 16 }}>
-              <h3 style={{ margin: "0 0 8px", fontSize: "0.95rem" }}>Stoly ve Storyous</h3>
+              <h3 style={{ margin: "0 0 8px", fontSize: "0.95rem" }}>{t("admin.storyous.desksTitle")}</h3>
               {menuItemCount != null ? (
                 <p className="textMuted2" style={{ margin: "0 0 8px", fontSize: 13 }}>
-                  Položek v menu: {menuItemCount}
+                  {t("admin.storyous.menuItemCount", { count: menuItemCount })}
                 </p>
               ) : null}
               {desks && desks.length > 0 ? (
                 <ul style={{ margin: 0, paddingLeft: 18 }}>
                   {desks.map((d) => (
                     <li key={d.deskId} style={{ fontSize: 13 }}>
-                      {d.name} <span className="textMuted2">(kód {d.code})</span>
+                      {d.name} <span className="textMuted2">{t("admin.storyous.deskCode", { code: d.code })}</span>
                     </li>
                   ))}
                 </ul>
               ) : (
                 <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
-                  Zatím žádné stoly. Založte je ve webové administraci Storyous.
+                  {t("admin.storyous.desksEmpty")}
                 </p>
               )}
             </div>

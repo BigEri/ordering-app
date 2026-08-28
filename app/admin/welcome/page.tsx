@@ -1,5 +1,6 @@
 "use client";
 
+import { AdminRedirecting } from "../../../components/admin/AdminRedirecting";
 import * as React from "react";
 
 /**
@@ -30,8 +31,6 @@ export default function AdminWelcomeRedirectPage() {
   }, []);
 
   return (
-    <main className="adminPage">
-      <p className="textMuted">Přesměrování na úvodní stránku provozovny…</p>
-    </main>
+    <AdminRedirecting messageKey="admin.redirect.welcome" />
   );
 }

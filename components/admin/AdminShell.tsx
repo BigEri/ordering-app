@@ -15,6 +15,8 @@ import {
   swapRestaurantIdInPath,
   workspaceNavForRole,
 } from "./restaurantWorkspaceNav";
+import { AdminLanguageMenu } from "./AdminLanguageMenu";
+import { useAdminLanguage } from "./AdminLanguageProvider";
 import { TableflowBrand } from "./TableflowBrand";
 import { useAdminRestaurantBootstrap } from "./useAdminRestaurantBootstrap";
 
@@ -42,6 +44,7 @@ export function AdminShell({
   const pathname = usePathname() ?? "";
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { t } = useAdminLanguage();
   const [me, setMe] = React.useState<MeOk | null>(bootstrap?.me ?? null);
   const [restaurants, setRestaurants] = React.useState<{ id: string; name: string }[]>(
     () => bootstrap?.restaurants ?? [],
@@ -142,27 +145,28 @@ export function AdminShell({
   const breadcrumbItems = React.useMemo(() => {
     const items: { label: string; href?: string }[] = [];
     if (showPlatformNav || onRestaurantList) {
-      items.push({ label: "Provozovny", href: "/admin/restaurants" });
+      items.push({ label: t("admin.nav.restaurants"), href: "/admin/restaurants" });
       return items;
     }
     if (inWorkspace && workspaceRid) {
       if (isSuper) {
-        items.push({ label: "Provozovny", href: "/admin/restaurants" });
+        items.push({ label: t("admin.nav.restaurants"), href: "/admin/restaurants" });
       }
       items.push({
-        label: workspaceName ?? "Provozovna",
+        label: workspaceName ?? t("admin.nav.breadcrumbVenueFallback"),
         href: restaurantWorkspaceHref(workspaceRid, "overview"),
       });
       if (section !== "overview") {
-        const label = RESTAURANT_WORKSPACE_NAV.find((x) => x.id === section)?.label ?? section;
+        const navItem = RESTAURANT_WORKSPACE_NAV.find((x) => x.id === section);
+        const label = navItem ? t(navItem.labelKey) : section;
         items.push({ label, href: undefined });
         if (pathname.includes("/menu/translations")) {
-          items.push({ label: "Překlady", href: undefined });
+          items.push({ label: t("admin.nav.breadcrumbTranslations"), href: undefined });
         }
       }
       return items;
     }
-    items.push({ label: "Admin", href: "/admin" });
+    items.push({ label: t("admin.nav.breadcrumbAdmin"), href: "/admin" });
     return items;
   }, [
     showPlatformNav,
@@ -173,6 +177,7 @@ export function AdminShell({
     workspaceName,
     section,
     pathname,
+    t,
   ]);
 
   const onBack = () => {
@@ -233,17 +238,20 @@ export function AdminShell({
   return (
     <AdminShellProvider value={bootstrap}>
       <div className={`adminShell${clientReady ? " adminShell--ready" : ""}`}>
-        <aside className="adminShell__aside" aria-label="Admin menu">
+        <aside className="adminShell__aside" aria-label={t("admin.nav.asideAria")}>
           <div className="adminShell__brand">
-            <span className="adminShell__brandTitle">Admin</span>
+            <div className="adminShell__brandRow">
+              <span className="adminShell__brandTitle">{t("admin.nav.brandTitle")}</span>
+              <AdminLanguageMenu />
+            </div>
             <span className="adminShell__brandSub">
               {inWorkspace && workspaceName
                 ? workspaceName
                 : onSuperAccounts
-                  ? "SUPER účty"
+                  ? t("admin.nav.brandSubSuper")
                   : showPlatformNav
-                    ? "Všechny provozovny"
-                    : "Správa vaší restaurace"}
+                    ? t("admin.nav.brandSubAll")
+                    : t("admin.nav.brandSubManage")}
             </span>
           </div>
           <nav className="adminShell__nav">
@@ -251,12 +259,12 @@ export function AdminShell({
               <>
                 <AdminNavLink
                   href="/admin/restaurants"
-                  label="Provozovny"
+                  label={t("admin.nav.restaurants")}
                   active={onRestaurantList || pathname === "/admin"}
                 />
                 <AdminNavLink
                   href="/admin/super-accounts"
-                  label="SUPER účty"
+                  label={t("admin.nav.superAccounts")}
                   active={pathname.startsWith("/admin/super-accounts")}
                 />
               </>
@@ -265,7 +273,7 @@ export function AdminShell({
             {isSuper && inWorkspace ? (
               <AdminNavLink
                 href="/admin/super-accounts"
-                label="SUPER účty"
+                label={t("admin.nav.superAccounts")}
                 active={pathname.startsWith("/admin/super-accounts")}
               />
             ) : null}
@@ -279,7 +287,7 @@ export function AdminShell({
                     workspaceRid === navRestaurantId &&
                     section === item.id;
                   return (
-                    <AdminNavLink key={item.id} href={href} label={item.label} active={active} />
+                    <AdminNavLink key={item.id} href={href} label={t(item.labelKey)} active={active} />
                   );
                 })}
                 <a
@@ -287,14 +295,14 @@ export function AdminShell({
                   href={publicMenuUrlFromAdmin({ rid: navRestaurantId })}
                   style={{ textDecoration: "none" }}
                 >
-                  Veřejné menu ↗
+                  {t("admin.nav.publicMenu")}
                 </a>
               </>
             ) : null}
 
             {!showPlatformNav && !navRestaurantId ? (
               <p className="textMuted2" style={{ margin: "8px 12px", fontSize: 12 }}>
-                Načítání provozovny…
+                {t("admin.nav.loadingRestaurant")}
               </p>
             ) : null}
           </nav>
@@ -302,15 +310,17 @@ export function AdminShell({
             {me?.ok ? (
               <p className="adminShell__user" title={me.session.email}>
                 {me.session.email}
-                <span className="adminShell__role">{me.session.globalRole === "SUPER_ADMIN" ? "SUPER" : ""}</span>
+                <span className="adminShell__role">
+                  {me.session.globalRole === "SUPER_ADMIN" ? t("admin.nav.roleSuper") : ""}
+                </span>
               </p>
             ) : (
               <p className="textMuted2" style={{ margin: 0, fontSize: 12 }}>
-                Načítání…
+                {t("admin.nav.loading")}
               </p>
             )}
             <a href="/admin/account" className="adminNavLink" style={{ textDecoration: "none", fontSize: 13 }}>
-              Můj účet
+              {t("admin.nav.myAccount")}
             </a>
             <button
               type="button"
@@ -319,7 +329,7 @@ export function AdminShell({
               onClick={() => void onLogout()}
               style={{ cursor: logoutLoading ? "wait" : "pointer" }}
             >
-              {logoutLoading ? "…" : "Odhlásit"}
+              {logoutLoading ? "…" : t("admin.nav.logout")}
             </button>
           </div>
           <TableflowBrand className="adminShell__tableflow" />
@@ -328,13 +338,13 @@ export function AdminShell({
         <div className="adminShell__main">
           <header className="adminShell__top">
             <div className="adminShell__topRow">
-              <button type="button" className="chip adminShell__back" onClick={onBack} aria-label="Zpět">
-                {inWorkspace && isSuper ? "← Provozovny" : "← Zpět"}
+              <button type="button" className="chip adminShell__back" onClick={onBack} aria-label={t("admin.nav.backAria")}>
+                {inWorkspace && isSuper ? t("admin.nav.backRestaurants") : t("admin.nav.back")}
               </button>
-              <div className="adminShell__activePill" title="Aktuální provozovna">
+              <div className="adminShell__activePill" title={t("admin.nav.activePillTitle")}>
                 {inWorkspace && isSuper && restaurants.length > 0 ? (
                   <label style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                    <span className="textMuted2">Provozovna:</span>
+                    <span className="textMuted2">{t("admin.nav.restaurantLabel")}</span>
                     <select
                       className="chip"
                       value={workspaceRid ?? ""}
@@ -351,16 +361,16 @@ export function AdminShell({
                   </label>
                 ) : workspaceName ? (
                   <>
-                    <span className="textMuted2">Provozovna:</span> <strong>{workspaceName}</strong>
+                    <span className="textMuted2">{t("admin.nav.restaurantLabel")}</span> <strong>{workspaceName}</strong>
                   </>
                 ) : showPlatformNav ? (
-                  <span className="textMuted2">Vyberte provozovnu ze seznamu</span>
+                  <span className="textMuted2">{t("admin.nav.pickRestaurant")}</span>
                 ) : (
-                  <span className="textMuted2">Načítání…</span>
+                  <span className="textMuted2">{t("admin.nav.loading")}</span>
                 )}
               </div>
             </div>
-            <nav className="adminBreadcrumb" aria-label="Drobečková navigace">
+            <nav className="adminBreadcrumb" aria-label={t("admin.nav.breadcrumbAria")}>
               {breadcrumbItems.map((b, i) => (
                 <React.Fragment key={`${b.label}-${i}`}>
                   {i > 0 ? <span className="adminBreadcrumb__sep">/</span> : null}
