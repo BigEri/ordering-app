@@ -8,6 +8,8 @@ export type AuditEventType =
   | "dotykacka_disconnected"
   | "dotykacka_sync_ok"
   | "dotykacka_sync_failed"
+  | "storyous_connected"
+  | "storyous_disconnected"
   | "pos_order_sent"
   | "pos_order_failed";
 
