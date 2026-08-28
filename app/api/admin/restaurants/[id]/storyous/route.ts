@@ -11,6 +11,7 @@ import {
   upsertRestaurantStoryousConnection,
 } from "../../../../../../lib/server/restaurantStoryous";
 import { prisma } from "../../../../../../lib/server/prisma";
+import { isPrismaMissingColumnError, isPrismaMissingTableError } from "../../../../../../lib/server/prismaKnownError";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,27 @@ async function assertRestaurantAccess(session: AdminSession, restaurantId: strin
 
 async function loadRestaurant(id: string) {
   return prisma.restaurant.findUnique({ where: { id }, select: { id: true } });
+}
+
+function storyousRouteError(e: unknown): NextResponse {
+  if (e instanceof Error && e.message === "UNAUTHORIZED") {
+    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+  }
+  if (e instanceof Error && e.message === "FORBIDDEN") {
+    return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
+  }
+  if (isPrismaMissingTableError(e) || isPrismaMissingColumnError(e)) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error:
+          "Na databázi chybí tabulka Storyous. Z PC spusťte migraci: npx prisma migrate deploy (direct URL z Neonu, viz docs/DEPLOY-VERCEL.md).",
+      },
+      { status: 503 },
+    );
+  }
+  const msg = e instanceof Error && e.message.trim() ? e.message : "Chyba Storyous API.";
+  return NextResponse.json({ ok: false, error: msg }, { status: 500 });
 }
 
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -72,10 +94,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
       preview,
     });
   } catch (e) {
-    if (e instanceof Error && e.message === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-    }
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return storyousRouteError(e);
   }
 }
 
@@ -93,7 +112,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       return NextResponse.json(
         {
           ok: false,
-          error: "Na serveru chybí STORYOUS_CLIENT_ID a STORYOUS_CLIENT_SECRET v .env.local.",
+          error:
+            "Na serveru chybí STORYOUS_CLIENT_ID a STORYOUS_CLIENT_SECRET (Vercel → Environment Variables, lokálně .env.local).",
         },
         { status: 400 },
       );
@@ -140,14 +160,15 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Ověření Storyous selhalo.";
-      await markRestaurantStoryousError(id, msg);
+      try {
+        await markRestaurantStoryousError(id, msg);
+      } catch {
+        /* tabulka může chybět — hlášku stejně vrátíme */
+      }
       return NextResponse.json({ ok: false, error: msg }, { status: 400 });
     }
   } catch (e) {
-    if (e instanceof Error && e.message === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-    }
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return storyousRouteError(e);
   }
 }
 
@@ -176,9 +197,6 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     if (!res.ok) return NextResponse.json({ ok: false, error: res.error }, { status: 400 });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    if (e instanceof Error && e.message === "FORBIDDEN") {
-      return NextResponse.json({ ok: false, error: "Forbidden" }, { status: 403 });
-    }
-    return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
+    return storyousRouteError(e);
   }
 }

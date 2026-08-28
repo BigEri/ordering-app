@@ -188,17 +188,29 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
     >
       <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>Storyous</h2>
       <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
-        Napojení účtu pokladny k této restauraci. Client ID a Secret jsou v <code style={{ fontSize: 12 }}>.env.local</code>{" "}
-        (partner aplikace). Sem patří <strong>Merchant ID</strong> a <strong>Place ID</strong> provozovny. Menu na tabletech
-        a odesílání objednávek do Storyous přidáme v dalším kroku — teď ověříme, že API vidí provozovnu, menu a stoly.
+        Napojení účtu pokladny k této restauraci. Client ID a Secret patří do prostředí serveru (Vercel → Environment
+        Variables, lokálně <code style={{ fontSize: 12 }}>.env.local</code>). Sem patří <strong>Merchant ID</strong> a{" "}
+        <strong>Place ID</strong> provozovny. Menu na tabletech a odesílání objednávek přidáme v dalším kroku.
       </p>
 
       {loading ? <p className="textMuted">Načítání…</p> : null}
 
+      {!loading && err ? (
+        <p role="alert" style={{ color: "#fecaca", margin: "0 0 12px", fontSize: 13, lineHeight: 1.5 }}>
+          {err}
+        </p>
+      ) : null}
+
+      {!loading && !(data && data.ok) ? (
+        <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer", marginBottom: 12 }}>
+          Zkusit znovu
+        </button>
+      ) : null}
+
       {!loading && data && data.ok && !data.hasAppCredentials ? (
         <p role="alert" style={{ color: "#fecaca" }}>
-          Na serveru chybí <code>STORYOUS_CLIENT_ID</code> / <code>STORYOUS_CLIENT_SECRET</code>. Doplňte je do{" "}
-          <code>.env.local</code> a restartujte Next.js.
+          Na serveru chybí <code>STORYOUS_CLIENT_ID</code> / <code>STORYOUS_CLIENT_SECRET</code>. Na Vercelu je doplňte v
+          Environment Variables a proveďte Redeploy. Lokálně stačí <code>.env.local</code> a restart Next.js.
         </p>
       ) : null}
 
@@ -326,11 +338,6 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
                 autoComplete="off"
               />
             </label>
-            {err ? (
-              <p role="alert" style={{ margin: 0, color: "#fecaca", fontSize: 13 }}>
-                {err}
-              </p>
-            ) : null}
             {msg ? (
               <p role="status" style={{ margin: 0, fontSize: 13 }}>
                 {msg}

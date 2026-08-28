@@ -9,3 +9,8 @@ export function prismaErrorCode(error: unknown): string | null {
 export function isPrismaMissingColumnError(error: unknown): boolean {
   return prismaErrorCode(error) === "P2022";
 }
+
+/** Table in Prisma schema is missing from the live database (migrate not applied). */
+export function isPrismaMissingTableError(error: unknown): boolean {
+  return prismaErrorCode(error) === "P2021";
+}
