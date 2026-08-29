@@ -26,6 +26,9 @@ const INTERACTION_SYNC_MIN_MS = 1500;
 type TableOpenBillResponse = {
   ok?: boolean;
   configured?: boolean;
+  /** false = pokladna nemá živý účet (Storyous) — nemazat lokální objednávky. */
+  liveTill?: boolean;
+  source?: string;
   open?: boolean;
   lines?: Array<{ name: string; qty: number; unitPriceCzk: number }>;
   totalCzk?: number;
@@ -120,6 +123,7 @@ export function TableBillSyncWatcher() {
       const j = (await r.json()) as TableOpenBillResponse;
       if (!r.ok || !j.ok) return;
       if (j.configured === false) return;
+      if (j.liveTill === false || j.source === "storyous") return;
       applyBillSnapshot(j);
     } catch {
       /* síť — další pokus z intervalu nebo po interakci */

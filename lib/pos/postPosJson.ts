@@ -9,13 +9,18 @@ export type PostPosJsonResult =
   | { ok: true }
   | { ok: false; kind: "network" | "http"; status?: number; detail?: string };
 
-function extractPosErrorDetail(data: unknown): string | undefined {
+function nestedPosError(value: unknown): string | undefined {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
+  const err = (value as { error?: unknown }).error;
+  return typeof err === "string" && err.trim() ? err.trim() : undefined;
+}
+
+export function extractPosErrorDetail(data: unknown): string | undefined {
   if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
   const d = data as Record<string, unknown>;
-  const dk = d.dotykacka;
-  if (dk && typeof dk === "object" && !Array.isArray(dk)) {
-    const err = (dk as { error?: unknown }).error;
-    if (typeof err === "string" && err.trim()) return err.trim();
+  for (const key of ["storyous", "dotykacka", "till"] as const) {
+    const nested = nestedPosError(d[key]);
+    if (nested) return nested;
   }
   const top = d.error;
   if (typeof top === "string" && top.trim()) return top.trim();

@@ -3,6 +3,7 @@
 import * as React from "react";
 
 import type { OrderLineSnapshotInput } from "../lib/menu/orderLineLabel";
+import { loadConfirmedOrdersSession, saveConfirmedOrdersSession } from "../lib/client/confirmedOrdersSession";
 
 export type ConfirmedOrderLine = {
   name: string;
@@ -36,10 +37,18 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const [orders, setOrders] = React.useState<ConfirmedOrder[]>([]);
   const [hasOpenTableBill, setHasOpenTableBill] = React.useState(false);
 
+  React.useEffect(() => {
+    setOrders(loadConfirmedOrdersSession());
+  }, []);
+
   const addOrder = React.useCallback((order: Omit<ConfirmedOrder, "id" | "createdAtIso">) => {
     const createdAtIso = new Date().toISOString();
     const id = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-    setOrders((prev) => [{ ...order, id, createdAtIso }, ...prev]);
+    setOrders((prev) => {
+      const next = [{ ...order, id, createdAtIso }, ...prev];
+      saveConfirmedOrdersSession(next);
+      return next;
+    });
   }, []);
 
   const syncTableBillFromDotykacka = React.useCallback(
@@ -47,10 +56,11 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
       if (bill.lines.length === 0) {
         setOrders([]);
         setHasOpenTableBill(false);
+        saveConfirmedOrdersSession([]);
         return;
       }
       setHasOpenTableBill(true);
-      setOrders([
+      const next: ConfirmedOrder[] = [
         {
           id: "dotykacka-table-bill",
           createdAtIso: new Date().toISOString(),
@@ -61,7 +71,9 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           })),
           totalCzk: bill.totalCzk,
         },
-      ]);
+      ];
+      setOrders(next);
+      saveConfirmedOrdersSession(next);
     },
     [],
   );
@@ -69,6 +81,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   const clearOrders = React.useCallback(() => {
     setOrders([]);
     setHasOpenTableBill(false);
+    saveConfirmedOrdersSession([]);
   }, []);
 
   const value = React.useMemo<OrdersContextValue>(

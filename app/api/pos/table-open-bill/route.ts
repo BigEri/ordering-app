@@ -31,6 +31,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       ok: true,
       configured: true,
+      liveTill: false,
+      source: "storyous",
       open: false,
       lines: [],
       totalCzk: 0,

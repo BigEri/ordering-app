@@ -69,7 +69,7 @@ export function buildStoryousDeliveryItems(lines: unknown): { itemId: string; co
 function dineInCustomer(tableLabel: string, deskId: string) {
   return {
     name: tableLabel,
-    phoneNumber: "+420000000000",
+    phoneNumber: "+420777123456",
     email: "noreply@tableflow.cz",
     deliveryAddress: tableLabel,
     deliveryAddressParts: {
