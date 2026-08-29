@@ -114,6 +114,14 @@ export async function setRestaurantStoryousDisabled(input: {
   return { ok: true };
 }
 
+export async function markRestaurantStoryousOk(restaurantId: string): Promise<void> {
+  const ts = nowIso();
+  await prisma.restaurantStoryous.updateMany({
+    where: { restaurantId: restaurantId.trim() },
+    data: { lastOkAtIso: ts, lastError: null, updatedAtIso: ts },
+  });
+}
+
 export async function markRestaurantStoryousError(restaurantId: string, error: string): Promise<void> {
   const ts = nowIso();
   await prisma.restaurantStoryous.updateMany({

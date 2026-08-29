@@ -58,21 +58,21 @@ type IntegrationsStatusPayload = {
   dotykacka?: { syncConfigured?: boolean; hint?: string | null };
 };
 
-type DotyTable = { id: number; name: string };
+type PosTable = { id: string; name: string };
 
-function resolveDotykackaTableDisplay(
+function resolvePosTableDisplay(
   tableId: string,
   tableLabel: string,
-  dotyById: Map<string, DotyTable>,
+  posById: Map<string, PosTable>,
   tableFallback: (id: string) => string,
-): { name: string; fromDotyka: boolean } {
+): { name: string; fromTill: boolean } {
   const tid = tableId.trim();
-  const hit = tid ? dotyById.get(tid) : undefined;
-  if (hit?.name) return { name: hit.name, fromDotyka: true };
+  const hit = tid ? posById.get(tid) : undefined;
+  if (hit?.name) return { name: hit.name, fromTill: true };
   const lbl = tableLabel.trim();
-  if (lbl) return { name: lbl, fromDotyka: false };
-  if (tid) return { name: tableFallback(tid), fromDotyka: false };
-  return { name: "—", fromDotyka: false };
+  if (lbl) return { name: lbl, fromTill: false };
+  if (tid) return { name: tableFallback(tid), fromTill: false };
+  return { name: "—", fromTill: false };
 }
 
 export function DevicesAdminClient({
@@ -110,7 +110,8 @@ export function DevicesAdminClient({
   const [apkUpdatePending, setApkUpdatePending] = React.useState<string | null>(null);
   const [apkConfirmDevice, setApkConfirmDevice] = React.useState<DeviceRow | null>(null);
   const [kioskRelease, setKioskRelease] = React.useState<KioskRelease>(null);
-  const [dotyTables, setDotyTables] = React.useState<DotyTable[] | null>(null);
+  const [posTables, setPosTables] = React.useState<PosTable[] | null>(null);
+  const [posTablesSource, setPosTablesSource] = React.useState<"storyous" | "dotykacka" | null>(null);
   const activeRestaurantId = rid || null;
   const activeRestaurantName = restaurantName;
 
@@ -237,23 +238,36 @@ export function DevicesAdminClient({
   React.useEffect(() => {
     let cancelled = false;
     void (async () => {
+      if (!rid) {
+        setPosTables(null);
+        return;
+      }
       try {
-        const r = await fetch("/api/admin/dotykacka/tables", { cache: "no-store" });
-        const j = (await r.json()) as { ok?: boolean; tables?: DotyTable[] };
+        const r = await fetch(`/api/admin/pos/tables?restaurantId=${encodeURIComponent(rid)}`, { cache: "no-store" });
+        const j = (await r.json()) as {
+          ok?: boolean;
+          tables?: PosTable[];
+          source?: "storyous" | "dotykacka";
+        };
         if (cancelled) return;
         if (!r.ok || !j.ok || !j.tables) {
-          setDotyTables(null);
+          setPosTables(null);
+          setPosTablesSource(null);
           return;
         }
-        setDotyTables(j.tables);
+        setPosTables(j.tables);
+        setPosTablesSource(j.source ?? null);
       } catch {
-        if (!cancelled) setDotyTables(null);
+        if (!cancelled) {
+          setPosTables(null);
+          setPosTablesSource(null);
+        }
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [rid]);
 
   const openTableEdit = (d: DeviceRow) => {
     setTableEditDevice(d);
@@ -607,13 +621,13 @@ export function DevicesAdminClient({
       timeStyle: "medium",
     });
 
-  const dotyTableById = React.useMemo(() => {
-    const m = new Map<string, DotyTable>();
-    for (const t of dotyTables ?? []) {
-      m.set(String(t.id), t);
+  const posTableById = React.useMemo(() => {
+    const m = new Map<string, PosTable>();
+    for (const t of posTables ?? []) {
+      m.set(t.id, t);
     }
     return m;
-  }, [dotyTables]);
+  }, [posTables]);
 
   return (
     <div className={embedded ? undefined : "adminPage"}>
@@ -851,7 +865,9 @@ export function DevicesAdminClient({
               <tr style={{ background: "var(--panel)" }}>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.device")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.table")}</th>
-                <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.dotykackaTable")}</th>
+                <th style={{ textAlign: "left", padding: "10px 12px" }}>
+                  {posTablesSource === "storyous" ? "Storyous (stůl)" : t("admin.devices.col.dotykackaTable")}
+                </th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.apkOnDevice")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.battery")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.status")}</th>
@@ -861,7 +877,7 @@ export function DevicesAdminClient({
             </thead>
             <tbody>
               {devices.map((d) => {
-                const doty = resolveDotykackaTableDisplay(d.tableId, d.tableLabel, dotyTableById, (id) =>
+                const posTable = resolvePosTableDisplay(d.tableId, d.tableLabel, posTableById, (id) =>
                   t("admin.devices.tableFallback", { id }),
                 );
                 return (
@@ -876,10 +892,10 @@ export function DevicesAdminClient({
                     </span>
                   </td>
                   <td style={{ padding: "10px 12px" }}>
-                    <strong style={{ fontSize: 15 }}>{doty.name}</strong>
+                    <strong style={{ fontSize: 15 }}>{posTable.name}</strong>
                     <div className="textMuted2" style={{ marginTop: 4, fontSize: 12, fontFamily: "ui-monospace, monospace" }}>
                       ID {d.tableId || "—"}
-                      {doty.fromDotyka ? (
+                      {posTable.fromTill ? (
                         <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· {t("admin.devices.fromDotykacka")}</span>
                       ) : (
                         <span style={{ marginLeft: 8, fontFamily: "inherit" }}>· {t("admin.devices.inAppOnly")}</span>
@@ -1074,7 +1090,7 @@ export function DevicesAdminClient({
               {t("admin.devices.editTableHint")}
             </p>
             <form onSubmit={(ev) => void onSaveTableEdit(ev)} style={{ display: "grid", gap: 12 }}>
-              {(dotyTables?.length ?? 0) > 0 ? (
+              {(posTables?.length ?? 0) > 0 ? (
                 <label style={{ display: "grid", gap: 4 }}>
                   <span className="textMuted2" style={{ fontSize: 12 }}>
                     {t("admin.devices.dotyQuickPick")}
@@ -1093,14 +1109,14 @@ export function DevicesAdminClient({
                       const nextId = e.target.value;
                       if (!nextId) return;
                       setEditTableId(nextId);
-                      const hit = dotyTables?.find((t) => String(t.id) === nextId);
+                      const hit = posTables?.find((row) => row.id === nextId);
                       setEditTableLabel(hit ? hit.name : t("admin.devices.tableFallback", { id: nextId }));
                     }}
                   >
                     <option value="">{t("admin.devices.pairKioskTablePlaceholder")}</option>
-                    {dotyTables!.map((t) => (
-                      <option key={t.id} value={String(t.id)}>
-                        {t.name} ({t.id})
+                    {posTables!.map((row) => (
+                      <option key={row.id} value={row.id}>
+                        {row.name} ({row.id})
                       </option>
                     ))}
                   </select>

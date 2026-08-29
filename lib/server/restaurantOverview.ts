@@ -17,7 +17,7 @@ export type RestaurantOverviewItem = {
   hasWelcome: boolean;
   managerCount: number;
   onboarding: RestaurantOnboardingFlags;
-  /** Dotykačka + alespoň jeden spárovaný tablet — minimum pro provoz kiosku. */
+  /** Pokladna (Storyous nebo Dotykačka) + alespoň jeden spárovaný tablet — minimum pro provoz kiosku. */
   operationalReady: boolean;
   /** Všechny čtyři kroky onboardingu. */
   fullyOnboarded: boolean;
@@ -65,7 +65,7 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
 
   const ids = rows.map((r) => r.id);
 
-  const [deviceCounts, menuImageCounts, welcomeRows, managerCounts] = await Promise.all([
+  const [deviceCounts, menuImageCounts, welcomeRows, managerCounts, storyousRows] = await Promise.all([
     prisma.kioskDeviceBinding.groupBy({
       by: ["restaurantId"],
       where: { restaurantId: { in: ids } },
@@ -85,6 +85,10 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
       where: { restaurantId: { in: ids }, role: "RESTAURANT_ADMIN" },
       _count: { userId: true },
     }),
+    prisma.restaurantStoryous.findMany({
+      where: { restaurantId: { in: ids }, disabled: 0 },
+      select: { restaurantId: true, merchantId: true, placeId: true },
+    }),
   ]);
 
   const devicesByRid = new Map(deviceCounts.map((g) => [g.restaurantId, g._count.deviceId]));
@@ -93,6 +97,11 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
     welcomeRows.map((w) => [w.restaurantId, parseWelcomeHasCustom(w.imageUrlsJson)]),
   );
   const managersByRid = new Map(managerCounts.map((g) => [g.restaurantId, g._count.userId]));
+  const storyousByRid = new Set(
+    storyousRows
+      .filter((s) => s.merchantId.trim() && s.placeId.trim())
+      .map((s) => s.restaurantId),
+  );
 
   const dotykackaStatuses = await Promise.all(
     rows.map(async (r) => ({
@@ -109,8 +118,9 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
     const hasWelcome = welcomeByRid.get(r.id) ?? false;
     const managerCount = managersByRid.get(r.id) ?? 0;
 
+    const posConfigured = storyousByRid.has(r.id) || dotykacka.syncConfigured;
     const onboarding: RestaurantOnboardingFlags = {
-      dotykacka: dotykacka.syncConfigured,
+      dotykacka: posConfigured,
       device: deviceCount >= 1,
       welcome: hasWelcome,
       menuPhoto: menuImageCount >= 1,
@@ -124,8 +134,12 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
       id: r.id,
       name: r.name,
       dotykacka: {
-        syncConfigured: dotykacka.syncConfigured,
-        hint: dotykacka.hint,
+        syncConfigured: posConfigured,
+        hint: posConfigured
+          ? null
+          : storyousByRid.has(r.id)
+            ? null
+            : dotykacka.hint,
       },
       deviceCount,
       menuImageCount,

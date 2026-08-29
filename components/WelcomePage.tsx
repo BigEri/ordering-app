@@ -397,7 +397,7 @@ export function WelcomePage({
         <div className="welcomeKioskPairingCard">
           <p className="welcomeKioskPairingTitle">Personál</p>
           <p className="welcomeKioskPairingText">
-            Přihlaste se do administrace (vedoucí / správce) pro nastavení zařízení a propojení s Dotykačkou.
+            Přihlaste se do administrace (vedoucí / správce) pro nastavení zařízení a propojení s pokladnou.
           </p>
           <KioskAnchor href="/admin/login" className="chip" style={{ display: "inline-block", textDecoration: "none" }}>
             Přihlásit se →

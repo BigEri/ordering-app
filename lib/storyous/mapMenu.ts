@@ -91,6 +91,28 @@ function shouldSkipProduct(node: Record<string, unknown>, priceCzk: number): boo
   return false;
 }
 
+function walkProducts(node: Record<string, unknown>, visit: (rec: Record<string, unknown>) => void): void {
+  if (isProduct(node)) visit(node);
+  for (const child of childNodes(node)) walkProducts(child, visit);
+}
+
+/** 0 Kč variabilní položka z pokladny — signály (personál / účet), ne hostitelské menu. */
+export function findStoryousSignalProductId(json: unknown): string | null {
+  const root = asRecord(json);
+  if (!root) return null;
+  let found: string | null = null;
+  walkProducts(root, (rec) => {
+    if (found) return;
+    const priced = priceFromPlaceValues(rec);
+    if (!priced) return;
+    if (shouldSkipProduct(rec, priced.priceCzk)) {
+      const id = str(rec.productId);
+      if (id) found = id;
+    }
+  });
+  return found;
+}
+
 export function mapStoryousProductToMenuItem(node: unknown): MenuItemData | null {
   const rec = asRecord(node);
   if (!rec || !isProduct(rec)) return null;

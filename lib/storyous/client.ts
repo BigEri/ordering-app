@@ -88,3 +88,32 @@ export async function fetchStoryousMenuTree(
   const pid = placeId.trim();
   return storyousGet(creds, `/menu/${encodeURIComponent(mid)}?placeId=${encodeURIComponent(pid)}`);
 }
+
+export async function storyousPostJson(
+  creds: StoryousAppCredentials,
+  path: string,
+  body: unknown,
+): Promise<{ ok: true; status: number; json: unknown } | { ok: false; status: number; text: string }> {
+  const token = await getStoryousAccessToken(creds);
+  const url = `${creds.apiBase}${path.startsWith("/") ? path : `/${path}`}`;
+  const res = await fetchWithRetry(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    return { ok: false, status: res.status, text };
+  }
+  if (!text.trim()) return { ok: true, status: res.status, json: null };
+  try {
+    return { ok: true, status: res.status, json: JSON.parse(text) as unknown };
+  } catch {
+    return { ok: false, status: res.status, text: "neplatné JSON" };
+  }
+}

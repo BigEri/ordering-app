@@ -3,8 +3,16 @@ import { NextResponse } from "next/server";
 import { getDotykackaConfig } from "../dotykacka/config";
 import type { DotykackaSyncResult } from "../dotykacka/syncOrder";
 import { syncBillRequestToDotykacka, syncOrderConfirmedToDotykacka, syncStaffCallToDotykacka } from "../dotykacka/syncOrder";
+import { getRestaurantMenuSource } from "../menu/restaurantMenuSource";
 import { recordPresenceFromPosPayload } from "../server/deviceRegistry";
 import { markRestaurantDotykackaSyncFailed, markRestaurantDotykackaSyncOk } from "../server/restaurantDotykacka";
+import { markRestaurantStoryousError, markRestaurantStoryousOk } from "../server/restaurantStoryous";
+import {
+  syncBillRequestToStoryous,
+  syncOrderConfirmedToStoryous,
+  syncStaffCallToStoryous,
+} from "../storyous/syncOrder";
+import { getStoryousConfig } from "../storyous/config";
 import { verifyDeviceSecret } from "../server/deviceSecret";
 import { getKioskDeviceBinding } from "../server/kioskDeviceBindings";
 import { isSuccessfulDuplicateAsync, markPosRequestSuccessfulAsync } from "../server/posRequestDedupe";
@@ -49,68 +57,101 @@ function payloadDeviceId(sanitized: unknown): string | null {
   return typeof d === "string" && d.trim() ? d.trim() : null;
 }
 
-async function maybeSyncDotykacka(
+type TillSyncResult = { ok: true; meta?: unknown } | { ok: false; error: string; meta?: unknown };
+
+async function maybeSyncTill(
   eventType: string,
   sanitized: unknown,
-): Promise<DotykackaSyncResult | undefined> {
-  const cfg = await getDotykackaConfig(payloadRestaurantId(sanitized));
-  if (!cfg) return undefined;
-  if (eventType === "ORDER_CONFIRMED") return syncOrderConfirmedToDotykacka(sanitized, cfg);
-  if (eventType === "BILL_REQUEST") return syncBillRequestToDotykacka(sanitized, cfg);
-  if (eventType === "STAFF_CALL") return syncStaffCallToDotykacka(sanitized, cfg);
+): Promise<{ source: "storyous" | "dotykacka"; result: TillSyncResult } | undefined> {
+  const rid = payloadRestaurantId(sanitized);
+  if (!rid) return undefined;
+  const source = await getRestaurantMenuSource(rid);
+  if (source === "storyous") {
+    const cfg = await getStoryousConfig(rid);
+    if (!cfg) return undefined;
+    if (eventType === "ORDER_CONFIRMED") {
+      return { source, result: await syncOrderConfirmedToStoryous(sanitized, cfg) };
+    }
+    if (eventType === "BILL_REQUEST") {
+      return { source, result: await syncBillRequestToStoryous(sanitized, cfg) };
+    }
+    if (eventType === "STAFF_CALL") {
+      return { source, result: await syncStaffCallToStoryous(sanitized, cfg) };
+    }
+    return undefined;
+  }
+  if (source === "dotykacka") {
+    const cfg = await getDotykackaConfig(rid);
+    if (!cfg) return undefined;
+    let dk: DotykackaSyncResult | undefined;
+    if (eventType === "ORDER_CONFIRMED") dk = await syncOrderConfirmedToDotykacka(sanitized, cfg);
+    else if (eventType === "BILL_REQUEST") dk = await syncBillRequestToDotykacka(sanitized, cfg);
+    else if (eventType === "STAFF_CALL") dk = await syncStaffCallToDotykacka(sanitized, cfg);
+    if (!dk) return undefined;
+    return { source, result: dk };
+  }
   return undefined;
 }
 
-/** Sync do Dotykačky + audit / stav restaurace (synchronní — klient vidí úspěch i chybu). */
-async function runDotykackaSyncWithAudit(input: {
+/** Sync do pokladny (Storyous nebo Dotykačka) + audit. */
+async function runTillSyncWithAudit(input: {
   eventType: string;
   sanitized: unknown;
   clientRequestId: string | undefined;
-}): Promise<{ ok: boolean; error?: string } | undefined> {
+}): Promise<{ ok: boolean; error?: string; source?: "storyous" | "dotykacka" } | undefined> {
   const { eventType, sanitized, clientRequestId } = input;
   const rid = payloadRestaurantId(sanitized);
   const deviceId = payloadDeviceId(sanitized);
 
   try {
-    const dk = await maybeSyncDotykacka(eventType, sanitized);
-    if (!dk) return undefined;
-
-    const result = dk.ok ? { ok: true as const } : { ok: false as const, error: dk.error };
+    const synced = await maybeSyncTill(eventType, sanitized);
+    if (!synced) return undefined;
+    const { source, result } = synced;
 
     if (rid) {
       const details: Record<string, unknown> = {
         eventType,
         clientRequestId: clientRequestId ?? null,
+        source,
       };
       if (eventType === "ORDER_CONFIRMED") {
         await recordIntegrationAuditEvent({
-          type: dk.ok ? "pos_order_sent" : "pos_order_failed",
+          type: result.ok ? "pos_order_sent" : "pos_order_failed",
           restaurantId: rid,
           actorUserId: null,
           deviceId,
           details: {
             ...details,
-            ...(dk.meta ? { dotykacka: dk.meta } : {}),
-            ...(dk.ok ? {} : { error: dk.error }),
+            ...(result.meta ? { till: result.meta } : {}),
+            ...(result.ok ? {} : { error: result.error }),
           },
         });
       }
-      if (dk.ok) {
+      if (source === "storyous") {
+        if (result.ok) void markRestaurantStoryousOk(rid);
+        else void markRestaurantStoryousError(rid, result.error);
+      } else if (result.ok) {
         markRestaurantDotykackaSyncOk({ restaurantId: rid, details });
       } else {
-        markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: dk.error, details });
+        markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: result.error, details });
       }
     }
 
-    return result;
+    return result.ok
+      ? { ok: true, source }
+      : { ok: false, error: result.error, source };
   } catch (e) {
-    const error = e instanceof Error ? e.message : "Dotykačka sync selhal";
+    const error = e instanceof Error ? e.message : "Sync do pokladny selhal";
+    const source = rid ? await getRestaurantMenuSource(rid) : null;
     if (rid) {
-      markRestaurantDotykackaSyncFailed({
-        restaurantId: rid,
-        error,
-        details: { eventType, clientRequestId: clientRequestId ?? null, thrown: true },
-      });
+      if (source === "storyous") void markRestaurantStoryousError(rid, error);
+      else {
+        markRestaurantDotykackaSyncFailed({
+          restaurantId: rid,
+          error,
+          details: { eventType, clientRequestId: clientRequestId ?? null, thrown: true },
+        });
+      }
       if (eventType === "ORDER_CONFIRMED") {
         await recordIntegrationAuditEvent({
           type: "pos_order_failed",
@@ -126,7 +167,7 @@ async function runDotykackaSyncWithAudit(input: {
         });
       }
     }
-    return { ok: false, error };
+    return { ok: false, error, source: source ?? undefined };
   }
 }
 
@@ -195,23 +236,29 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
   recordPresenceFromPosPayload(sanitizedForPipeline, userAgent ?? null);
   const logged = await appendVirtualPosEvent(eventType, sanitizedForPipeline);
 
-  const dotykacka = await runDotykackaSyncWithAudit({
+  const till = await runTillSyncWithAudit({
     eventType,
     sanitized: sanitizedForPipeline,
     clientRequestId,
   });
+  const tillPayload =
+    till == null
+      ? {}
+      : till.source === "storyous"
+        ? { storyous: till }
+        : { dotykacka: till };
 
-  // Bezpečnější default: pokud je Dotykačka zapnutá a sync selže,
-  // nechceme vracet "ok" a potichu ztratit položky v pokladně.
-  // Lze explicitně vypnout přes DOTYKACKA_FAIL_ON_ERROR=0.
-  const failOnDotykacka = process.env.DOTYKACKA_FAIL_ON_ERROR !== "0";
-  if (dotykacka && !dotykacka.ok && failOnDotykacka) {
+  // Bezpečnější default: pokud je pokladna zapnutá a sync selže,
+  // nechceme vracet "ok" a potichu ztratit položky.
+  const failOnTill = process.env.DOTYKACKA_FAIL_ON_ERROR !== "0";
+  if (till && !till.ok && failOnTill) {
     return NextResponse.json(
       {
         ok: false,
         virtualPos: true,
         logged,
-        dotykacka,
+        till,
+        ...tillPayload,
       },
       { status: 502 },
     );
@@ -227,7 +274,7 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
         logged,
         forwarded: false,
         message: "Uloženo do virtuálního POS (POS_NOTIFICATION_URL není nastaveno).",
-        ...(dotykacka ? { dotykacka } : {}),
+        ...tillPayload,
       },
       { status: 200 },
     );
@@ -252,7 +299,7 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
         logged,
         forwarded: true,
         forwardedStatus: res.status,
-        ...(dotykacka ? { dotykacka } : {}),
+        ...tillPayload,
       },
       { status: 200 },
     );
@@ -264,7 +311,7 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
         logged,
         forwarded: false,
         error: e instanceof Error ? e.message : "POS forward failed",
-        ...(dotykacka ? { dotykacka } : {}),
+        ...tillPayload,
       },
       { status: 502 },
     );

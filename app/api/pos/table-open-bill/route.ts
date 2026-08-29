@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { getDotykackaAccessTokenForCloud } from "../../../../lib/dotykacka/accessToken";
 import { getDotykackaConfig } from "../../../../lib/dotykacka/config";
 import { fetchTableOpenBillFromDotykacka } from "../../../../lib/dotykacka/tableOpenBill";
+import { getRestaurantMenuSource } from "../../../../lib/menu/restaurantMenuSource";
 import { resolvePosTrustFromPayload } from "../../../../lib/pos/resolvePosTrustFromPayload";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,18 @@ export async function POST(req: Request) {
   const posTrust = await resolvePosTrustFromPayload(o);
   if (!posTrust.ok) {
     return NextResponse.json({ ok: false, error: posTrust.error }, { status: posTrust.status });
+  }
+
+  const source = await getRestaurantMenuSource(posTrust.restaurantId);
+  if (source === "storyous") {
+    return NextResponse.json({
+      ok: true,
+      configured: true,
+      open: false,
+      lines: [],
+      totalCzk: 0,
+      orderIds: [],
+    });
   }
 
   const cfgFull = await getDotykackaConfig(posTrust.restaurantId);

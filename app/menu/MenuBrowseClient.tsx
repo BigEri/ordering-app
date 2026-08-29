@@ -971,7 +971,7 @@ export function MenuBrowseClient({
     }
 
     const fields = posTableFields();
-    if (!/^\d+$/.test(String(fields.tableId ?? "").trim())) {
+    if (!String(fields.tableId ?? "").trim()) {
       setOrderPosErrorKey("pos.error.tableId");
       return;
     }
@@ -1353,7 +1353,7 @@ export function MenuBrowseClient({
             </span>
             <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
               <KioskAnchor href="/admin/devices/pair-kiosk" style={{ textDecoration: "underline", fontWeight: 600 }}>
-                Pro obsluhu: párování u stolů (výběr z Dotykačky) →
+                Pro obsluhu: párování u stolů →
               </KioskAnchor>
             </div>
           </aside>

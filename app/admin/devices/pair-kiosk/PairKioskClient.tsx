@@ -15,7 +15,7 @@ type MePayload = {
 };
 
 type RestaurantRow = { id: string; name: string };
-type DotyTable = { id: number; name: string };
+type PosTable = { id: string; name: string };
 
 export function PairKioskClient({
   initialDeviceId,
@@ -38,7 +38,8 @@ export function PairKioskClient({
   const [restaurants, setRestaurants] = React.useState<RestaurantRow[] | null>(null);
   const [restaurantId, setRestaurantId] = React.useState("");
 
-  const [tables, setTables] = React.useState<DotyTable[] | null>(null);
+  const [tables, setTables] = React.useState<PosTable[] | null>(null);
+  const [tablesSource, setTablesSource] = React.useState<"storyous" | "dotykacka" | null>(null);
   const [tablesLoading, setTablesLoading] = React.useState(false);
   const [tablesErr, setTablesErr] = React.useState<string | null>(null);
 
@@ -54,18 +55,29 @@ export function PairKioskClient({
 
   const isSuper = me?.session?.globalRole === "SUPER_ADMIN";
 
-  const loadTables = React.useCallback(async () => {
+  const loadTables = React.useCallback(async (rid?: string) => {
     setTablesLoading(true);
     setTablesErr(null);
     setTables(null);
+    setTablesSource(null);
     try {
-      const r = await fetch("/api/admin/dotykacka/tables", { cache: "no-store", credentials: "same-origin" });
-      const j = (await r.json()) as { ok?: boolean; tables?: DotyTable[]; error?: string };
+      const q = (rid ?? restaurantId).trim();
+      const url = q
+        ? `/api/admin/pos/tables?restaurantId=${encodeURIComponent(q)}`
+        : "/api/admin/pos/tables";
+      const r = await fetch(url, { cache: "no-store", credentials: "same-origin" });
+      const j = (await r.json()) as {
+        ok?: boolean;
+        tables?: PosTable[];
+        source?: "storyous" | "dotykacka";
+        error?: string;
+      };
       if (!r.ok || !j.ok) {
         setTablesErr(typeof j.error === "string" ? j.error : t("admin.devices.pairKioskTablesErr"));
         setTables([]);
         return;
       }
+      setTablesSource(j.source ?? null);
       setTables(j.tables ?? []);
     } catch {
       setTablesErr(t("admin.devices.pairKioskTablesErr"));
@@ -73,7 +85,7 @@ export function PairKioskClient({
     } finally {
       setTablesLoading(false);
     }
-  }, [t]);
+  }, [t, restaurantId]);
 
   const applyActiveRestaurant = React.useCallback(
     async (rid: string) => {
@@ -89,7 +101,7 @@ export function PairKioskClient({
         setTablesErr(t("admin.devices.pairKioskSelectRestaurantErr"));
         return;
       }
-      await loadTables();
+      await loadTables(id);
     },
     [loadTables, t],
   );
@@ -123,7 +135,7 @@ export function PairKioskClient({
         if (initialRid && (j.session?.globalRole === "SUPER_ADMIN" || lockedRestaurantId)) {
           await applyActiveRestaurant(initialRid);
         } else if (initialRid || j.session?.globalRole !== "SUPER_ADMIN") {
-          await loadTables();
+          await loadTables(initialRid);
         }
       } catch {
         if (!cancelled) setMe(null);
@@ -178,7 +190,7 @@ export function PairKioskClient({
     if (isSuper) {
       await applyActiveRestaurant(rid);
     } else {
-      await loadTables();
+      await loadTables(rid);
     }
   };
 
@@ -389,7 +401,9 @@ export function PairKioskClient({
 
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="textMuted2" style={{ fontSize: 13 }}>
-            {t("admin.devices.pairKioskTableFromDoty")}
+            {tablesSource === "storyous"
+              ? "Stůl ze Storyous"
+              : t("admin.devices.pairKioskTableFromDoty")}
           </span>
           {tablesLoading ? <p className="textMuted" style={{ margin: 0 }}>{t("admin.devices.loading")}</p> : null}
           {!tablesLoading && tablesErr ? (
@@ -411,9 +425,9 @@ export function PairKioskClient({
               }}
             >
               <option value="">{t("admin.devices.pairKioskTablePlaceholder")}</option>
-              {tables.map((t) => (
-                <option key={t.id} value={String(t.id)}>
-                  {t.name} (id {t.id})
+              {tables.map((row) => (
+                <option key={row.id} value={row.id}>
+                  {row.name} (id {row.id})
                 </option>
               ))}
               <option value="__manual__">{t("admin.devices.pairKioskTableManualOption")}</option>

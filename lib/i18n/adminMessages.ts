@@ -485,7 +485,7 @@ export const ADMIN_MESSAGES: Record<AdminLocale, Record<string, string>> = {
 
   // ── admin.storyous ──
   "admin.storyous.title": "Storyous",
-  "admin.storyous.intro": "Napojení účtu pokladny k této restauraci. Client ID a Secret patří do prostředí serveru (Vercel → Environment Variables, lokálně .env.local). Sem patří Merchant ID a Place ID provozovny. Menu na tabletech a odesílání objednávek přidáme v dalším kroku.",
+  "admin.storyous.intro": "Napojení účtu pokladny k této restauraci. Client ID a Secret patří do prostředí serveru (Vercel → Environment Variables, lokálně .env.local). Sem patří Merchant ID a Place ID. Tablety se pářují ke stolům ze Storyous a objednávky jdou do pokladny.",
   "admin.storyous.loading": "Načítání…",
   "admin.storyous.loadErr": "Nepodařilo se načíst napojení Storyous.",
   "admin.storyous.retry": "Zkusit znovu",
@@ -617,14 +617,14 @@ export const ADMIN_MESSAGES: Record<AdminLocale, Record<string, string>> = {
   "admin.editor.photoDelete": "Odstranit fotku",
   "admin.editor.photoSave": "Uložit",
 
-  "admin.devices.pairTablesLink": "Párování u stolů (Dotykačka)",
-  "admin.devices.healthForRestaurant": "Kontrola Dotykačky pro: {name}",
-  "admin.devices.fromDotykacka": "z Dotykačky",
+  "admin.devices.pairTablesLink": "Párování u stolů",
+  "admin.devices.healthForRestaurant": "Kontrola pokladny pro: {name}",
+  "admin.devices.fromDotykacka": "z pokladny",
   "admin.devices.inAppOnly": "jen v aplikaci",
   "admin.devices.missingRestaurantBind": "Chybí vazba na vaši restauraci",
   "admin.devices.remove": "Odstranit zařízení",
   "admin.devices.removeConfirm": "Opravdu odstranit zařízení?\n\n{table} ({tableId})\n{device}",
-  "admin.devices.dotyQuickPick": "Rychlý výběr ze seznamu Dotykačky",
+  "admin.devices.dotyQuickPick": "Rychlý výběr stolu z pokladny",
   "admin.devices.tableFallback": "Stůl {id}",
   "admin.devices.openKioskMenu": "Otevřít kiosk menu →",
 
@@ -1125,7 +1125,7 @@ export const ADMIN_MESSAGES: Record<AdminLocale, Record<string, string>> = {
   "admin.super.backRestaurants": "← Back to venues",
 
   "admin.storyous.title": "Storyous",
-  "admin.storyous.intro": "Connect the POS account to this restaurant. Client ID and Secret belong in the server environment (Vercel → Environment Variables, locally .env.local). Enter Merchant ID and Place ID for the venue here. Tablet menu and order sending come in a later step.",
+  "admin.storyous.intro": "Connect the POS account to this restaurant. Client ID and Secret belong in the server environment (Vercel → Environment Variables, locally .env.local). Enter Merchant ID and Place ID here. Tablets pair to Storyous desks and orders go to the till.",
   "admin.storyous.loading": "Loading…",
   "admin.storyous.loadErr": "Could not load Storyous connection.",
   "admin.storyous.retry": "Try again",
@@ -1254,14 +1254,14 @@ export const ADMIN_MESSAGES: Record<AdminLocale, Record<string, string>> = {
   "admin.editor.photoDelete": "Remove photo",
   "admin.editor.photoSave": "Save",
 
-  "admin.devices.pairTablesLink": "Table pairing (Dotykačka)",
-  "admin.devices.healthForRestaurant": "Dotykačka check for: {name}",
-  "admin.devices.fromDotykacka": "from Dotykačka",
+  "admin.devices.pairTablesLink": "Table pairing",
+  "admin.devices.healthForRestaurant": "Till check for: {name}",
+  "admin.devices.fromDotykacka": "from till",
   "admin.devices.inAppOnly": "app only",
   "admin.devices.missingRestaurantBind": "Missing restaurant binding",
   "admin.devices.remove": "Remove device",
   "admin.devices.removeConfirm": "Remove this device?\n\n{table} ({tableId})\n{device}",
-  "admin.devices.dotyQuickPick": "Quick pick from Dotykačka list",
+  "admin.devices.dotyQuickPick": "Quick pick from till tables",
   "admin.devices.tableFallback": "Table {id}",
   "admin.devices.openKioskMenu": "Open kiosk menu →",
 
