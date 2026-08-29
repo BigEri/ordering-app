@@ -63,6 +63,7 @@ export async function GET(req: NextRequest) {
       ? prisma.restaurant.findUnique({
           where: { id: t.restaurantId },
           select: {
+            name: true,
             kioskServicePinSalt: true,
             kioskServicePinHash: true,
             kioskMaintenanceRebootHour: true,
@@ -87,6 +88,7 @@ export async function GET(req: NextRequest) {
         tableId: t.tableId,
         tableLabel: t.tableLabel,
         restaurantId: t.restaurantId || null,
+        restaurantName: restaurantRow?.name?.trim() || null,
         deviceSecret: deviceSecret ?? null,
       },
       reloadNonce,

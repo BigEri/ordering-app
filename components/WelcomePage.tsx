@@ -375,7 +375,7 @@ export function WelcomePage({
   previewMode?: boolean;
 }) {
   const { locale, setLocale, t, availableLocales } = useLanguage();
-  const { ready, needsPairing, pairingCode, pairingExpiresAtIso } = usePosTableFields();
+  const { ready, needsPairing, pairingCode, pairingExpiresAtIso, restaurantName: boundRestaurantName } = usePosTableFields();
   const [navigatingLang, setNavigatingLang] = React.useState<string | null>(null);
 
   const onSelectLanguage = React.useCallback(
@@ -445,7 +445,7 @@ export function WelcomePage({
       key={innerKey}
       onSelectLanguage={onSelectLanguage}
       navigatingLang={navigatingLang}
-      brandName={brandName}
+      brandName={previewMode ? brandName : boundRestaurantName?.trim() || brandName}
       locale={locale}
       setLocale={setLocale}
       t={t}

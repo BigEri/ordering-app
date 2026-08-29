@@ -58,5 +58,6 @@ export const getPublicRestaurantDisplayNameForRestaurantId = cache(async functio
   });
   const n = row?.name?.trim();
   if (n) return n;
-  return await getPublicRestaurantDisplayName();
+  // Nesmí spadnout na PUBLIC_RESTAURANT_ID (jiná provozovna, např. „Tableflow“).
+  return "Restaurace";
 });

@@ -13,7 +13,7 @@ import { MenuCartProvider } from "../components/MenuCartProvider";
 import { OrdersProvider } from "../components/OrdersProvider";
 import { TableBillSyncWatcher } from "../components/TableBillSyncWatcher";
 import { PosPendingFlush } from "../components/PosPendingFlush";
-import { getPublicRestaurantDisplayName } from "../lib/server/publicRestaurantName";
+import { getPublicRestaurantDisplayNameFromIncomingRequest } from "../lib/server/incomingPublicRequest";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ const fontSans = Plus_Jakarta_Sans({
 });
 
 export async function generateMetadata(): Promise<Metadata> {
-  const title = await getPublicRestaurantDisplayName();
+  const title = await getPublicRestaurantDisplayNameFromIncomingRequest("/");
   return {
     title: `${title} · objednávky`,
     description: "Restaurant ordering app (demo)",
@@ -32,7 +32,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const restaurantDisplayName = await getPublicRestaurantDisplayName();
+  const restaurantDisplayName = await getPublicRestaurantDisplayNameFromIncomingRequest("/");
   const cookieStore = await cookies();
   const initialLocale = cookieStore.get("ordering-locale")?.value ?? null;
   return (

@@ -200,7 +200,9 @@ export function MenuBrowseClient({
     pairingCode,
     pairingExpiresAtIso,
     needsPairing,
+    restaurantName: boundRestaurantName,
   } = usePosTableFields();
+  const displayRestaurantName = (!adminPreview && boundRestaurantName?.trim()) || restaurantName;
   const { locale, t, availableLocales } = useLanguage();
   const { t: tAdminUi, locale: adminLocale } = useAdminLanguage();
   const menuLocale = (locale === "cs" || locale === "en" || locale === "ko" ? locale : "cs") as "cs" | "en" | "ko";
@@ -1084,7 +1086,7 @@ export function MenuBrowseClient({
       <>
         {menuCartSessionSync}
       <main style={{ maxWidth: 720, margin: "36px auto", padding: "0 20px" }}>
-        <h1 style={{ fontSize: "1.35rem", marginBottom: 8 }}>{restaurantName}</h1>
+        <h1 style={{ fontSize: "1.35rem", marginBottom: 8 }}>{displayRestaurantName}</h1>
         <p style={{ lineHeight: 1.55, opacity: 0.9, marginBottom: 18 }}>
           Tablet ještě není spárovaný se stolem. Pro zobrazení menu ho nejdřív propojte v administraci.
         </p>
@@ -1185,7 +1187,7 @@ export function MenuBrowseClient({
             </div>
           ) : null}
           <div className="menuPageTitleRow">
-            <h1 className="menuPageTitle">{restaurantName}</h1>
+            <h1 className="menuPageTitle">{displayRestaurantName}</h1>
             <span className="menuPageMetaChip">{tableLabelDisplay}</span>
           </div>
           <p className="menuPageIntro">{t("menu.intro")}</p>

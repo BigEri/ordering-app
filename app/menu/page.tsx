@@ -1,4 +1,4 @@
-import { cookies, headers } from "next/headers";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { fetchRestaurantMenuCached } from "../../lib/menu/fetchRestaurantMenu";
@@ -12,6 +12,7 @@ import {
   readMenuUiBundleForLocaleCached,
 } from "../../lib/server/menuOverridesCached";
 import { isEnabledLocale } from "../../lib/server/menuTextOverrides";
+import { requestFromIncomingHeaders } from "../../lib/server/incomingPublicRequest";
 import { resolvePublicMenuRestaurantIdSlimFromRequestUrl } from "../../lib/server/publicMenuRestaurantResolve";
 import { getPublicRestaurantDisplayNameForRestaurantId } from "../../lib/server/publicRestaurantName";
 import { MenuBrowseClient } from "./MenuBrowseClient";
@@ -35,17 +36,13 @@ export default async function MenuPage(props: MenuPageProps) {
       }),
     );
   }
-  const h = await headers();
-  const cookieHeader = h.get("cookie") ?? "";
-  const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost";
-  const proto = h.get("x-forwarded-proto") ?? "http";
-  const url = new URL(`${proto}://${host}/menu`);
-  if (rid) url.searchParams.set("rid", rid);
-  if (deviceId && deviceId.length <= 200) url.searchParams.set("deviceId", deviceId);
-  if (typeof searchParams.from === "string") url.searchParams.set("from", searchParams.from);
+  const menuUrl = new URL("/menu", "https://tableflow.local");
+  if (rid) menuUrl.searchParams.set("rid", rid);
+  if (deviceId && deviceId.length <= 200) menuUrl.searchParams.set("deviceId", deviceId);
+  if (typeof searchParams.from === "string") menuUrl.searchParams.set("from", searchParams.from);
 
   const restaurantId = await resolvePublicMenuRestaurantIdSlimFromRequestUrl(
-    new Request(url.toString(), { headers: { cookie: cookieHeader } }),
+    await requestFromIncomingHeaders(`${menuUrl.pathname}${menuUrl.search}`),
   );
   if (!restaurantId) {
     return (
