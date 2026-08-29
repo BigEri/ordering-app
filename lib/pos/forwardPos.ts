@@ -109,31 +109,35 @@ async function runTillSyncWithAudit(input: {
     const { source, result } = synced;
 
     if (rid) {
-      const details: Record<string, unknown> = {
-        eventType,
-        clientRequestId: clientRequestId ?? null,
-        source,
-      };
-      if (eventType === "ORDER_CONFIRMED") {
-        await recordIntegrationAuditEvent({
-          type: result.ok ? "pos_order_sent" : "pos_order_failed",
-          restaurantId: rid,
-          actorUserId: null,
-          deviceId,
-          details: {
-            ...details,
-            ...(result.meta ? { till: result.meta } : {}),
-            ...(result.ok ? {} : { error: result.error }),
-          },
-        });
-      }
-      if (source === "storyous") {
-        if (result.ok) void markRestaurantStoryousOk(rid);
-        else void markRestaurantStoryousError(rid, result.error);
-      } else if (result.ok) {
-        markRestaurantDotykackaSyncOk({ restaurantId: rid, details });
-      } else {
-        markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: result.error, details });
+      try {
+        const details: Record<string, unknown> = {
+          eventType,
+          clientRequestId: clientRequestId ?? null,
+          source,
+        };
+        if (eventType === "ORDER_CONFIRMED") {
+          await recordIntegrationAuditEvent({
+            type: result.ok ? "pos_order_sent" : "pos_order_failed",
+            restaurantId: rid,
+            actorUserId: null,
+            deviceId,
+            details: {
+              ...details,
+              ...(result.meta ? { till: result.meta } : {}),
+              ...(result.ok ? {} : { error: result.error }),
+            },
+          });
+        }
+        if (source === "storyous") {
+          if (result.ok) await markRestaurantStoryousOk(rid);
+          else await markRestaurantStoryousError(rid, result.error);
+        } else if (result.ok) {
+          await markRestaurantDotykackaSyncOk({ restaurantId: rid, details });
+        } else {
+          await markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: result.error, details });
+        }
+      } catch {
+        /* Objednávka už je v pokladně — zápis lastOk/auditu nesmí vrátit 502. */
       }
     }
 
@@ -144,27 +148,31 @@ async function runTillSyncWithAudit(input: {
     const error = e instanceof Error ? e.message : "Sync do pokladny selhal";
     const source = rid ? await getRestaurantMenuSource(rid) : null;
     if (rid) {
-      if (source === "storyous") void markRestaurantStoryousError(rid, error);
+      if (source === "storyous") await markRestaurantStoryousError(rid, error);
       else {
-        markRestaurantDotykackaSyncFailed({
+        await markRestaurantDotykackaSyncFailed({
           restaurantId: rid,
           error,
           details: { eventType, clientRequestId: clientRequestId ?? null, thrown: true },
         });
       }
       if (eventType === "ORDER_CONFIRMED") {
-        await recordIntegrationAuditEvent({
-          type: "pos_order_failed",
-          restaurantId: rid,
-          actorUserId: null,
-          deviceId,
-          details: {
-            eventType,
-            clientRequestId: clientRequestId ?? null,
-            thrown: true,
-            error,
-          },
-        });
+        try {
+          await recordIntegrationAuditEvent({
+            type: "pos_order_failed",
+            restaurantId: rid,
+            actorUserId: null,
+            deviceId,
+            details: {
+              eventType,
+              clientRequestId: clientRequestId ?? null,
+              thrown: true,
+              error,
+            },
+          });
+        } catch {
+          /* audit nesmí přepsat výsledek syncu */
+        }
       }
     }
     return { ok: false, error, source: source ?? undefined };

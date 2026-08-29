@@ -2,6 +2,7 @@ import { nowIso } from "./db";
 import { recordIntegrationAuditEvent } from "./integrationAudit";
 import { decryptDotykackaSecret, encryptDotykackaSecret, isEncryptedDotykackaSecret } from "./secretBox";
 import { prisma } from "./prisma";
+import { withPrismaTransientRetry } from "./prismaRetry";
 
 /** Pokud v .env sedí stejný cloud jako po OAuth, doplníme pobočku a mapu (stejné jako dřív jen v .env). */
 function dotykackaSeedFromEnvForCloud(cloudId: number): { branchId: number; productMapJson: string } | null {
@@ -188,46 +189,52 @@ export async function setRestaurantDotykackaDisabled(input: {
   return { ok: true };
 }
 
-export function markRestaurantDotykackaSyncOk(input: {
+export async function markRestaurantDotykackaSyncOk(input: {
   restaurantId: string;
   details: Record<string, unknown>;
 }): Promise<void> {
   const ts = nowIso();
-  return prisma.restaurantDotykacka
-    .updateMany({
-      where: { restaurantId: input.restaurantId.trim() },
-      data: { lastOkAtIso: ts, lastError: null, updatedAtIso: ts },
-    })
-    .then(async () => {
-      await recordIntegrationAuditEvent({
-    type: "dotykacka_sync_ok",
-    restaurantId: input.restaurantId,
-    actorUserId: null,
-    deviceId: null,
-    details: input.details,
-  });
+  try {
+    await withPrismaTransientRetry(() =>
+      prisma.restaurantDotykacka.updateMany({
+        where: { restaurantId: input.restaurantId.trim() },
+        data: { lastOkAtIso: ts, lastError: null, updatedAtIso: ts },
+      }),
+    );
+    await recordIntegrationAuditEvent({
+      type: "dotykacka_sync_ok",
+      restaurantId: input.restaurantId,
+      actorUserId: null,
+      deviceId: null,
+      details: input.details,
     });
+  } catch {
+    /* stav v adminu — nesmí shodit už odeslanou objednávku */
+  }
 }
 
-export function markRestaurantDotykackaSyncFailed(input: {
+export async function markRestaurantDotykackaSyncFailed(input: {
   restaurantId: string;
   error: string;
   details: Record<string, unknown>;
 }): Promise<void> {
   const ts = nowIso();
   const err = input.error.trim().slice(0, 2000);
-  return prisma.restaurantDotykacka
-    .updateMany({
-      where: { restaurantId: input.restaurantId.trim() },
-      data: { lastError: err, updatedAtIso: ts },
-    })
-    .then(async () => {
-      await recordIntegrationAuditEvent({
-    type: "dotykacka_sync_failed",
-    restaurantId: input.restaurantId,
-    actorUserId: null,
-    deviceId: null,
-    details: { ...input.details, error: err },
-  });
+  try {
+    await withPrismaTransientRetry(() =>
+      prisma.restaurantDotykacka.updateMany({
+        where: { restaurantId: input.restaurantId.trim() },
+        data: { lastError: err, updatedAtIso: ts },
+      }),
+    );
+    await recordIntegrationAuditEvent({
+      type: "dotykacka_sync_failed",
+      restaurantId: input.restaurantId,
+      actorUserId: null,
+      deviceId: null,
+      details: { ...input.details, error: err },
     });
+  } catch {
+    /* stav v adminu — nesmí shodit už odeslanou objednávku */
+  }
 }

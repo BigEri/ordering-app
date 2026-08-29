@@ -1,6 +1,7 @@
 import { nowIso } from "./db";
 import { recordIntegrationAuditEvent } from "./integrationAudit";
 import { prisma } from "./prisma";
+import { withPrismaTransientRetry } from "./prismaRetry";
 
 export type RestaurantStoryousRow = {
   restaurantId: string;
@@ -116,16 +117,28 @@ export async function setRestaurantStoryousDisabled(input: {
 
 export async function markRestaurantStoryousOk(restaurantId: string): Promise<void> {
   const ts = nowIso();
-  await prisma.restaurantStoryous.updateMany({
-    where: { restaurantId: restaurantId.trim() },
-    data: { lastOkAtIso: ts, lastError: null, updatedAtIso: ts },
-  });
+  try {
+    await withPrismaTransientRetry(() =>
+      prisma.restaurantStoryous.updateMany({
+        where: { restaurantId: restaurantId.trim() },
+        data: { lastOkAtIso: ts, lastError: null, updatedAtIso: ts },
+      }),
+    );
+  } catch {
+    /* stav v adminu — nesmí shodit už odeslanou objednávku */
+  }
 }
 
 export async function markRestaurantStoryousError(restaurantId: string, error: string): Promise<void> {
   const ts = nowIso();
-  await prisma.restaurantStoryous.updateMany({
-    where: { restaurantId: restaurantId.trim() },
-    data: { lastError: error.trim().slice(0, 2000), updatedAtIso: ts },
-  });
+  try {
+    await withPrismaTransientRetry(() =>
+      prisma.restaurantStoryous.updateMany({
+        where: { restaurantId: restaurantId.trim() },
+        data: { lastError: error.trim().slice(0, 2000), updatedAtIso: ts },
+      }),
+    );
+  } catch {
+    /* stav v adminu — nesmí shodit už odeslanou objednávku */
+  }
 }

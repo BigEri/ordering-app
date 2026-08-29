@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { nowIso } from "./db";
 import { prisma } from "./prisma";
+import { withPrismaTransientRetry } from "./prismaRetry";
 
 export type AuditEventType =
   | "dotykacka_connected"
@@ -22,16 +23,18 @@ export async function recordIntegrationAuditEvent(input: {
 }): Promise<void> {
   const id = randomUUID();
   const ts = nowIso();
-  await prisma.integrationAuditEvent.create({
-    data: {
-      id,
-      restaurantId: input.restaurantId?.trim() || null,
-      type: input.type,
-      actorUserId: input.actorUserId?.trim() || null,
-      deviceId: input.deviceId?.trim() || null,
-      detailsJson: JSON.stringify(input.details ?? {}),
-      createdAtIso: ts,
-    },
-  });
+  await withPrismaTransientRetry(() =>
+    prisma.integrationAuditEvent.create({
+      data: {
+        id,
+        restaurantId: input.restaurantId?.trim() || null,
+        type: input.type,
+        actorUserId: input.actorUserId?.trim() || null,
+        deviceId: input.deviceId?.trim() || null,
+        detailsJson: JSON.stringify(input.details ?? {}),
+        createdAtIso: ts,
+      },
+    }),
+  );
 }
 
