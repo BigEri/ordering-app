@@ -10,7 +10,7 @@ type MenuItemPhotoProps = {
   imageUrl?: string;
   /** Pro barevný placeholder když chybí fotka nebo se načítá. */
   seedId: string;
-  /** Lazy: obrázek se stáhne až když je karta blízko viewportu. */
+  /** Lazy: u karty se obrázek stáhne prohlížečem (`loading=lazy`), tady jen blur pozadí. */
   visible: boolean;
   className?: string;
   priority?: boolean;
@@ -65,6 +65,7 @@ export function MenuItemPhoto({
             style={imgStyle}
             decoding="async"
             loading={priority ? "eager" : "lazy"}
+            referrerPolicy="no-referrer"
           />
         </>
       ) : null}

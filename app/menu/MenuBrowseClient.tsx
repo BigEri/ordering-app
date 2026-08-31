@@ -1476,7 +1476,7 @@ export function MenuBrowseClient({
                             item={item}
                             guestTablet
                             locale={menuLocale}
-                            mediaPriority={itemIdx < 3}
+                            mediaPriority={itemIdx < 6}
                             onOpenDetails={openMenuItem}
                           />
                         </div>
@@ -1487,7 +1487,7 @@ export function MenuBrowseClient({
                         item={item}
                         guestTablet
                         locale={menuLocale}
-                        mediaPriority={itemIdx < 3}
+                        mediaPriority={itemIdx < 6}
                         onOpenDetails={openMenuItem}
                       />
                     ),

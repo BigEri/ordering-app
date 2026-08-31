@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { mapStoryousMenuTree, mapStoryousProductToMenuItem, storyousCategoryNumber } from "./mapMenu";
+import {
+  mapStoryousMenuTree,
+  mapStoryousProductToMenuItem,
+  storyousCategoryNumber,
+  storyousProductImageUrl,
+} from "./mapMenu";
 
 const priced = {
   placeValues: { priceLevels: { default: { price: 180 } }, showInPos: true },
@@ -24,6 +29,21 @@ describe("mapStoryousProductToMenuItem", () => {
     ).toEqual({ id: "p:abc", name: "Old Fashioned", priceCzk: 180 });
   });
 
+  it("keeps Storyous HTTPS thumbs", () => {
+    expect(
+      mapStoryousProductToMenuItem({
+        productId: "p:soup",
+        name: "Tomatová",
+        imageUrl: "https://admin.storyous.com/media/thumbs/abc.jpeg",
+        ...priced,
+      }),
+    ).toMatchObject({
+      id: "p:soup",
+      name: "Tomatová",
+      imageUrl: "https://admin.storyous.com/media/thumbs/abc.jpeg",
+    });
+  });
+
   it("skips hidden and dummy variable items", () => {
     expect(
       mapStoryousProductToMenuItem({
@@ -41,6 +61,26 @@ describe("mapStoryousProductToMenuItem", () => {
         placeValues: { priceLevels: { default: { price: 0 } }, showInPos: true },
       }),
     ).toBeNull();
+  });
+});
+
+describe("storyousProductImageUrl", () => {
+  it("upgrades protocol-relative and http", () => {
+    expect(storyousProductImageUrl({ imageUrl: "//admin.storyous.com/media/a.jpg" })).toBe(
+      "https://admin.storyous.com/media/a.jpg",
+    );
+    expect(storyousProductImageUrl({ imageUrl: "http://admin.storyous.com/media/a.jpg" })).toBe(
+      "https://admin.storyous.com/media/a.jpg",
+    );
+  });
+
+  it("reads nested image.url", () => {
+    expect(storyousProductImageUrl({ image: { url: "https://cdn.example/x.jpg" } })).toBe("https://cdn.example/x.jpg");
+  });
+
+  it("returns undefined when Storyous has no photo", () => {
+    expect(storyousProductImageUrl({})).toBeUndefined();
+    expect(storyousProductImageUrl({ imageUrl: null as unknown as string })).toBeUndefined();
   });
 });
 

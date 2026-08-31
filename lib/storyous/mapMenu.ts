@@ -91,6 +91,43 @@ function shouldSkipProduct(node: Record<string, unknown>, priceCzk: number): boo
   return false;
 }
 
+/** Storyous thumbs jsou HTTPS; bere i protokol-relativní / http / vnořené { url }. */
+export function storyousProductImageUrl(node: Record<string, unknown>): string | undefined {
+  const candidates: unknown[] = [
+    node.imageUrl,
+    node.imageURL,
+    node.image,
+    node.photoUrl,
+    node.photo,
+    node.thumbnailUrl,
+  ];
+  const nested = asRecord(node.image) ?? asRecord(node.imageUrl);
+  if (nested) {
+    candidates.push(nested.url, nested.src, nested.imageUrl, nested.thumb, nested.thumbnail);
+  }
+  if (Array.isArray(node.images)) {
+    for (const row of node.images) {
+      candidates.push(row);
+      const rec = asRecord(row);
+      if (rec) candidates.push(rec.url, rec.src, rec.imageUrl);
+    }
+  }
+  for (const raw of candidates) {
+    const url = normalizePublicImageUrl(raw);
+    if (url) return url;
+  }
+  return undefined;
+}
+
+function normalizePublicImageUrl(raw: unknown): string | undefined {
+  let s = str(raw);
+  if (!s || s === "null" || s === "undefined") return undefined;
+  if (s.startsWith("//")) s = `https:${s}`;
+  if (/^http:\/\//i.test(s)) s = `https://${s.slice(s.indexOf("://") + 3)}`;
+  if (!/^https:\/\//i.test(s)) return undefined;
+  return s;
+}
+
 function walkProducts(node: Record<string, unknown>, visit: (rec: Record<string, unknown>) => void): void {
   if (isProduct(node)) visit(node);
   for (const child of childNodes(node)) walkProducts(child, visit);
@@ -122,14 +159,14 @@ export function mapStoryousProductToMenuItem(node: unknown): MenuItemData | null
   const name = str(rec.marketingName) || str(rec.name);
   if (!name) return null;
   const description = str(rec.description) || undefined;
-  const imageUrl = str(rec.imageUrl);
+  const imageUrl = storyousProductImageUrl(rec);
   const allergens = allergenCodes(rec);
   return {
     id: str(rec.productId),
     name,
     priceCzk: priced.priceCzk,
     ...(description ? { description } : {}),
-    ...(imageUrl.startsWith("http") ? { imageUrl } : {}),
+    ...(imageUrl ? { imageUrl } : {}),
     ...(allergens ? { allergenCodes: allergens } : {}),
   };
 }

@@ -124,8 +124,8 @@ export type MenuItemProps = {
   /** Pro přístupnost a štítek u média (výchozí cs) */
   locale?: Locale;
   /**
-   * UX: u pár prvních položek nad přehybem chceme rychlejší načtení média.
-   * Používá se jen pro prefetch obrázku, samotné vykreslení zůstává stejné.
+   * UX: u prvních karet nad přehybem chceme rychlejší načtení média (`loading=eager`).
+   * Ostatní karty nechají stažení na prohlížeči (`loading=lazy`).
    */
   mediaPriority?: boolean;
 };
@@ -143,9 +143,6 @@ const OPEN_DETAILS_ARIA: Record<Locale, string> = {
 };
 
 export function MenuItemInner({ item, onOpenDetails, guestTablet, locale = "cs", mediaPriority }: MenuItemProps) {
-  const mediaRef = React.useRef<HTMLDivElement | null>(null);
-  const [mediaVisible, setMediaVisible] = React.useState(Boolean(mediaPriority));
-
   const openDetails = React.useCallback(
     (from: HTMLElement) => {
       onOpenDetails?.(item);
@@ -153,30 +150,6 @@ export function MenuItemInner({ item, onOpenDetails, guestTablet, locale = "cs",
     },
     [item, onOpenDetails],
   );
-
-  React.useEffect(() => {
-    if (mediaVisible) return;
-    const el = mediaRef.current;
-    if (!el) return;
-    if (!("IntersectionObserver" in window)) {
-      setMediaVisible(true);
-      return;
-    }
-    const io = new IntersectionObserver(
-      (entries) => {
-        const e = entries[0];
-        if (!e) return;
-        if (e.isIntersecting) {
-          setMediaVisible(true);
-          io.disconnect();
-        }
-      },
-      // Začni načítat chvíli před tím, než se karta dostane na obrazovku.
-      { root: null, rootMargin: "600px 0px", threshold: 0.01 },
-    );
-    io.observe(el);
-    return () => io.disconnect();
-  }, [mediaVisible]);
 
   return (
     <article
@@ -195,11 +168,11 @@ export function MenuItemInner({ item, onOpenDetails, guestTablet, locale = "cs",
         }
       }}
     >
-      <div ref={mediaRef} className="menuItemMediaHost">
+      <div className="menuItemMediaHost">
         <MenuItemPhoto
           imageUrl={item.imageUrl}
           seedId={item.id}
-          visible={mediaVisible}
+          visible
           priority={mediaPriority}
         />
         {!guestTablet ? <span className="menuItemBadge">{ILLUSTRATION_BADGE[locale]}</span> : null}
