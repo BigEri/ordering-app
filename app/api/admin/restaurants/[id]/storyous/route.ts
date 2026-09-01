@@ -4,6 +4,8 @@ import { fetchStoryousPlacePreview } from "../../../../../../lib/storyous/client
 import { getStoryousAppCredentials, storyousEnvMerchantId, storyousEnvPlaceId } from "../../../../../../lib/storyous/env";
 import { requireAdminSession, type AdminSession } from "../../../../../../lib/server/adminGuard";
 import { userHasRestaurantAccess } from "../../../../../../lib/server/auth";
+import { invalidateDotykackaMenuCache } from "../../../../../../lib/dotykacka/menuCache";
+import { bumpAllKioskDeviceReloadNoncesForRestaurant } from "../../../../../../lib/server/kioskDeviceBindings";
 import {
   getRestaurantStoryousRow,
   markRestaurantStoryousError,
@@ -142,6 +144,8 @@ export async function PUT(req: Request, ctx: { params: Promise<{ id: string }> }
         placeName: preview.placeName,
         actorUserId: session.userId,
       });
+      invalidateDotykackaMenuCache(id);
+      await bumpAllKioskDeviceReloadNoncesForRestaurant(id);
       return NextResponse.json({
         ok: true,
         merchantId: row.merchantId,

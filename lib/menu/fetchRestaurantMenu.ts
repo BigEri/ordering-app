@@ -4,6 +4,7 @@ import { fetchDotykackaProductsForMenu } from "../dotykacka/fetchProducts";
 import type { DotykackaMenuSection } from "../dotykacka/dotykackaMenuSections";
 import { userFacingDotykackaMenuError } from "../dotykacka/fetchRetry";
 import { dotykackaMenuCacheTag } from "../dotykacka/menuCache";
+import { getRestaurantStoryousRow } from "../server/restaurantStoryous";
 import { fetchStoryousProductsForMenu } from "../storyous/fetchMenu";
 import { getRestaurantMenuSource, type RestaurantMenuSource } from "./restaurantMenuSource";
 
@@ -14,6 +15,19 @@ function menuCacheRevalidateSec(): number {
   if (!raw) return DEFAULT_REVALIDATE_SEC;
   const n = Number(raw);
   return Number.isFinite(n) && n >= 30 ? Math.floor(n) : DEFAULT_REVALIDATE_SEC;
+}
+
+/** Klíč server cache — u Storyous musí obsahovat Place ID, jinak po přepnutí provozovny zůstane staré menu. */
+export function restaurantMenuCacheKeyParts(
+  restaurantId: string,
+  source: RestaurantMenuSource,
+  storyousPlaceId?: string | null,
+): string[] {
+  const rid = restaurantId.trim();
+  if (source === "storyous") {
+    return ["restaurant-menu-v2", rid, "storyous", (storyousPlaceId ?? "").trim()];
+  }
+  return ["restaurant-menu-v2", rid, "dotykacka"];
 }
 
 export type RestaurantMenuResult =
@@ -79,6 +93,8 @@ export async function fetchRestaurantMenuCached(
     };
   }
 
+  const storyousPlaceId =
+    source === "storyous" ? ((await getRestaurantStoryousRow(rid))?.placeId ?? "") : "";
   const revalidate = menuCacheRevalidateSec();
   const run = unstable_cache(
     async (): Promise<DotykackaMenuSection[]> => {
@@ -86,7 +102,7 @@ export async function fetchRestaurantMenuCached(
       if (!result.ok) throw new RestaurantMenuCacheMiss(result.error);
       return result.sections;
     },
-    ["restaurant-menu-v1", rid, source],
+    restaurantMenuCacheKeyParts(rid, source, storyousPlaceId),
     { revalidate, tags: [dotykackaMenuCacheTag(rid)] },
   );
 
