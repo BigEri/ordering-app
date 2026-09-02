@@ -40,6 +40,7 @@ function needsKioskDeviceContext(pathname: string | null | undefined): boolean {
   if (pathname.startsWith("/admin")) return false;
   if (pathname === "/setup" || pathname === "/virtual-pos") return false;
   if (pathname === "/pair" || pathname.startsWith("/pair/")) return false;
+  if (pathname === "/kiosk/pair" || pathname.startsWith("/kiosk/pair/")) return false;
   if ((pathname === "/menu" || pathname.startsWith("/menu/")) && isAdminMenuPreviewOnClient()) return false;
   return true;
 }
@@ -59,6 +60,30 @@ type DeviceConfigJson = {
 };
 
 const configInflight = new Map<string, Promise<DeviceConfigJson>>();
+
+type PairingCodeJson = { ok?: boolean; code?: string; expiresAtIso?: string };
+const pairingCodeInflight = new Map<string, Promise<PairingCodeJson | null>>();
+
+function fetchDevicePairingCodeJson(deviceId: string): Promise<PairingCodeJson | null> {
+  const hit = pairingCodeInflight.get(deviceId);
+  if (hit) return hit;
+  const run = fetch("/api/public/device-pairing-code", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ deviceId }),
+  })
+    .then(async (pr) => {
+      const j = (await pr.json()) as PairingCodeJson;
+      if (!pr.ok || !j.ok || !j.code) return null;
+      return j;
+    })
+    .catch(() => null)
+    .finally(() => {
+      pairingCodeInflight.delete(deviceId);
+    });
+  pairingCodeInflight.set(deviceId, run);
+  return run;
+}
 
 function fetchDeviceConfig(deviceId: string) {
   const u = new URL("/api/devices/config", typeof window !== "undefined" ? window.location.origin : "http://localhost");
@@ -401,7 +426,15 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
   const syncPairingWithConfig = React.useCallback(
     async (did: string, binding: ConfigBinding, cancelled: () => boolean) => {
       if (!did) return;
-      if (pathname?.startsWith("/admin") || pathname === "/setup" || pathname === "/pair") return;
+      if (
+        pathname?.startsWith("/admin") ||
+        pathname === "/setup" ||
+        pathname === "/pair" ||
+        pathname === "/kiosk/pair" ||
+        pathname?.startsWith("/kiosk/pair/")
+      ) {
+        return;
+      }
 
       if (binding) {
         if (cancelled()) return;
@@ -421,13 +454,8 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
       if (exp > 0 && now < exp - renewIfWithinMs) return;
 
       try {
-        const pr = await fetch("/api/public/device-pairing-code", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ deviceId: did }),
-        });
-        const j = (await pr.json()) as { ok?: boolean; code?: string; expiresAtIso?: string };
-        if (cancelled() || !pr.ok || !j.ok || !j.code) return;
+        const j = await fetchDevicePairingCodeJson(did);
+        if (cancelled() || !j?.code) return;
         setPairingCode(j.code);
         const iso = typeof j.expiresAtIso === "string" ? j.expiresAtIso : null;
         setPairingExpiresAtIso(iso);

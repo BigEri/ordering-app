@@ -38,7 +38,7 @@ function KioskPairPageInner() {
     return () => window.clearInterval(t);
   }, []);
 
-  const loadCode = React.useCallback(async () => {
+  const loadCode = React.useCallback(async (rotate = false) => {
     const did = deviceId;
     if (!did || did.length > 200) {
       setErr("Chybí nebo je neplatné deviceId.");
@@ -52,7 +52,7 @@ function KioskPairPageInner() {
       const r = await fetch("/api/public/device-pairing-code", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ deviceId: did }),
+        body: JSON.stringify({ deviceId: did, ...(rotate ? { rotate: true } : {}) }),
       });
       const j = (await r.json()) as PairingResp;
       if (!r.ok || !j.ok) {
@@ -179,7 +179,7 @@ function KioskPairPageInner() {
               type="button"
               className="btnPrimary"
               disabled={loading}
-              onClick={() => void loadCode()}
+              onClick={() => void loadCode(true)}
               style={{ cursor: loading ? "not-allowed" : "pointer" }}
             >
               {loading ? "Generuji…" : "Vygenerovat znovu"}

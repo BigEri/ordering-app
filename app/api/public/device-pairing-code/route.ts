@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 const MAX_PAIRING_CODE_PER_IP = 30;
 const PAIRING_CODE_WINDOW_MS = 60 * 60 * 1000;
 
-/** Tablet zaregistruje kód pro párování v administraci (bez přihlášení). */
+/** Tablet zaregistruje kód pro párování v administraci (bez přihlášení). Opakovaný POST vrací stejný platný kód; `rotate: true` vynutí nový. */
 export async function POST(req: Request) {
   const ip = clientIpFromRequest(req);
   const rl = checkRateLimit(`pair-code:${ip}`, MAX_PAIRING_CODE_PER_IP, PAIRING_CODE_WINDOW_MS);
@@ -30,6 +30,7 @@ export async function POST(req: Request) {
   }
   const o = body as Record<string, unknown>;
   const deviceId = typeof o.deviceId === "string" ? o.deviceId.trim() : "";
+  const rotate = o.rotate === true;
   if (!deviceId || deviceId.length > 200) {
     return NextResponse.json({ ok: false, error: "deviceId required" }, { status: 400 });
   }
@@ -41,7 +42,7 @@ export async function POST(req: Request) {
         { status: 403 },
       );
     }
-    const { code, expiresAtIso } = await upsertDevicePairingCodeAsync(deviceId);
+    const { code, expiresAtIso } = await upsertDevicePairingCodeAsync(deviceId, { rotate });
     return NextResponse.json({ ok: true, code, expiresAtIso });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Error";
