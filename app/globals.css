@@ -1345,7 +1345,26 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   flex-wrap: wrap;
 }
 
-.menuItemVeganBadge {
+.menuItemBadgeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.menuItemBadgeRow--media {
+  position: absolute;
+  left: 8px;
+  bottom: 10px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.menuItemBadgeRow--detail {
+  margin: 2px 0 4px;
+}
+
+.menuItemFlagBadge {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -1356,7 +1375,58 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   filter: drop-shadow(0 0 6px rgba(110, 231, 168, 0.35));
 }
 
-.modalTitleRow .menuItemVeganBadge {
+.menuItemFlagBadge--recommended {
+  color: #fcd34d;
+  filter: drop-shadow(0 0 6px rgba(252, 211, 77, 0.4));
+}
+
+.menuItemFlagBadge--popular {
+  color: #fb923c;
+  filter: drop-shadow(0 0 6px rgba(251, 146, 60, 0.4));
+}
+
+.menuItemFlagBadge--chip {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: rgba(3, 7, 18, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 15px;
+  filter: none;
+}
+
+.menuItemFlagBadge--chip.menuItemFlagBadge--vegan {
+  color: #6ee7a8;
+}
+
+.menuItemFlagBadge--chip.menuItemFlagBadge--recommended {
+  color: #fcd34d;
+}
+
+.menuItemFlagBadge--chip.menuItemFlagBadge--popular {
+  color: #fb923c;
+}
+
+.menuItemFlagBadge--label {
+  width: auto;
+  height: auto;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  filter: none;
+}
+
+.menuItemFlagBadge--label svg {
+  width: 16px;
+  height: 16px;
+}
+
+.modalTitleRow .menuItemFlagBadge {
   width: 22px;
   height: 22px;
 }
@@ -2849,6 +2919,34 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   padding: 6px 10px !important;
   font-size: 13px !important;
   min-height: auto;
+}
+
+.menuItemAdminBadgeBtn {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.menuItemAdminBadgeBtn .menuItemFlagBadge {
+  width: 1em;
+  height: 1em;
+  filter: none;
+  color: inherit;
+}
+
+.menuItemAdminBadgeBtn--on.menuItemAdminBadgeBtn--vegan {
+  border-color: rgba(110, 231, 168, 0.7) !important;
+  color: #6ee7a8;
+}
+
+.menuItemAdminBadgeBtn--on.menuItemAdminBadgeBtn--recommended {
+  border-color: rgba(252, 211, 77, 0.75) !important;
+  color: #fcd34d;
+}
+
+.menuItemAdminBadgeBtn--on.menuItemAdminBadgeBtn--popular {
+  border-color: rgba(251, 146, 60, 0.75) !important;
+  color: #fb923c;
 }
 
 .menuCategoryBlock {

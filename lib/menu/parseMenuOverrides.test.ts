@@ -24,4 +24,15 @@ describe("menuOverridesFromApiJson", () => {
     expect(parsed.categoryHours.drinks).toBeUndefined();
     expect(parsed.categoryHours.lunch).toEqual({ visibleFrom: "12:00", visibleUntil: "14:00" });
   });
+
+  it("vyčistí neznámé štítky a seřadí je kanonicky", () => {
+    const parsed = menuOverridesFromApiJson({
+      itemBadges: {
+        "  a ": ["popular", "vegan", "unknown", "vegan"],
+        b: "vegan",
+        c: [],
+      },
+    });
+    expect(parsed.itemBadges).toEqual({ a: ["vegan", "popular"] });
+  });
 });

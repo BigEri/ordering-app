@@ -30,6 +30,7 @@ model Restaurant {
   menuTextOverrides   MenuTextOverride[]
   menuIngredientOverrides MenuIngredientOverride[]
   menuDotykackaLabels MenuDotykackaLabel[]
+  menuItemBadges      MenuItemBadge[]
   dotykacka           RestaurantDotykacka?
   storyous            RestaurantStoryous?
   welcome             RestaurantWelcome?
@@ -94,6 +95,7 @@ model User {
   menuTextOverridesUpdated MenuTextOverride[] @relation("MenuTextOverrideUpdatedBy")
   menuIngredientOverridesUpdated MenuIngredientOverride[] @relation("MenuIngredientOverrideUpdatedBy")
   menuDotykackaLabelsUpdated MenuDotykackaLabel[] @relation("MenuDotykackaLabelUpdatedBy")
+  menuItemBadgesUpdated MenuItemBadge[] @relation("MenuItemBadgeUpdatedBy")
   restaurantWelcomesUpdated RestaurantWelcome[] @relation("RestaurantWelcomeUpdatedBy")
 }
 
@@ -205,6 +207,20 @@ model MenuIngredientOverride {
   updatedByUser User? @relation("MenuIngredientOverrideUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
 
   @@id([restaurantId, locale, menuItemId])
+}
+
+/** Hostitelské štítky u jídla (vegan / doporučené / populární) — nezávislé na pokladně. */
+model MenuItemBadge {
+  restaurantId String
+  menuItemId   String
+  badgesJson   String
+  updatedAtIso String
+  updatedByUserId String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+  updatedByUser User? @relation("MenuItemBadgeUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@id([restaurantId, menuItemId])
 }
 
 model MenuDotykackaLabel {

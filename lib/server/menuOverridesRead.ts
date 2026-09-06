@@ -1,5 +1,6 @@
 import { parseCategoryHoursMap } from "../menu/categoryHours";
 import { isAlwaysScheduleTimes } from "../menu/categoryHours";
+import { parseMenuItemBadgesJson, type MenuItemBadgeKey } from "../menu/menuItemBadges";
 import { type MenuOverridesPayload } from "../menu/parseMenuOverrides";
 import { prisma } from "./prisma";
 
@@ -8,7 +9,7 @@ export { EMPTY_MENU_OVERRIDES, menuOverridesFromApiJson } from "../menu/parseMen
 
 export async function readMenuOverridesForRestaurant(restaurantId: string): Promise<MenuOverridesPayload> {
   const rid = restaurantId.trim();
-  const [imgRows, posRows, hiddenRows, hiddenCatRows, hoursRows] = await Promise.all([
+  const [imgRows, posRows, hiddenRows, hiddenCatRows, hoursRows, badgeRows] = await Promise.all([
     prisma.menuImage.findMany({
       where: { restaurantId: rid },
       select: { menuItemId: true, imageUrl: true },
@@ -52,6 +53,16 @@ export async function readMenuOverridesForRestaurant(restaurantId: string): Prom
         }
       }
     })(),
+    (async () => {
+      try {
+        return await prisma.menuItemBadge.findMany({
+          where: { restaurantId: rid },
+          select: { menuItemId: true, badgesJson: true },
+        });
+      } catch {
+        return [] as { menuItemId: string; badgesJson: string }[];
+      }
+    })(),
   ]);
 
   const images: Record<string, string> = {};
@@ -85,5 +96,21 @@ export async function readMenuOverridesForRestaurant(restaurantId: string): Prom
     ),
   );
 
-  return { images, orderByCategory, hiddenItemIds, hiddenCategoryKeys, categoryHours, alwaysVisibleCategoryKeys };
+  const itemBadges: Record<string, MenuItemBadgeKey[]> = {};
+  for (const r of badgeRows) {
+    const id = typeof r.menuItemId === "string" ? r.menuItemId.trim() : "";
+    if (!id) continue;
+    const list = parseMenuItemBadgesJson(r.badgesJson);
+    if (list.length) itemBadges[id] = list;
+  }
+
+  return {
+    images,
+    orderByCategory,
+    hiddenItemIds,
+    hiddenCategoryKeys,
+    categoryHours,
+    alwaysVisibleCategoryKeys,
+    itemBadges,
+  };
 }

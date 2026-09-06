@@ -9,10 +9,11 @@ import { KioskAnchor } from "../../components/kiosk/KioskAnchor";
 import { LanguageMenu } from "../../components/LanguageMenu";
 
 import { MenuItemOrderModal } from "../../components/MenuItemOrderModal";
-import { MenuItem, type MenuItemData } from "../../components/MenuItem";
+import { MenuItem, MenuItemBadgeMark, type MenuItemData } from "../../components/MenuItem";
 import type { DotykackaMenuSection } from "../../lib/dotykacka/dotykackaMenuSections";
 import type { RestaurantMenuSource } from "../../lib/menu/restaurantMenuSource";
 import { applyMenuOverrides } from "../../lib/menu/applyMenuOverrides";
+import { applyMenuItemBadges } from "../../lib/menu/applyMenuItemBadges";
 import { applyMenuIngredientOverrides } from "../../lib/menu/applyMenuIngredientOverrides";
 import { applyMenuTextOverrides } from "../../lib/menu/applyMenuTextOverrides";
 import {
@@ -23,6 +24,7 @@ import {
 } from "../../lib/menu/categoryHours";
 import { menuSectionCategoryKey } from "../../lib/menu/menuSectionKey";
 import { EMPTY_MENU_OVERRIDES, menuOverridesFromApiJson, type MenuOverridesPayload } from "../../lib/menu/parseMenuOverrides";
+import { MENU_ITEM_BADGE_KEYS, toggleMenuItemBadge, type MenuItemBadgeKey } from "../../lib/menu/menuItemBadges";
 import { formatRestaurantLocalHhmm } from "../../lib/restaurantLocalTime";
 import type { MenuTextOverridesForLocale } from "../../lib/menu/menuTextOverridesTypes";
 import type { MenuIngredientOverridesForLocale } from "../../lib/menu/menuIngredientOverridesTypes";
@@ -288,6 +290,7 @@ export function MenuBrowseClient({
           hiddenCategoryKeys?: string[];
           categoryHours?: unknown;
           alwaysVisibleCategoryKeys?: unknown;
+          itemBadges?: unknown;
         };
         if (cancelled || !r.ok || !j.ok) return;
         setOverrides(menuOverridesFromApiJson(j));
@@ -495,26 +498,27 @@ export function MenuBrowseClient({
     if (!restaurantId) return base;
     const withText = applyMenuTextOverrides(base, textOverrides);
     const withIngredients = applyMenuIngredientOverrides(withText, ingredientOverrides);
+    const withBadges = applyMenuItemBadges(withIngredients, overrides.itemBadges);
     const hoursMap = overrides.categoryHours ?? {};
     const alwaysKeys = new Set(overrides.alwaysVisibleCategoryKeys ?? []);
-    const filterHours = (rows: typeof withIngredients) => {
+    const filterHours = (rows: typeof withBadges) => {
       if (!nowHhmm) return rows;
       return rows.filter((sec) =>
         isCategoryVisibleWithExclusiveSchedule(menuSectionCategoryKey(sec), hoursMap, alwaysKeys, nowHhmm),
       );
     };
     const shouldHide = menuVariant !== "editor" || !canEditMenu;
-    if (!shouldHide) return withIngredients;
+    if (!shouldHide) return withBadges;
     // Host: skryté kategorie už SSR odřízl; po mountu schováme sekce mimo denní okno.
-    if (menuVariant === "guest") return filterHours(withIngredients);
-    const hideHidden = (rows: typeof withIngredients) => {
+    if (menuVariant === "guest") return filterHours(withBadges);
+    const hideHidden = (rows: typeof withBadges) => {
       if (hiddenSet.size === 0 && hiddenCategorySet.size === 0) return rows;
       return rows
         .filter((sec) => !hiddenCategorySet.has(menuSectionCategoryKey(sec)))
         .map((sec) => ({ ...sec, items: sec.items.filter((it) => !hiddenSet.has(it.id)) }))
         .filter((sec) => sec.items.length > 0);
     };
-    return filterHours(hideHidden(withIngredients));
+    return filterHours(hideHidden(withBadges));
   }, [
     sections,
     restaurantId,
@@ -554,6 +558,37 @@ export function MenuBrowseClient({
           if (rr.ok && jo.ok) {
             setOverrides(menuOverridesFromApiJson(jo));
           }
+        }
+      } catch {
+        setMenuEditorErr(tAdminUi("admin.editor.saveNetworkErr"));
+      }
+    },
+    [restaurantId, canEditMenu, tAdminUi],
+  );
+
+  const setItemBadge = React.useCallback(
+    async (menuItemId: string, badge: MenuItemBadgeKey, enabled: boolean) => {
+      if (!restaurantId || !canEditMenu) return;
+      setMenuEditorErr(null);
+      setOverrides((o) => {
+        const nextList = toggleMenuItemBadge(o.itemBadges?.[menuItemId], badge, enabled);
+        const itemBadges = { ...(o.itemBadges ?? {}) };
+        if (nextList.length) itemBadges[menuItemId] = nextList;
+        else delete itemBadges[menuItemId];
+        return { ...o, itemBadges };
+      });
+      try {
+        const r = await fetch("/api/admin/menu/item-badges", {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ restaurantId, menuItemId, badge, enabled }),
+        });
+        const j = (await r.json()) as { ok?: boolean; error?: string };
+        if (!r.ok || !j.ok) {
+          setMenuEditorErr(j.error ?? tAdminUi("admin.editor.badgeSaveFailed"));
+          const rr = await fetch(`/api/menu/overrides?restaurantId=${encodeURIComponent(restaurantId)}`, { cache: "no-store" });
+          const jo = (await rr.json()) as { ok?: boolean; itemBadges?: unknown };
+          if (rr.ok && jo.ok) setOverrides(menuOverridesFromApiJson(jo));
         }
       } catch {
         setMenuEditorErr(tAdminUi("admin.editor.saveNetworkErr"));
@@ -1465,6 +1500,24 @@ export function MenuBrowseClient({
                           >
                             {tAdminUi("admin.editor.photoBtn")}
                           </button>
+                          <span className="menuItemAdminToolsLabel">{tAdminUi("admin.editor.badgesLabel")}</span>
+                          {MENU_ITEM_BADGE_KEYS.map((badge) => {
+                            const on = Boolean(item.badges?.includes(badge));
+                            const label = tAdminUi(`admin.editor.badge.${badge}`);
+                            return (
+                              <button
+                                key={badge}
+                                type="button"
+                                className={`chip menuItemAdminToolBtn menuItemAdminBadgeBtn${on ? ` menuItemAdminBadgeBtn--on menuItemAdminBadgeBtn--${badge}` : ""}`}
+                                title={on ? tAdminUi("admin.editor.badgeOffTitle", { name: label }) : tAdminUi("admin.editor.badgeOnTitle", { name: label })}
+                                aria-pressed={on}
+                                onClick={() => void setItemBadge(item.id, badge, !on)}
+                              >
+                                <MenuItemBadgeMark badge={badge} locale={menuLocale} labeled={false} />
+                                {label}
+                              </button>
+                            );
+                          })}
                         </div>
                         <div style={hiddenSet.has(item.id) ? { opacity: 0.55 } : undefined}>
                           {hiddenSet.has(item.id) ? (

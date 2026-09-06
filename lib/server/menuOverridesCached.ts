@@ -54,7 +54,7 @@ export async function readMenuOverridesForRestaurantCached(
   const revalidate = cacheRevalidateSec();
   const run = unstable_cache(
     () => readMenuOverridesForRestaurant(rid),
-    ["menu-overrides-v4", rid],
+    ["menu-overrides-v5", rid],
     { revalidate, tags: [menuOverridesCacheTag(rid)] },
   );
   return run();

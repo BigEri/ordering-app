@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import type { MenuItemData } from "./MenuItem";
+import { MenuItemBadgeRow, type MenuItemData } from "./MenuItem";
 import { MenuItemPhoto } from "./MenuItemPhoto";
 import type { Locale } from "../lib/i18n/messages";
 import { allergenLabel } from "../lib/menu/allergens";
@@ -123,7 +123,10 @@ export function MenuItemOrderModal({
             className="menuItemMedia menuDetailMedia"
           />
           <div className="menuDetailHeaderText">
-            <strong className="modalTitle">{item.name}</strong>
+            <strong className="modalTitle modalTitleRow">
+              <span>{item.name}</span>
+            </strong>
+            <MenuItemBadgeRow badges={item.badges} locale={locale} variant="label" className="menuItemBadgeRow menuItemBadgeRow--detail" />
             {item.description ? (
               <p
                 className="textMuted"

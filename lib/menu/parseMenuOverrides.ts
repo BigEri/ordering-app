@@ -1,5 +1,6 @@
 import type { CategoryHours } from "./categoryHours";
 import { isAlwaysScheduleTimes, parseCategoryHoursMap } from "./categoryHours";
+import { parseMenuItemBadgesMap, type MenuItemBadgeKey } from "./menuItemBadges";
 
 function parseStringKeyList(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -24,6 +25,8 @@ export type MenuOverridesPayload = {
   categoryHours: Record<string, CategoryHours>;
   /** Sekce s tlačítkem Pořád — vidět i během časového menu. */
   alwaysVisibleCategoryKeys: string[];
+  /** menuItemId → zapnuté štítky (vegan / recommended / popular). */
+  itemBadges: Record<string, MenuItemBadgeKey[]>;
 };
 
 export const EMPTY_MENU_OVERRIDES: MenuOverridesPayload = {
@@ -33,6 +36,7 @@ export const EMPTY_MENU_OVERRIDES: MenuOverridesPayload = {
   hiddenCategoryKeys: [],
   categoryHours: {},
   alwaysVisibleCategoryKeys: [],
+  itemBadges: {},
 };
 
 export function menuOverridesFromApiJson(j: {
@@ -42,6 +46,7 @@ export function menuOverridesFromApiJson(j: {
   hiddenCategoryKeys?: string[];
   categoryHours?: unknown;
   alwaysVisibleCategoryKeys?: unknown;
+  itemBadges?: unknown;
 }): MenuOverridesPayload {
   const alwaysVisibleCategoryKeys = parseStringKeyList(j.alwaysVisibleCategoryKeys);
   if (j.categoryHours && typeof j.categoryHours === "object") {
@@ -64,5 +69,6 @@ export function menuOverridesFromApiJson(j: {
     hiddenCategoryKeys: Array.isArray(j.hiddenCategoryKeys) ? j.hiddenCategoryKeys : [],
     categoryHours,
     alwaysVisibleCategoryKeys,
+    itemBadges: parseMenuItemBadgesMap(j.itemBadges),
   };
 }
