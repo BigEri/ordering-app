@@ -1,24 +1,18 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { findFirst, deleteMany, create, executeRaw } = vi.hoisted(() => ({
+const { findFirst, deleteMany, create } = vi.hoisted(() => ({
   findFirst: vi.fn(),
   deleteMany: vi.fn(),
   create: vi.fn(),
-  executeRaw: vi.fn(),
 }));
 
 vi.mock("./prisma", () => ({
   prisma: {
-    $transaction: vi.fn(async (fn: (tx: unknown) => unknown) =>
-      fn({
-        $executeRaw: executeRaw,
-        devicePairingCode: { findFirst, deleteMany, create },
-      }),
-    ),
+    devicePairingCode: { findFirst, deleteMany, create },
   },
 }));
 
-import { pairingAdvisoryLockKey, upsertDevicePairingCodeAsync } from "./devicePairingCodes";
+import { upsertDevicePairingCodeAsync } from "./devicePairingCodes";
 
 describe("upsertDevicePairingCodeAsync", () => {
   afterEach(() => {
@@ -34,7 +28,6 @@ describe("upsertDevicePairingCodeAsync", () => {
     expect(out).toEqual({ code: "ABC234", expiresAtIso });
     expect(deleteMany).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
-    expect(executeRaw).toHaveBeenCalled();
   });
 
   it("allocates a new code when none exists", async () => {
@@ -73,10 +66,5 @@ describe("upsertDevicePairingCodeAsync", () => {
 
     expect(out.code).not.toBe("OLD234");
     expect(deleteMany).toHaveBeenCalledOnce();
-  });
-
-  it("pairingAdvisoryLockKey is stable for the same deviceId", () => {
-    expect(pairingAdvisoryLockKey("abc")).toBe(pairingAdvisoryLockKey("abc"));
-    expect(pairingAdvisoryLockKey("abc")).not.toBe(pairingAdvisoryLockKey("abd"));
   });
 });

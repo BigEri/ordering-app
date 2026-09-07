@@ -1,5 +1,4 @@
 import crypto from "crypto";
-import type { Prisma } from "@prisma/client";
 
 import { nowIso } from "./db";
 import { prisma } from "./prisma";
@@ -7,8 +6,6 @@ import { prisma } from "./prisma";
 const CODE_TTL_MS = 60 * 60 * 1000;
 /** Když zbývá méně, další upsert vydá nový kód (stejné okno jako na tabletu). */
 const RENEW_IF_WITHIN_MS = 3 * 60 * 1000;
-/** Namespace pro pg_advisory_xact_lock — oddělené od případných jiných locků. */
-const PAIRING_CODE_LOCK_K1 = 88221001;
 const PAIRING_CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 function randomPairingCode(): string {
@@ -20,29 +17,25 @@ function randomPairingCode(): string {
   return s;
 }
 
-/** Signed int4 pro druhý klíč advisory locku. */
-export function pairingAdvisoryLockKey(deviceId: string): number {
-  let h = 2166136261;
-  for (let i = 0; i < deviceId.length; i++) {
-    h ^= deviceId.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return h | 0;
-}
-
 async function allocateNewPairingCode(
-  tx: Prisma.TransactionClient,
   deviceId: string,
+  replaceUnused: boolean,
 ): Promise<{ code: string; expiresAtIso: string }> {
   const createdAtIso = nowIso();
   const expiresAtIso = new Date(Date.now() + CODE_TTL_MS).toISOString();
 
-  await tx.devicePairingCode.deleteMany({ where: { deviceId, usedAtIso: null } });
+  if (replaceUnused) {
+    await prisma.devicePairingCode.deleteMany({ where: { deviceId, usedAtIso: null } });
+  } else {
+    await prisma.devicePairingCode.deleteMany({
+      where: { deviceId, usedAtIso: null, expiresAtIso: { lte: nowIso() } },
+    });
+  }
 
   for (let attempt = 0; attempt < 30; attempt++) {
     const code = randomPairingCode();
     try {
-      await tx.devicePairingCode.create({
+      await prisma.devicePairingCode.create({
         data: { code, deviceId, createdAtIso, expiresAtIso, usedAtIso: null },
       });
       return { code, expiresAtIso };
@@ -57,6 +50,9 @@ async function allocateNewPairingCode(
  * Kód pro zařízení bez serverové vazby.
  * Platný nevyužitý kód znovu použije — nesmí se při každém POST smazat (tablet často volá dvakrát).
  * `rotate: true` vynutí nový kód (tlačítko „Vygenerovat znovu“).
+ *
+ * Bez advisory locku / interactive transaction — na Neon poolu `pg_advisory_xact_lock`
+ * padá a tablet pak neukáže žádný kód.
  */
 export function upsertDevicePairingCode(deviceId: string): { code: string; expiresAtIso: string } {
   const id = deviceId.trim();
@@ -73,30 +69,20 @@ export async function upsertDevicePairingCodeAsync(
   const id = deviceId.trim();
   if (!id || id.length > 200) throw new Error("Invalid deviceId");
 
-  const lockK2 = pairingAdvisoryLockKey(id);
+  if (opts?.rotate) {
+    return allocateNewPairingCode(id, true);
+  }
 
-  return prisma.$transaction(
-    async (tx) => {
-      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${PAIRING_CODE_LOCK_K1}, ${lockK2})`;
+  const existing = await getUnusedPairingCodeForDeviceAsync(id);
+  if (existing) {
+    const remaining = new Date(existing.expiresAtIso).getTime() - Date.now();
+    if (remaining > RENEW_IF_WITHIN_MS) {
+      return existing;
+    }
+    return allocateNewPairingCode(id, true);
+  }
 
-      if (!opts?.rotate) {
-        const existing = await tx.devicePairingCode.findFirst({
-          where: { deviceId: id, usedAtIso: null, expiresAtIso: { gt: nowIso() } },
-          orderBy: { createdAtIso: "desc" },
-          select: { code: true, expiresAtIso: true },
-        });
-        if (existing?.code && existing.expiresAtIso) {
-          const remaining = new Date(existing.expiresAtIso).getTime() - Date.now();
-          if (remaining > RENEW_IF_WITHIN_MS) {
-            return { code: existing.code, expiresAtIso: existing.expiresAtIso };
-          }
-        }
-      }
-
-      return allocateNewPairingCode(tx, id);
-    },
-    { timeout: 10_000 },
-  );
+  return allocateNewPairingCode(id, false);
 }
 
 export type PairingRow = {
