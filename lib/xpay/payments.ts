@@ -1,13 +1,14 @@
 import { nowIso } from "../server/db";
 import { prisma } from "../server/prisma";
 import { getPublicAppBaseUrl } from "../server/publicAppUrl";
-import { markRestaurantXpayError, markRestaurantXpayOk } from "../server/restaurantXpay";
+import { markRestaurantXpayError, markRestaurantXpayOk, getRestaurantXpayRow } from "../server/restaurantXpay";
 import { getDotykackaAccessTokenForCloud } from "../dotykacka/accessToken";
 import { getDotykackaConfig } from "../dotykacka/config";
 import { fetchTableOpenBillFromDotykacka } from "../dotykacka/tableOpenBill";
 import { syncXpayPaidToDotykacka } from "../dotykacka/syncOrder";
 import { getRestaurantMenuSource } from "../menu/restaurantMenuSource";
 import { recordIntegrationAuditEvent } from "../server/integrationAudit";
+import { secureCompareStrings } from "../server/secureCompare";
 import { cancelXpayPayByLink, createXpayPayByLink, fetchXpayOrderStatus, type XpayCredentials } from "./client";
 import { getXpayCredentials } from "./config";
 import { xpayQrDataUrl } from "./qr";
@@ -18,6 +19,7 @@ import {
   extractXpayOrderId,
   xpayLanguageFromLocale,
 } from "./parse";
+import { buildXpaySandboxCzkDemo, isXpaySandboxDemoPayUrl } from "./sandboxDemo";
 
 export type XpayPaymentView = {
   paymentId: string;
@@ -28,6 +30,7 @@ export type XpayPaymentView = {
   tipAmountCzk: number;
   tillSettled: boolean;
   tillError: string | null;
+  demoSandbox?: boolean;
   notConfigured?: boolean;
 };
 
@@ -57,6 +60,7 @@ function toView(
     tipAmountCzk: row.tipAmountCzk,
     tillSettled: Boolean(row.tillSettledAtIso),
     tillError: row.tillError,
+    demoSandbox: isXpaySandboxDemoPayUrl(row.payUrl),
   };
 }
 
@@ -144,15 +148,18 @@ export async function createTableXpayPayment(input: {
   await cancelPendingForDevice(creds, input.deviceId, String(tableIdNum));
 
   const paymentId = buildXpayOrderId();
-  const created = await createXpayPayByLink(creds, {
+  let created = await createXpayPayByLink(creds, {
     orderId: paymentId,
     amountHalere: czkToHalere(totalCzk),
-    description: `Tableflow ${input.tableLabel?.trim() || `stůl ${tableIdNum}`}`,
+    description: `Tableflow ${input.tableLabel?.trim() || `stul ${tableIdNum}`}`,
     language: xpayLanguageFromLocale(input.locale),
     resultUrl: `${appBase}/pay/xpay/result?status=ok&pid=${encodeURIComponent(paymentId)}`,
     cancelUrl: `${appBase}/pay/xpay/result?status=cancel&pid=${encodeURIComponent(paymentId)}`,
     notificationUrl: `${appBase}/api/integrations/xpay/notification`,
   });
+  if (!created.ok && created.currencyUnsupported && creds.environment === "sandbox") {
+    created = { ok: true, ...buildXpaySandboxCzkDemo({ appBase, paymentId }), raw: { demo: "czk" } };
+  }
   if (!created.ok) {
     await markRestaurantXpayError(input.restaurantId, created.error);
     return { ok: false, error: created.error, status: 502 };
@@ -294,7 +301,7 @@ export async function refreshXpayPaymentStatus(input: {
 
   if (row.status === "pending") {
     const creds = await getXpayCredentials(row.restaurantId);
-    if (creds) {
+    if (creds && row.linkId && !isXpaySandboxDemoPayUrl(row.payUrl)) {
       const remote = await fetchXpayOrderStatus(creds, row.id);
       if (remote.ok && remote.classification === "paid") {
         await markXpayPaymentPaid({ paymentId: row.id, notification: remote.raw });
@@ -336,4 +343,54 @@ export async function cancelXpayPayment(input: {
     data: { status: "cancelled", cancelledAtIso: ts, updatedAtIso: ts },
   });
   return { ok: true };
+}
+
+async function assertSandboxCzkDemo(paymentId: string, token: string) {
+  const row = await prisma.xpayPayment.findUnique({ where: { id: paymentId } });
+  if (!row || !row.securityToken) return { ok: false as const, error: "Platba nenalezena.", status: 404, row: null };
+  if (!isXpaySandboxDemoPayUrl(row.payUrl)) {
+    return { ok: false as const, error: "Toto není sandbox CZK test.", status: 400, row: null };
+  }
+  if (!secureCompareStrings(row.securityToken, token)) {
+    return { ok: false as const, error: "Neplatný token.", status: 403, row: null };
+  }
+  const xpay = await getRestaurantXpayRow(row.restaurantId);
+  if (!xpay || xpay.environment !== "sandbox") {
+    return { ok: false as const, error: "Sandbox CZK test je jen v prostředí Sandbox.", status: 403, row: null };
+  }
+  return { ok: true as const, row };
+}
+
+export async function peekSandboxDemoPayment(input: { paymentId: string; token: string }) {
+  const checked = await assertSandboxCzkDemo(input.paymentId, input.token);
+  if (!checked.ok) return checked;
+  const row = checked.row;
+  return {
+    ok: true as const,
+    status: asStatus(row.status),
+    amountCzk: Math.round(row.amountHalere / 100),
+    tableLabel: row.tableLabel,
+  };
+}
+
+export async function completeSandboxDemoPayment(input: {
+  paymentId: string;
+  token: string;
+  action: "pay" | "fail";
+}) {
+  const checked = await assertSandboxCzkDemo(input.paymentId, input.token);
+  if (!checked.ok) return checked;
+  const row = checked.row;
+  if (input.action === "pay") {
+    await markXpayPaymentPaid({ paymentId: row.id, notification: { demo: "czk", action: "pay" } });
+    return { ok: true as const, status: "paid" as const, amountCzk: Math.round(row.amountHalere / 100) };
+  }
+  if (row.status === "pending") {
+    const ts = nowIso();
+    await prisma.xpayPayment.update({
+      where: { id: row.id },
+      data: { status: "failed", updatedAtIso: ts },
+    });
+  }
+  return { ok: true as const, status: "failed" as const, amountCzk: Math.round(row.amountHalere / 100) };
 }

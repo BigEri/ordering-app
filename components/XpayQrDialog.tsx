@@ -15,6 +15,7 @@ export type XpayKioskPayment = {
   amountCzk: number;
   status?: string;
   tillError?: string | null;
+  demoSandbox?: boolean;
 };
 
 function formatCzk(value: number) {
@@ -146,7 +147,7 @@ export function XpayQrDialog({
             )}
             <p className="xpayQrAmount">{formatCzk(current.amountCzk)}</p>
             <p className="textMuted" style={{ margin: 0, textAlign: "center" }}>
-              {t("bill.xpay.hint")}
+              {current.demoSandbox ? t("bill.xpay.sandboxHint") : t("bill.xpay.hint")}
             </p>
           </>
         )}

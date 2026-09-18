@@ -83,6 +83,15 @@ export function extractXpayPayUrl(payload: unknown): string | null {
   );
 }
 
+export function isXpayCurrencyUnsupported(json: unknown, errorText?: string): boolean {
+  const rec = asRecord(json);
+  const errors = rec && Array.isArray(rec.errors) ? rec.errors : null;
+  const first = errors && errors.length > 0 ? asRecord(errors[0]) : null;
+  const desc = first ? readString(first.description) : null;
+  const blob = `${desc ?? ""} ${errorText ?? ""}`;
+  return /currency from request is not supported/i.test(blob);
+}
+
 export function formatXpayHttpError(status: number, text: string, json: unknown): string {
   const rec = asRecord(json);
   const errors = rec && Array.isArray(rec.errors) ? rec.errors : null;

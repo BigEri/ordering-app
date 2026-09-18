@@ -8,6 +8,7 @@ import {
   extractXpaySecurityToken,
   classifyXpayOperation,
   formatXpayHttpError,
+  isXpayCurrencyUnsupported,
   xpayLinkExpirationIso,
 } from "./parse";
 
@@ -35,7 +36,7 @@ export type CreatePayByLinkResult =
       securityToken: string | null;
       raw: unknown;
     }
-  | { ok: false; error: string; httpStatus?: number; raw?: unknown };
+  | { ok: false; error: string; httpStatus?: number; raw?: unknown; currencyUnsupported?: boolean };
 
 async function xpayFetch(
   creds: XpayCredentials,
@@ -98,6 +99,7 @@ export async function createXpayPayByLink(
       httpStatus: posted.status,
       error: formatXpayHttpError(posted.status, posted.text, posted.json),
       raw: posted.json,
+      currencyUnsupported: isXpayCurrencyUnsupported(posted.json, posted.text),
     };
   }
 
