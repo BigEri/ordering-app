@@ -106,7 +106,7 @@ export function formatXpayHttpError(status: number, text: string, json: unknown)
 }
 
 /** Pay-by-Link expirace (Nexi vyžaduje expirationDate, max 90 dní). */
-export function xpayLinkExpirationIso(fromMs = Date.now(), hours = 2): string {
+export function xpayLinkExpirationIso(fromMs = Date.now(), hours = 24): string {
   return new Date(fromMs + hours * 60 * 60 * 1000).toISOString();
 }
 

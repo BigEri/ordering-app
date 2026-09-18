@@ -100,6 +100,7 @@ describe("formatXpayHttpError", () => {
 describe("xpayLinkExpirationIso", () => {
   it("returns ISO timestamp in the future", () => {
     const from = Date.parse("2026-09-18T12:00:00.000Z");
-    expect(xpayLinkExpirationIso(from, 2)).toBe("2026-09-18T14:00:00.000Z");
+    expect(xpayLinkExpirationIso(from, 24)).toBe("2026-09-19T12:00:00.000Z");
+    expect(xpayLinkExpirationIso(from)).toBe("2026-09-19T12:00:00.000Z");
   });
 });

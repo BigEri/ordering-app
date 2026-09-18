@@ -84,21 +84,17 @@ export function XpayQrDialog({
     return () => window.clearTimeout(id);
   }, [phase]);
 
-  const dismiss = React.useCallback(async () => {
+  const dismiss = React.useCallback(() => {
     if (closedRef.current) return;
     closedRef.current = true;
-    if (phase === "qr") {
-      void postPosJsonData("/api/pos/xpay/cancel", { ...tableFieldsRef.current, paymentId: current.paymentId });
-    }
     onClose();
-  }, [phase, current.paymentId, onClose]);
+  }, [onClose]);
 
   return (
     <div
       role="dialog"
       aria-modal="true"
       aria-label={t("bill.xpay.title")}
-      onClick={() => void dismiss()}
       className="modalOverlay modalOverlay--55"
     >
       <div onClick={(e) => e.stopPropagation()} className="modalCard modalCard--md xpayQrCard">
