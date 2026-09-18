@@ -11,6 +11,7 @@ import {
   saveTableBillSession,
 } from "../lib/client/tableBillSession";
 import { clearKioskBillPaidByXpay, peekKioskBillPaidByXpay } from "../lib/client/kioskBillClose";
+import { peekKioskSplitPayContinue } from "../lib/client/kioskSplitPay";
 import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
 import { resetPendingOrderConfirmedState } from "../lib/pos/pendingPosQueue";
 import { useOrders } from "./OrdersProvider";
@@ -85,6 +86,10 @@ export function TableBillSyncWatcher() {
 
       if (billOpen && lines.length === 0) {
         // Otevřený účet bez naparsovaných řádků — nemazat lokální stav.
+        return;
+      }
+
+      if (peekKioskSplitPayContinue()) {
         return;
       }
 

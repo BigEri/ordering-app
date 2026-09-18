@@ -32,6 +32,7 @@ export type XpayPaymentView = {
   tipAmountCzk: number;
   tillSettled: boolean;
   tillError: string | null;
+  split: boolean;
   demoSandbox?: boolean;
   nexiSandbox?: boolean;
   notConfigured?: boolean;
@@ -51,6 +52,7 @@ function toView(
     tipAmountCzk: number;
     tillSettledAtIso: string | null;
     tillError: string | null;
+    splitItemsJson?: string | null;
   },
   qrDataUrl: string | null,
 ): XpayPaymentView {
@@ -63,6 +65,7 @@ function toView(
     tipAmountCzk: row.tipAmountCzk,
     tillSettled: Boolean(row.tillSettledAtIso),
     tillError: row.tillError,
+    split: Boolean(row.splitItemsJson),
     demoSandbox: isXpaySandboxDemoPayUrl(row.payUrl),
     nexiSandbox: isNexiSandboxPayUrl(row.payUrl),
   };

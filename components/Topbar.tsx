@@ -149,12 +149,6 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   const tipAmount = React.useMemo(() => Math.round((selectedItemsTotal * tipPct) / 100), [selectedItemsTotal, tipPct]);
   const billTotal = React.useMemo(() => selectedItemsTotal + tipAmount, [selectedItemsTotal, tipAmount]);
 
-  React.useEffect(() => {
-    if (!billOpen) return;
-    setCardShare("together");
-    setPickedQty({});
-  }, [billOpen]);
-
   const billLineLabel = React.useCallback(
     (l: ConfirmedOrderLine) => (l.snapshot ? buildOrderLineName(l.snapshot, locale) : l.name),
     [locale],
@@ -207,6 +201,8 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     setBillPayLoading(false);
     setTipPct((prev) => prev); // zachovat poslední volbu na zařízení
     setBillPaymentMethod((prev) => prev); // zachovat poslední volbu na zařízení
+    setCardShare("together");
+    setPickedQty({});
     setBillOpen(true);
   }, [previewMode]);
 
@@ -280,7 +276,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
         if (xr.ok) {
           if (xr.data.paymentId && xr.data.payUrl) {
             setBillOpen(false);
-            setXpayPayment(xr.data);
+            setXpayPayment({ ...xr.data, split: cardShare === "separate" });
             return;
           }
         } else {
@@ -716,7 +712,21 @@ export function Topbar({ previewMode = false }: TopbarProps) {
       ) : null}
 
       {xpayPayment ? (
-        <XpayQrDialog payment={xpayPayment} tableFields={posTableFields()} onClose={() => setXpayPayment(null)} />
+        <XpayQrDialog
+          payment={xpayPayment}
+          tableFields={posTableFields()}
+          onClose={() => setXpayPayment(null)}
+          onContinueSplit={() => {
+            setXpayPayment(null);
+            setPickedQty({});
+            setBillPaymentMethod("CARD");
+            setCardShare("separate");
+            setBillPayErrorKey(null);
+            setBillPayErrorDetail(null);
+            setBillOpen(true);
+            requestTableBillSyncBurst();
+          }}
+        />
       ) : null}
 
       {open ? (
