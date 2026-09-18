@@ -10,6 +10,7 @@ import { isDotykackaAccountLockedError } from "../lib/pos/dotykackaGuestError";
 import { postPosJsonResilient } from "../lib/pos/postPosJsonResilient";
 import { postPosJsonData } from "../lib/pos/postPosJson";
 import { XpayQrDialog, type XpayKioskPayment } from "./XpayQrDialog";
+import { BillSplitDialog } from "./BillSplitDialog";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
 import { LanguageMenu } from "./LanguageMenu";
@@ -457,7 +458,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
         </div>
       ) : null}
 
-      {billOpen ? (
+      {billOpen && !(billPaymentMethod === "CARD" && cardShare === "separate" && canSplitCard) ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -490,73 +491,16 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                       <ul className="billItemsList">
                         {o.lines.map((line, idx) => {
                           const lineTotal = line.qty * line.unitPriceCzk;
-                          const pickKey =
-                            line.itemId && line.orderId ? `${line.orderId}:${line.itemId}` : null;
-                          const picking =
-                            billPaymentMethod === "CARD" && cardShare === "separate" && canSplitCard && Boolean(pickKey);
-                          const chosen = picking && pickKey ? pickedQty[pickKey] ?? 0 : 0;
-                          const shownQty = picking && chosen > 0 ? chosen : line.qty;
-                          const body = (
-                            <>
+                          return (
+                            <li key={`${o.id}-${idx}`} className="billItemRow">
                               <div className="billItemRowBody">
                                 <p className="billItemRowName">{billLineLabel(line)}</p>
                                 <p className="billItemRowUnit">
-                                  {t("bill.lineQty").replace("{{qty}}", String(shownQty))}{" "}
+                                  {t("bill.lineQty").replace("{{qty}}", String(line.qty))}{" "}
                                   <span className="textMuted2">{formatCzk(line.unitPriceCzk)}</span>
                                 </p>
                               </div>
-                              <strong className="billItemRowPrice">{formatCzk(shownQty * line.unitPriceCzk)}</strong>
-                            </>
-                          );
-                          return (
-                            <li
-                              key={`${o.id}-${idx}`}
-                              className={`billItemRow${picking ? " billItemRow--pick" : ""}${chosen > 0 ? " billItemRow--picked" : ""}`}
-                            >
-                              {picking && pickKey ? (
-                                <button
-                                  type="button"
-                                  className="billItemRowMain"
-                                  onClick={() =>
-                                    setPickedQty((prev) => ({
-                                      ...prev,
-                                      [pickKey]: chosen > 0 ? 0 : line.qty,
-                                    }))
-                                  }
-                                >
-                                  {body}
-                                </button>
-                              ) : (
-                                body
-                              )}
-                              {picking && pickKey && line.qty > 1 && chosen > 0 ? (
-                                <div className="billItemQtySteppers">
-                                  <button
-                                    type="button"
-                                    className="chip"
-                                    onClick={() =>
-                                      setPickedQty((prev) => ({
-                                        ...prev,
-                                        [pickKey]: Math.max(0, chosen - 1),
-                                      }))
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="chip"
-                                    onClick={() =>
-                                      setPickedQty((prev) => ({
-                                        ...prev,
-                                        [pickKey]: Math.min(line.qty, chosen + 1),
-                                      }))
-                                    }
-                                  >
-                                    +
-                                  </button>
-                                </div>
-                              ) : null}
+                              <strong className="billItemRowPrice">{formatCzk(lineTotal)}</strong>
                             </li>
                           );
                         })}
@@ -625,7 +569,10 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                     <button
                       type="button"
                       className={`chip billTipChip ${cardShare === "together" ? "chipActive billTipChip--active" : ""}`}
-                      onClick={() => setCardShare("together")}
+                      onClick={() => {
+                        setCardShare("together");
+                        setPickedQty({});
+                      }}
                       style={{ cursor: "pointer" }}
                     >
                       {t("bill.split.together")}
@@ -633,17 +580,15 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                     <button
                       type="button"
                       className={`chip billTipChip ${cardShare === "separate" ? "chipActive billTipChip--active" : ""}`}
-                      onClick={() => setCardShare("separate")}
+                      onClick={() => {
+                        setCardShare("separate");
+                        setPickedQty({});
+                      }}
                       style={{ cursor: "pointer" }}
                     >
                       {t("bill.split.separate")}
                     </button>
                   </div>
-                  {cardShare === "separate" ? (
-                    <p className="textMuted2" style={{ margin: "6px 0 0", fontSize: 13 }}>
-                      {t("bill.split.pickHint")}
-                    </p>
-                  ) : null}
                 </div>
               ) : null}
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
@@ -708,20 +653,41 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                 e.stopPropagation();
                 void confirmBillPay();
               }}
-              disabled={
-                billPayLoading ||
-                billPayErrorKey === "pos.error.queued" ||
-                (billPaymentMethod === "CARD" && cardShare === "separate" && selectedItemsTotal < 1)
-              }
+              disabled={billPayLoading || billPayErrorKey === "pos.error.queued"}
             >
-              {billPayLoading
-                ? t("bill.pay.sending")
-                : billPaymentMethod === "CARD" && cardShare === "separate"
-                  ? t("bill.split.paySelected")
-                  : t("bill.pay")}
+              {billPayLoading ? t("bill.pay.sending") : t("bill.pay")}
             </button>
           </div>
         </div>
+      ) : null}
+
+      {billOpen && billPaymentMethod === "CARD" && cardShare === "separate" && canSplitCard ? (
+        <BillSplitDialog
+          pickLines={pickLines}
+          pickedQty={pickedQty}
+          onPickedQty={setPickedQty}
+          selectedTotal={selectedItemsTotal}
+          tipPct={tipPct}
+          onTipPct={setTipPct}
+          tipAmount={tipAmount}
+          billTotal={billTotal}
+          loading={billPayLoading}
+          errorKey={billPayErrorKey}
+          errorDetail={billPayErrorDetail}
+          onPay={() => void confirmBillPay()}
+          onBack={() => {
+            setCardShare("together");
+            setPickedQty({});
+            setBillPayErrorKey(null);
+            setBillPayErrorDetail(null);
+          }}
+          onDismissError={() => {
+            setBillPayErrorKey(null);
+            setBillPayErrorDetail(null);
+          }}
+          t={t}
+          lineLabel={billLineLabel}
+        />
       ) : null}
 
       {billSentOpen ? (

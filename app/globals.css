@@ -1615,8 +1615,123 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   z-index: 60;
 }
 
-.modalOverlay--55 {
-  z-index: 55;
+.modalOverlay--58 {
+  z-index: 58;
+}
+
+.modalCard--billSplit {
+  width: min(920px, 96vw);
+  max-height: min(92dvh, 820px);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.billSplitBoard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+  flex: 1;
+}
+
+.billSplitPane {
+  display: flex;
+  flex-direction: column;
+  min-height: 240px;
+  max-height: min(48vh, 420px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.22);
+  overflow: hidden;
+}
+
+.billSplitPane--guest {
+  border-color: color-mix(in srgb, var(--accent, #818cf8) 45%, var(--border));
+  background: color-mix(in srgb, #4f46e5 10%, rgba(0, 0, 0, 0.22));
+}
+
+.billSplitPaneHead {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.billSplitList {
+  list-style: none;
+  margin: 0;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+}
+
+.billSplitEmpty {
+  margin: 0;
+  padding: 18px 14px;
+  color: var(--muted2);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.billSplitRow {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 10px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.billSplitRow:hover,
+.billSplitRow:focus-visible {
+  border-color: rgba(199, 210, 254, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.billSplitRowQty {
+  flex: 0 0 auto;
+  min-width: 2.2em;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.billSplitRowBody {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.billSplitRowName {
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.billSplitRowPrice {
+  font-variant-numeric: tabular-nums;
+  font-size: 14px;
+}
+
+@media (max-width: 640px) {
+  .billSplitBoard {
+    grid-template-columns: 1fr;
+  }
+  .billSplitPane {
+    max-height: min(28vh, 240px);
+  }
 }
 
 .modalOverlay--50 {
@@ -1799,6 +1914,12 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   overflow: auto;
   padding: 14px;
   gap: 12px;
+}
+
+.modalCard.modalCard--billSplit {
+  width: min(920px, 96vw);
+  max-height: min(92dvh, 820px);
+  overflow: hidden;
 }
 
 .modalCard__header {
