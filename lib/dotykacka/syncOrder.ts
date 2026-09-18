@@ -946,6 +946,8 @@ export async function syncOrderConfirmedToDotykacka(
 
 /** Skrytá metoda „Online“ v Dotypos — platba mimo pokladní terminál (XPay). */
 export const DOTYKACKA_PAYMENT_METHOD_ONLINE = 900000019;
+/** Karta na pokladně — záloha, když metoda Online na cloudu není zapnutá. */
+export const DOTYKACKA_PAYMENT_METHOD_CARD = 900000002;
 
 function posActionSucceeded(data: unknown): boolean {
   const code = parseDotykackaPosActionCode(data);
@@ -976,29 +978,22 @@ export async function syncXpayPaidToDotykacka(input: {
   for (let i = 0; i < listed.orders.length; i++) {
     const orderId = listed.orders[i]!.orderId;
     const tipForThis = i === 0 ? tip : 0;
-    const variants: Record<string, unknown>[] = [
-      {
+    const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
+    const variants: Record<string, unknown>[] = [];
+    for (const methodId of methods) {
+      variants.push({
         action: "order/pay",
         "order-id": orderId,
-        "payment-id": DOTYKACKA_PAYMENT_METHOD_ONLINE,
+        "payment-method-id": methodId,
         ...(tipForThis ? { tips: tipForThis } : {}),
-      },
-      {
-        action: "order/pay",
-        "order-id": orderId,
-        "payment-method-id": DOTYKACKA_PAYMENT_METHOD_ONLINE,
-      },
-      {
-        action: "order/pay",
-        "order-id": orderId,
-        payments: [{ "payment-id": DOTYKACKA_PAYMENT_METHOD_ONLINE }],
-      },
-      {
+      });
+      variants.push({
         action: "order/issue-and-pay",
         "order-id": orderId,
-        "payment-id": DOTYKACKA_PAYMENT_METHOD_ONLINE,
-      },
-    ];
+        "payment-method-id": methodId,
+        ...(tipForThis ? { tips: tipForThis } : {}),
+      });
+    }
 
     let paid = false;
     let lastErr = "";
@@ -1017,6 +1012,23 @@ export async function syncXpayPaidToDotykacka(input: {
       break;
     }
     if (!paid) errors.push(`účet ${orderId}: ${lastErr || "pay selhal"}`);
+  }
+
+  const verify = await listOpenDotykackaOrdersForTable(input.cfg, accessToken, input.tableId);
+  if (verify.ok && verify.orders.length > 0) {
+    const ids = verify.orders.map((o) => o.orderId).join(", ");
+    return {
+      ok: false,
+      error: `Platba v XPay prošla, ale v Dotykačce zůstává otevřený účet (${ids}). Pokladna musí běžet a mít metodu Online nebo Karta.`,
+      meta: { tableId: input.tableId, action: "xpay_pay_still_open" },
+    };
+  }
+  if (!verify.ok) {
+    return {
+      ok: false,
+      error: `Platba v XPay prošla, ale uzavření účtu v Dotykačce nešlo ověřit: ${verify.message}`,
+      meta: { tableId: input.tableId, action: "xpay_pay_verify" },
+    };
   }
 
   if (errors.length > 0) {

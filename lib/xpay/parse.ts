@@ -25,6 +25,10 @@ function readString(value: unknown): string | null {
 
 function collectStrings(root: unknown, keys: string[], out: string[] = [], depth = 0): string[] {
   if (depth > 6) return out;
+  if (Array.isArray(root)) {
+    for (const item of root) collectStrings(item, keys, out, depth + 1);
+    return out;
+  }
   const rec = asRecord(root);
   if (!rec) return out;
   for (const [k, v] of Object.entries(rec)) {
@@ -48,6 +52,9 @@ export function extractXpayOrderId(payload: unknown): string | null {
   const order = asRecord(rec.order);
   const nested = order ? readString(order.orderId) || readString(order.id) : null;
   if (nested) return nested;
+  const operation = asRecord(rec.operation);
+  const fromOp = operation ? readString(operation.orderId) : null;
+  if (fromOp) return fromOp;
   const found = collectStrings(payload, ["orderId", "merchantOrderId"]);
   return found[0] ?? null;
 }
@@ -124,9 +131,11 @@ export function classifyXpayOperation(payload: unknown): "paid" | "failed" | "pe
     "status",
     "state",
     "result",
+    "lastOperationType",
   ]).map((s) => s.toUpperCase());
   if (values.some((v) => PAID_RESULTS.has(v))) return "paid";
   if (values.some((v) => FAILED_RESULTS.has(v))) return "failed";
+  if (values.some((v) => v === "CAPTURE" || v === "AUTHORIZATION")) return "paid";
   return "pending";
 }
 

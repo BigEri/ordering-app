@@ -1,12 +1,23 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
 function XpayResultInner() {
   const sp = useSearchParams();
   const status = (sp.get("status") ?? "").toLowerCase();
   const cancelled = status === "cancel" || status === "cancelled" || status === "fail";
+  const paymentId = (sp.get("pid") ?? "").trim();
+
+  useEffect(() => {
+    if (cancelled || !paymentId) return;
+    void fetch("/api/integrations/xpay/result-return", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ paymentId }),
+      cache: "no-store",
+    });
+  }, [cancelled, paymentId]);
 
   return (
     <main style={{ maxWidth: 420, margin: "48px auto", padding: 24, textAlign: "center" }}>

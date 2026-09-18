@@ -22,6 +22,14 @@ describe("extractXpayOrderId", () => {
   it("reads nested order.orderId", () => {
     expect(extractXpayOrderId({ order: { orderId: "nested-1" } })).toBe("nested-1");
   });
+
+  it("reads Nexi notification operation.orderId", () => {
+    expect(extractXpayOrderId({ operation: { orderId: "tfnotify", operationResult: "AUTHORIZED" } })).toBe("tfnotify");
+  });
+
+  it("reads orderId inside operations[] from GET /orders/{id}", () => {
+    expect(extractXpayOrderId({ operations: [{ orderId: "tfget", operationResult: "AUTHORIZED" }] })).toBe("tfget");
+  });
 });
 
 describe("extractXpayPayUrl / linkId", () => {
@@ -57,6 +65,19 @@ describe("classifyXpayOperation", () => {
 
   it("treats DECLINED as failed", () => {
     expect(classifyXpayOperation({ operationResult: "DECLINED" })).toBe("failed");
+  });
+
+  it("reads AUTHORIZED inside operations[] (Nexi GET order)", () => {
+    expect(
+      classifyXpayOperation({
+        operations: [{ operationResult: "AUTHORIZED", operationType: "CAPTURE" }],
+        orderStatus: { lastOperationType: "CAPTURE" },
+      }),
+    ).toBe("paid");
+  });
+
+  it("reads Nexi webhook operation.operationResult", () => {
+    expect(classifyXpayOperation({ operation: { orderId: "tf1", operationResult: "AUTHORIZED" } })).toBe("paid");
   });
 
   it("defaults to pending", () => {

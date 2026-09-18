@@ -337,6 +337,29 @@ export async function refreshXpayPaymentStatus(input: {
   return toView(fresh, qrDataUrl);
 }
 
+/** Návrat z Nexi HPP — hostův telefon, bez device secret. Ověří stav u Nexi a uzavře Dotykačku. */
+export async function confirmXpayReturn(paymentId: string): Promise<XpayPaymentView | null> {
+  const id = paymentId.trim();
+  if (!id) return null;
+  const row = await prisma.xpayPayment.findUnique({ where: { id } });
+  if (!row) return null;
+
+  if (row.status === "pending") {
+    const creds = await getXpayCredentials(row.restaurantId);
+    if (creds && !isXpaySandboxDemoPayUrl(row.payUrl)) {
+      const remote = await fetchXpayOrderStatus(creds, row.id);
+      if (remote.ok && remote.classification === "paid") {
+        await markXpayPaymentPaid({ paymentId: row.id, notification: remote.raw });
+      }
+    }
+  } else if (row.status === "paid" && !row.tillSettledAtIso) {
+    await settleXpayPayment(row.id);
+  }
+
+  const fresh = await prisma.xpayPayment.findUnique({ where: { id: row.id } });
+  return fresh ? toView(fresh, null) : null;
+}
+
 export async function cancelXpayPayment(input: {
   restaurantId: string;
   deviceId: string;
