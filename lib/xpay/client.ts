@@ -20,7 +20,7 @@ export type XpayCredentials = {
 export type CreatePayByLinkInput = {
   orderId: string;
   amountHalere: number;
-  currency?: "CZK";
+  currency?: "CZK" | "EUR";
   description: string;
   language: "CES" | "ENG" | "KOR";
   resultUrl: string;

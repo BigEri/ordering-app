@@ -5,6 +5,7 @@ import * as React from "react";
 import { markKioskBillPaidByXpay } from "../lib/client/kioskBillClose";
 import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
 import { postPosJsonData } from "../lib/pos/postPosJson";
+import { formatSandboxEurFromTillMajor } from "../lib/xpay/sandboxEur";
 import { useLanguage } from "./LanguageProvider";
 import { useOrders } from "./OrdersProvider";
 
@@ -16,6 +17,7 @@ export type XpayKioskPayment = {
   status?: string;
   tillError?: string | null;
   demoSandbox?: boolean;
+  nexiSandbox?: boolean;
 };
 
 function formatCzk(value: number) {
@@ -146,8 +148,17 @@ export function XpayQrDialog({
               <p className="textMuted">{t("bill.xpay.loading")}</p>
             )}
             <p className="xpayQrAmount">{formatCzk(current.amountCzk)}</p>
+            {current.nexiSandbox ? (
+              <p className="textMuted2" style={{ margin: "0 0 8px", textAlign: "center" }}>
+                {t("bill.xpay.nexiSandboxAmount").replace("{{eur}}", formatSandboxEurFromTillMajor(current.amountCzk))}
+              </p>
+            ) : null}
             <p className="textMuted" style={{ margin: 0, textAlign: "center" }}>
-              {current.demoSandbox ? t("bill.xpay.sandboxHint") : t("bill.xpay.hint")}
+              {current.demoSandbox
+                ? t("bill.xpay.sandboxHint")
+                : current.nexiSandbox
+                  ? t("bill.xpay.nexiSandboxHint")
+                  : t("bill.xpay.hint")}
             </p>
           </>
         )}

@@ -486,7 +486,7 @@ export const ADMIN_MESSAGES: Record<AdminLocale, Record<string, string>> = {
 
   // ── admin.xpay ──
   "admin.xpay.title": "XPay / Dotypay",
-  "admin.xpay.intro": "Platba kartou na kiosku bez zadávání čísla karty: host naskenuje QR a zaplatí na svém telefonu (Visa, Mastercard, Apple Pay, Google Pay — Nexi XPay CEE / Dotypay Pay-by-Link). API klíč patří k provozovně a šifruje se stejným DOTYKACKA_TOKEN_ENCRYPTION_KEY. NEXT_PUBLIC_APP_URL musí být veřejné HTTPS (návrat z platby + webhook). Hotovost a mix dál volají obsluhu. Sandbox s veřejným Nexi klíčem umí jen EUR — v CZK se místo toho otevře testovací stránka Tableflow (stejné QR a uzavření účtu v Dotykačce, bez stržení peněz).",
+  "admin.xpay.intro": "Platba kartou na kiosku bez zadávání čísla karty: host naskenuje QR a zaplatí na svém telefonu (Visa, Mastercard, Apple Pay, Google Pay — Nexi XPay CEE / Dotypay Pay-by-Link). API klíč patří k provozovně a šifruje se stejným DOTYKACKA_TOKEN_ENCRYPTION_KEY. NEXT_PUBLIC_APP_URL musí být veřejné HTTPS (návrat z platby + webhook). Hotovost a mix dál volají obsluhu. Veřejný Nexi sandbox je jen EUR — Tableflow proto na sandboxu otevře opravdovou Nexi stránku v eurech (částka z účtu se přepočte, účet v Dotykačce se uzavře v Kč). Produkční CZK klíč z Dotypay back office pak ukáže tutéž stránku v korunách 1:1.",
   "admin.xpay.loading": "Načítání…",
   "admin.xpay.loadErr": "Nepodařilo se načíst nastavení XPay.",
   "admin.xpay.status": "Stav:",
@@ -1163,7 +1163,7 @@ export const ADMIN_MESSAGES: Record<AdminLocale, Record<string, string>> = {
   "admin.super.backRestaurants": "← Back to venues",
 
   "admin.xpay.title": "XPay / Dotypay",
-  "admin.xpay.intro": "Card payment on the kiosk without typing a card number: the guest scans a QR code and pays on their phone (Visa, Mastercard, Apple Pay, Google Pay — Nexi XPay CEE / Dotypay Pay-by-Link). The API key is stored per venue and encrypted with the same DOTYKACKA_TOKEN_ENCRYPTION_KEY. NEXT_PUBLIC_APP_URL must be public HTTPS (return URL + webhook). Cash and mixed payments still call staff. The public Nexi sandbox key is EUR-only — in CZK sandbox we open a Tableflow test page instead (same QR and till close, no real charge).",
+  "admin.xpay.intro": "Card payment on the kiosk without typing a card number: the guest scans a QR code and pays on their phone (Visa, Mastercard, Apple Pay, Google Pay — Nexi XPay CEE / Dotypay Pay-by-Link). The API key is stored per venue and encrypted with the same DOTYKACKA_TOKEN_ENCRYPTION_KEY. NEXT_PUBLIC_APP_URL must be public HTTPS (return URL + webhook). Cash and mixed payments still call staff. The public Nexi sandbox is EUR-only — in sandbox Tableflow opens the real Nexi hosted page in euros (till amount is converted, Dotykačka still closes in CZK). A production CZK key from the Dotypay back office then shows the same page in koruna 1:1.",
   "admin.xpay.loading": "Loading…",
   "admin.xpay.loadErr": "Could not load XPay settings.",
   "admin.xpay.status": "Status:",

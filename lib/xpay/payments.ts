@@ -20,6 +20,7 @@ import {
   xpayLanguageFromLocale,
 } from "./parse";
 import { buildXpaySandboxCzkDemo, isXpaySandboxDemoPayUrl } from "./sandboxDemo";
+import { isNexiSandboxPayUrl, tillMajorToSandboxEurCents } from "./sandboxEur";
 
 export type XpayPaymentView = {
   paymentId: string;
@@ -31,6 +32,7 @@ export type XpayPaymentView = {
   tillSettled: boolean;
   tillError: string | null;
   demoSandbox?: boolean;
+  nexiSandbox?: boolean;
   notConfigured?: boolean;
 };
 
@@ -61,6 +63,7 @@ function toView(
     tillSettled: Boolean(row.tillSettledAtIso),
     tillError: row.tillError,
     demoSandbox: isXpaySandboxDemoPayUrl(row.payUrl),
+    nexiSandbox: isNexiSandboxPayUrl(row.payUrl),
   };
 }
 
@@ -148,16 +151,27 @@ export async function createTableXpayPayment(input: {
   await cancelPendingForDevice(creds, input.deviceId, String(tableIdNum));
 
   const paymentId = buildXpayOrderId();
-  let created = await createXpayPayByLink(creds, {
+  const linkBase = {
     orderId: paymentId,
-    amountHalere: czkToHalere(totalCzk),
     description: `Tableflow ${input.tableLabel?.trim() || `stul ${tableIdNum}`}`,
     language: xpayLanguageFromLocale(input.locale),
     resultUrl: `${appBase}/pay/xpay/result?status=ok&pid=${encodeURIComponent(paymentId)}`,
     cancelUrl: `${appBase}/pay/xpay/result?status=cancel&pid=${encodeURIComponent(paymentId)}`,
     notificationUrl: `${appBase}/api/integrations/xpay/notification`,
+  };
+  let created = await createXpayPayByLink(creds, {
+    ...linkBase,
+    amountHalere: czkToHalere(totalCzk),
+    currency: "CZK",
   });
   if (!created.ok && created.currencyUnsupported && creds.environment === "sandbox") {
+    created = await createXpayPayByLink(creds, {
+      ...linkBase,
+      amountHalere: tillMajorToSandboxEurCents(totalCzk),
+      currency: "EUR",
+    });
+  }
+  if (!created.ok && creds.environment === "sandbox") {
     created = { ok: true, ...buildXpaySandboxCzkDemo({ appBase, paymentId }), raw: { demo: "czk" } };
   }
   if (!created.ok) {
