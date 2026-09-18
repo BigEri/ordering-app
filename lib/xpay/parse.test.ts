@@ -8,8 +8,10 @@ import {
   extractXpayOrderId,
   extractXpayPayUrl,
   extractXpaySecurityToken,
+  formatXpayHttpError,
   halereToCzk,
   xpayLanguageFromLocale,
+  xpayLinkExpirationIso,
 } from "./parse";
 
 describe("extractXpayOrderId", () => {
@@ -31,6 +33,19 @@ describe("extractXpayPayUrl / linkId", () => {
     expect(extractXpayPayUrl(payload)).toBe("https://xpaysandbox.nexigroup.com/pay/abc");
     expect(extractXpayLinkId(payload)).toBe("lnk-9");
     expect(extractXpaySecurityToken(payload)).toBe("tok-1");
+  });
+
+  it("reads paymentLinks[] from list-style payloads", () => {
+    expect(
+      extractXpayPayUrl({
+        paymentLinks: [{ link: "https://xpaysandbox.nexigroup.com/pay/arr", linkId: "lnk-arr" }],
+      }),
+    ).toBe("https://xpaysandbox.nexigroup.com/pay/arr");
+    expect(
+      extractXpayLinkId({
+        paymentLinks: [{ link: "https://xpaysandbox.nexigroup.com/pay/arr", linkId: "lnk-arr" }],
+      }),
+    ).toBe("lnk-arr");
   });
 });
 
@@ -69,5 +84,22 @@ describe("xpayLanguageFromLocale", () => {
     expect(xpayLanguageFromLocale("en")).toBe("ENG");
     expect(xpayLanguageFromLocale("ko")).toBe("KOR");
     expect(xpayLanguageFromLocale(null)).toBe("CES");
+  });
+});
+
+describe("formatXpayHttpError", () => {
+  it("explains CZK not supported on the Nexi demo terminal", () => {
+    expect(
+      formatXpayHttpError(400, "", {
+        errors: [{ code: "400", description: "Currency from request is not supported by terminal" }],
+      }),
+    ).toMatch(/nepřijímá CZK/);
+  });
+});
+
+describe("xpayLinkExpirationIso", () => {
+  it("returns ISO timestamp in the future", () => {
+    const from = Date.parse("2026-09-18T12:00:00.000Z");
+    expect(xpayLinkExpirationIso(from, 2)).toBe("2026-09-18T14:00:00.000Z");
   });
 });

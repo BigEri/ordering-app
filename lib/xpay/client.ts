@@ -7,6 +7,8 @@ import {
   extractXpayPayUrl,
   extractXpaySecurityToken,
   classifyXpayOperation,
+  formatXpayHttpError,
+  xpayLinkExpirationIso,
 } from "./parse";
 
 export type XpayCredentials = {
@@ -70,16 +72,13 @@ export async function createXpayPayByLink(
 ): Promise<CreatePayByLinkResult> {
   const amount = String(Math.round(input.amountHalere));
   const currency = input.currency ?? "CZK";
+  const description = input.description.replace(/[^\x20-\x7E]/g, " ").replace(/\s+/g, " ").trim() || "Tableflow";
   const body = {
-    amount,
-    currency,
-    orderId: input.orderId,
-    description: input.description,
     order: {
       orderId: input.orderId,
       amount,
       currency,
-      description: input.description,
+      description,
     },
     paymentSession: {
       actionType: "PAY",
@@ -88,17 +87,16 @@ export async function createXpayPayByLink(
       resultUrl: input.resultUrl,
       cancelUrl: input.cancelUrl,
       notificationUrl: input.notificationUrl,
-      paymentService: "CARDS",
     },
+    expirationDate: xpayLinkExpirationIso(),
   };
 
   const posted = await xpayFetch(creds, "/orders/paybylink", { method: "POST", body });
   if (!posted.ok) {
-    const snippet = posted.text.trim().slice(0, 400);
     return {
       ok: false,
       httpStatus: posted.status,
-      error: `XPay pay-by-link ${posted.status}: ${snippet || "(prázdná odpověď)"}`,
+      error: formatXpayHttpError(posted.status, posted.text, posted.json),
       raw: posted.json,
     };
   }

@@ -505,12 +505,12 @@ export function Topbar({ previewMode = false }: TopbarProps) {
             {billPayErrorKey ? (
               <div role="alert" className="orderPosErrorRow">
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{t(billPayErrorKey)}</p>
-                {previewMode && billPayErrorDetail ? (
+                {billPayErrorDetail ? (
                   <p className="textMuted2" style={{ margin: "8px 0 0", fontSize: 13, whiteSpace: "pre-wrap", lineHeight: 1.45 }}>
                     {billPayErrorDetail}
                   </p>
                 ) : null}
-                <div style={{ marginTop: previewMode && billPayErrorDetail ? 10 : 8 }}>
+                <div style={{ marginTop: billPayErrorDetail ? 10 : 8 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
                       type="button"
