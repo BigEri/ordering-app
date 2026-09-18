@@ -40,8 +40,8 @@ describe("parseTableOpenBillFromPosListData", () => {
     expect(parseTableOpenBillFromPosListData(data)).toEqual({
       open: true,
       lines: [
-        { name: "Pivo 12°", qty: 2, unitPriceCzk: 45 },
-        { name: "Chlebíček", qty: 1, unitPriceCzk: 160 },
+        { name: "Pivo 12°", qty: 2, unitPriceCzk: 45, orderId: 10 },
+        { name: "Chlebíček", qty: 1, unitPriceCzk: 160, orderId: 10 },
       ],
       totalCzk: 250,
       orderIds: [10],
@@ -93,8 +93,25 @@ describe("parseTableOpenBillFromPosListData", () => {
     };
     const bill = parseTableOpenBillFromPosListData(data);
     expect(bill.lines).toEqual([
-      { name: "Řízek", qty: 1, unitPriceCzk: 30 },
-      { name: "Kola", qty: 1, unitPriceCzk: 30 },
+      { name: "Řízek", qty: 1, unitPriceCzk: 30, orderId: 4 },
+      { name: "Kola", qty: 1, unitPriceCzk: 30, orderId: 4 },
     ]);
+  });
+
+  it("reads item ids for split", () => {
+    const data = {
+      code: 0,
+      orders: [
+        {
+          order: { id: 10, paid: false, "price-total": 45 },
+          items: [{ id: 77, name: "Pivo", qty: 1, "price-with-vat": { unit: 45 } }],
+        },
+      ],
+    };
+    expect(parseTableOpenBillFromPosListData(data).lines[0]).toMatchObject({
+      itemId: 77,
+      orderId: 10,
+      name: "Pivo",
+    });
   });
 });

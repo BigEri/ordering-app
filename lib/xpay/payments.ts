@@ -5,6 +5,7 @@ import { markRestaurantXpayError, markRestaurantXpayOk, getRestaurantXpayRow } f
 import { getDotykackaAccessTokenForCloud } from "../dotykacka/accessToken";
 import { getDotykackaConfig } from "../dotykacka/config";
 import { fetchTableOpenBillFromDotykacka } from "../dotykacka/tableOpenBill";
+import { parseXpaySplitItems, resolveSplitAgainstBill } from "../dotykacka/splitBill";
 import { syncXpayPaidToDotykacka } from "../dotykacka/syncOrder";
 import { getRestaurantMenuSource } from "../menu/restaurantMenuSource";
 import { recordIntegrationAuditEvent } from "../server/integrationAudit";
@@ -102,6 +103,7 @@ export async function createTableXpayPayment(input: {
   tipPct: number;
   tipAmountCzk: number;
   locale?: string | null;
+  splitItems?: unknown;
 }): Promise<
   | { ok: true; payment: XpayPaymentView }
   | { ok: false; notConfigured: true }
@@ -135,9 +137,19 @@ export async function createTableXpayPayment(input: {
     };
   }
 
-  const ordersTotal = bill.bill.totalCzk > 0 ? bill.bill.totalCzk : Math.max(0, Math.round(input.ordersTotalCzk));
   const tipPct = input.tipPct === 5 || input.tipPct === 10 || input.tipPct === 15 ? input.tipPct : 0;
-  const tipAmount = Math.max(0, Math.round(input.tipAmountCzk));
+  let ordersTotal = bill.bill.totalCzk > 0 ? bill.bill.totalCzk : Math.max(0, Math.round(input.ordersTotalCzk));
+  let splitStored: ReturnType<typeof parseXpaySplitItems> = null;
+  const parsedSplit = parseXpaySplitItems(input.splitItems);
+  if (parsedSplit) {
+    const resolved = resolveSplitAgainstBill(bill.bill.lines, parsedSplit);
+    if (!resolved.ok) return { ok: false, error: resolved.error, status: 400 };
+    if (!resolved.coversFullBill) {
+      splitStored = resolved.items;
+      ordersTotal = resolved.totalCzk;
+    }
+  }
+  const tipAmount = tipPct > 0 ? Math.round((ordersTotal * tipPct) / 100) : 0;
   const totalCzk = ordersTotal + tipAmount;
   if (totalCzk < 1) {
     return { ok: false, error: "Částka k platbě je prázdná." };
@@ -196,6 +208,7 @@ export async function createTableXpayPayment(input: {
       linkId: created.linkId,
       securityToken: created.securityToken,
       locale: input.locale?.trim() || null,
+      splitItemsJson: splitStored ? JSON.stringify(splitStored) : null,
       createdAtIso: ts,
       updatedAtIso: ts,
     },
@@ -220,10 +233,19 @@ export async function settleXpayPayment(paymentId: string): Promise<void> {
     return;
   }
 
+  let splitItems = null as ReturnType<typeof parseXpaySplitItems>;
+  if (row.splitItemsJson) {
+    try {
+      splitItems = parseXpaySplitItems(JSON.parse(row.splitItemsJson) as unknown);
+    } catch {
+      splitItems = null;
+    }
+  }
   const paid = await syncXpayPaidToDotykacka({
     cfg,
     tableId: tableIdNum,
     tipAmountCzk: row.tipAmountCzk,
+    splitItems,
   });
   const ts = nowIso();
   if (!paid.ok) {

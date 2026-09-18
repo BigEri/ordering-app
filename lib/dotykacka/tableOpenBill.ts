@@ -6,6 +6,8 @@ export type TableBillLine = {
   name: string;
   qty: number;
   unitPriceCzk: number;
+  itemId?: number;
+  orderId?: number;
 };
 
 export type TableOpenBillSnapshot = {
@@ -33,7 +35,17 @@ function orderIdFromPos(order: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-function parsePosOrderItemLine(item: unknown): TableBillLine | null {
+function posItemId(item: Record<string, unknown>): number | undefined {
+  const raw = item.id ?? item["item-id"] ?? item.itemId ?? item._orderItemId;
+  if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
+  if (typeof raw === "string" && /^\d+$/.test(raw.trim())) {
+    const n = Number.parseInt(raw.trim(), 10);
+    return Number.isFinite(n) && n > 0 ? n : undefined;
+  }
+  return undefined;
+}
+
+function parsePosOrderItemLine(item: unknown, orderId: number | undefined): TableBillLine | null {
   if (!item || typeof item !== "object" || Array.isArray(item)) return null;
   const row = item as Record<string, unknown>;
   const name = typeof row.name === "string" ? row.name.trim() : "";
@@ -42,7 +54,11 @@ function parsePosOrderItemLine(item: unknown): TableBillLine | null {
   if (!name || !Number.isFinite(qty) || qty <= 0) return null;
   const unitPriceCzk = unitPriceCzkFromPosOrderItem(row);
   if (unitPriceCzk === undefined) return null;
-  return { name, qty, unitPriceCzk };
+  const itemId = posItemId(row);
+  const line: TableBillLine = { name, qty, unitPriceCzk };
+  if (orderId !== undefined) line.orderId = orderId;
+  if (itemId !== undefined) line.itemId = itemId;
+  return line;
 }
 
 function orderTotalCzkFromPos(order: Record<string, unknown>): number | undefined {
@@ -90,7 +106,7 @@ export function parseTableOpenBillFromPosListData(data: unknown): TableOpenBillS
     const items = wrap.items;
     if (!Array.isArray(items)) continue;
     for (const item of items) {
-      const line = parsePosOrderItemLine(item);
+      const line = parsePosOrderItemLine(item, orderId);
       if (line) lines.push(line);
     }
   }

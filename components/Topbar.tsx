@@ -38,6 +38,8 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   const [billSentOpen, setBillSentOpen] = React.useState(false);
   const [tipPct, setTipPct] = React.useState<0 | 5 | 10 | 15>(0);
   const [billPaymentMethod, setBillPaymentMethod] = React.useState<BillPaymentMethod>("CARD");
+  const [cardShare, setCardShare] = React.useState<"together" | "separate">("together");
+  const [pickedQty, setPickedQty] = React.useState<Record<string, number>>({});
   const [topbarError, setTopbarError] = React.useState<TopbarPosError>(null);
   const [billPayErrorKey, setBillPayErrorKey] = React.useState<string | null>(null);
   const [billPayErrorDetail, setBillPayErrorDetail] = React.useState<string | null>(null);
@@ -52,6 +54,39 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     () => orders.reduce((sum, o) => sum + o.totalCzk, 0),
     [orders],
   );
+
+  const pickLines = React.useMemo(() => {
+    const out: Array<{
+      key: string;
+      orderId: number;
+      itemId: number;
+      qty: number;
+      unitPriceCzk: number;
+      line: ConfirmedOrderLine;
+    }> = [];
+    for (const o of orders) {
+      for (const line of o.lines) {
+        if (line.itemId && line.orderId) {
+          out.push({
+            key: `${line.orderId}:${line.itemId}`,
+            orderId: line.orderId,
+            itemId: line.itemId,
+            qty: line.qty,
+            unitPriceCzk: line.unitPriceCzk,
+            line,
+          });
+        }
+      }
+    }
+    return out;
+  }, [orders]);
+
+  const canSplitCard = pickLines.length > 1 || pickLines.some((l) => l.qty > 1);
+
+  const selectedItemsTotal = React.useMemo(() => {
+    if (billPaymentMethod !== "CARD" || cardShare !== "separate") return ordersTotal;
+    return pickLines.reduce((sum, l) => sum + (pickedQty[l.key] ?? 0) * l.unitPriceCzk, 0);
+  }, [billPaymentMethod, cardShare, ordersTotal, pickLines, pickedQty]);
 
   React.useEffect(() => {
     if (!open && !billOpen && !callStaffOpen && !billSentOpen) return;
@@ -110,8 +145,14 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     return () => window.removeEventListener(POS_QUEUE_FLUSH_DETAIL, h as EventListener);
   }, []);
 
-  const tipAmount = React.useMemo(() => Math.round((ordersTotal * tipPct) / 100), [ordersTotal, tipPct]);
-  const billTotal = React.useMemo(() => ordersTotal + tipAmount, [ordersTotal, tipAmount]);
+  const tipAmount = React.useMemo(() => Math.round((selectedItemsTotal * tipPct) / 100), [selectedItemsTotal, tipPct]);
+  const billTotal = React.useMemo(() => selectedItemsTotal + tipAmount, [selectedItemsTotal, tipAmount]);
+
+  React.useEffect(() => {
+    if (!billOpen) return;
+    setCardShare("together");
+    setPickedQty({});
+  }, [billOpen]);
 
   const billLineLabel = React.useCallback(
     (l: ConfirmedOrderLine) => (l.snapshot ? buildOrderLineName(l.snapshot, locale) : l.name),
@@ -216,13 +257,24 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     setBillPayLoading(true);
     try {
       if (billPaymentMethod === "CARD") {
+        if (cardShare === "separate" && selectedItemsTotal < 1) {
+          setBillPayErrorKey("bill.split.needItems");
+          return;
+        }
         const xr = await postPosJsonData<XpayKioskPayment>("/api/pos/xpay/create-link", {
           ...posTableFields(),
-          ordersTotal,
+          ordersTotal: selectedItemsTotal,
           tipPct,
           tipAmount,
           billTotal,
           locale,
+          ...(billPaymentMethod === "CARD" && cardShare === "separate"
+            ? {
+                splitItems: pickLines
+                  .filter((l) => (pickedQty[l.key] ?? 0) > 0)
+                  .map((l) => ({ orderId: l.orderId, itemId: l.itemId, qty: pickedQty[l.key] ?? 0 })),
+              }
+            : {}),
         });
         if (xr.ok) {
           if (xr.data.paymentId && xr.data.payUrl) {
@@ -286,7 +338,20 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     } finally {
       setBillPayLoading(false);
     }
-  }, [ordersTotal, tipPct, tipAmount, billTotal, billPaymentMethod, posTableFields, previewMode, locale]);
+  }, [
+    ordersTotal,
+    selectedItemsTotal,
+    tipPct,
+    tipAmount,
+    billTotal,
+    billPaymentMethod,
+    cardShare,
+    pickLines,
+    pickedQty,
+    posTableFields,
+    previewMode,
+    locale,
+  ]);
 
   return (
     <>
@@ -425,16 +490,73 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                       <ul className="billItemsList">
                         {o.lines.map((line, idx) => {
                           const lineTotal = line.qty * line.unitPriceCzk;
-                          return (
-                            <li key={`${o.id}-${idx}`} className="billItemRow">
+                          const pickKey =
+                            line.itemId && line.orderId ? `${line.orderId}:${line.itemId}` : null;
+                          const picking =
+                            billPaymentMethod === "CARD" && cardShare === "separate" && canSplitCard && Boolean(pickKey);
+                          const chosen = picking && pickKey ? pickedQty[pickKey] ?? 0 : 0;
+                          const shownQty = picking && chosen > 0 ? chosen : line.qty;
+                          const body = (
+                            <>
                               <div className="billItemRowBody">
                                 <p className="billItemRowName">{billLineLabel(line)}</p>
                                 <p className="billItemRowUnit">
-                                  {t("bill.lineQty").replace("{{qty}}", String(line.qty))}{" "}
+                                  {t("bill.lineQty").replace("{{qty}}", String(shownQty))}{" "}
                                   <span className="textMuted2">{formatCzk(line.unitPriceCzk)}</span>
                                 </p>
                               </div>
-                              <strong className="billItemRowPrice">{formatCzk(lineTotal)}</strong>
+                              <strong className="billItemRowPrice">{formatCzk(shownQty * line.unitPriceCzk)}</strong>
+                            </>
+                          );
+                          return (
+                            <li
+                              key={`${o.id}-${idx}`}
+                              className={`billItemRow${picking ? " billItemRow--pick" : ""}${chosen > 0 ? " billItemRow--picked" : ""}`}
+                            >
+                              {picking && pickKey ? (
+                                <button
+                                  type="button"
+                                  className="billItemRowMain"
+                                  onClick={() =>
+                                    setPickedQty((prev) => ({
+                                      ...prev,
+                                      [pickKey]: chosen > 0 ? 0 : line.qty,
+                                    }))
+                                  }
+                                >
+                                  {body}
+                                </button>
+                              ) : (
+                                body
+                              )}
+                              {picking && pickKey && line.qty > 1 && chosen > 0 ? (
+                                <div className="billItemQtySteppers">
+                                  <button
+                                    type="button"
+                                    className="chip"
+                                    onClick={() =>
+                                      setPickedQty((prev) => ({
+                                        ...prev,
+                                        [pickKey]: Math.max(0, chosen - 1),
+                                      }))
+                                    }
+                                  >
+                                    −
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="chip"
+                                    onClick={() =>
+                                      setPickedQty((prev) => ({
+                                        ...prev,
+                                        [pickKey]: Math.min(line.qty, chosen + 1),
+                                      }))
+                                    }
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              ) : null}
                             </li>
                           );
                         })}
@@ -448,7 +570,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
             <div style={{ display: "grid", gap: 8 }}>
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                 <span className="textMuted">{t("bill.subtotal")}</span>
-                <strong style={{ fontVariantNumeric: "tabular-nums" }}>{formatCzk(ordersTotal)}</strong>
+                <strong style={{ fontVariantNumeric: "tabular-nums" }}>{formatCzk(selectedItemsTotal)}</strong>
               </div>
               <div className="billTipBlock">
                 <span className="billTipLabel" id="bill-tip-label">
@@ -483,7 +605,10 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                       key={m}
                       type="button"
                       className={`chip billTipChip ${billPaymentMethod === m ? "chipActive billTipChip--active" : ""}`}
-                      onClick={() => setBillPaymentMethod(m)}
+                      onClick={() => {
+                        setBillPaymentMethod(m);
+                        if (m !== "CARD") setCardShare("together");
+                      }}
                       style={{ cursor: "pointer" }}
                     >
                       {t(m === "CARD" ? "bill.paymentMethod.card" : m === "CASH" ? "bill.paymentMethod.cash" : "bill.paymentMethod.mix")}
@@ -491,6 +616,36 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                   ))}
                 </div>
               </div>
+              {billPaymentMethod === "CARD" && canSplitCard ? (
+                <div className="billTipBlock">
+                  <span className="billTipLabel" id="bill-share-label">
+                    {t("bill.split.who")}
+                  </span>
+                  <div className="billTipChips" role="group" aria-labelledby="bill-share-label">
+                    <button
+                      type="button"
+                      className={`chip billTipChip ${cardShare === "together" ? "chipActive billTipChip--active" : ""}`}
+                      onClick={() => setCardShare("together")}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {t("bill.split.together")}
+                    </button>
+                    <button
+                      type="button"
+                      className={`chip billTipChip ${cardShare === "separate" ? "chipActive billTipChip--active" : ""}`}
+                      onClick={() => setCardShare("separate")}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {t("bill.split.separate")}
+                    </button>
+                  </div>
+                  {cardShare === "separate" ? (
+                    <p className="textMuted2" style={{ margin: "6px 0 0", fontSize: 13 }}>
+                      {t("bill.split.pickHint")}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
                 <span className="textMuted">{t("bill.tipAmount")}</span>
                 <strong style={{ fontVariantNumeric: "tabular-nums" }}>{formatCzk(tipAmount)}</strong>
@@ -553,9 +708,17 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                 e.stopPropagation();
                 void confirmBillPay();
               }}
-              disabled={billPayLoading || billPayErrorKey === "pos.error.queued"}
+              disabled={
+                billPayLoading ||
+                billPayErrorKey === "pos.error.queued" ||
+                (billPaymentMethod === "CARD" && cardShare === "separate" && selectedItemsTotal < 1)
+              }
             >
-              {billPayLoading ? t("bill.pay.sending") : t("bill.pay")}
+              {billPayLoading
+                ? t("bill.pay.sending")
+                : billPaymentMethod === "CARD" && cardShare === "separate"
+                  ? t("bill.split.paySelected")
+                  : t("bill.pay")}
             </button>
           </div>
         </div>

@@ -1720,7 +1720,40 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
+  gap: 10px;
+}
+
+.billItemRowMain {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   gap: 14px;
+  flex: 1;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+
+.billItemRow--pick .billItemRowMain {
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+}
+
+.billItemRow--picked .billItemRowMain {
+  border-color: color-mix(in srgb, var(--accent, #c9a227) 55%, var(--border));
+  background: color-mix(in srgb, var(--accent, #c9a227) 16%, transparent);
+}
+
+.billItemQtySteppers {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 8px;
 }
 
 .billItemRowBody {

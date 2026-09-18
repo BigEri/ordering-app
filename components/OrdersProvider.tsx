@@ -9,6 +9,8 @@ export type ConfirmedOrderLine = {
   name: string;
   qty: number;
   unitPriceCzk: number;
+  itemId?: number;
+  orderId?: number;
   /** Pro zobrazení názvu v aktuálním jazyce rozhraní (ne v jazyku v době objednání). */
   snapshot?: OrderLineSnapshotInput;
 };
@@ -27,7 +29,10 @@ type OrdersContextValue = {
   /** Náhled z adminu — lokální objednávka bez Dotykačky. */
   addOrder: (order: Omit<ConfirmedOrder, "id" | "createdAtIso">) => void;
   /** Přepíše seznam podle otevřeného účtu u stolu v Dotyce. */
-  syncTableBillFromDotykacka: (bill: { lines: Array<{ name: string; qty: number; unitPriceCzk: number }>; totalCzk: number }) => void;
+  syncTableBillFromDotykacka: (bill: {
+    lines: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+    totalCzk: number;
+  }) => void;
   clearOrders: () => void;
 };
 
@@ -52,7 +57,10 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncTableBillFromDotykacka = React.useCallback(
-    (bill: { lines: Array<{ name: string; qty: number; unitPriceCzk: number }>; totalCzk: number }) => {
+    (bill: {
+      lines: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+      totalCzk: number;
+    }) => {
       if (bill.lines.length === 0) {
         setOrders([]);
         setHasOpenTableBill(false);
@@ -68,6 +76,8 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
             name: l.name,
             qty: l.qty,
             unitPriceCzk: l.unitPriceCzk,
+            itemId: l.itemId,
+            orderId: l.orderId,
           })),
           totalCzk: bill.totalCzk,
         },

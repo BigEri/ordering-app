@@ -30,6 +30,7 @@ export async function POST(req: Request) {
   const tipPct = typeof o.tipPct === "number" ? o.tipPct : Number(o.tipPct);
   const tipAmount = typeof o.tipAmount === "number" ? o.tipAmount : Number(o.tipAmount);
   const locale = typeof o.locale === "string" ? o.locale : null;
+  const splitItems = o.splitItems;
 
   const created = await createTableXpayPayment({
     restaurantId: trust.restaurantId,
@@ -40,6 +41,7 @@ export async function POST(req: Request) {
     tipPct: Number.isFinite(tipPct) ? tipPct : 0,
     tipAmountCzk: Number.isFinite(tipAmount) ? tipAmount : 0,
     locale,
+    splitItems,
   });
 
   if (!created.ok) {

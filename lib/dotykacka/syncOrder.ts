@@ -18,6 +18,7 @@ import {
   buildBillRequestItemNote,
   resolveBillRequestProductId,
 } from "./billRequestProduct";
+import { groupSplitItemsByOrder, type XpaySplitItem } from "./splitBill";
 import {
   DOTYKACKA_STAFF_CALL_PRINT_TAG,
   DOTYKACKA_STAFF_CALL_PRODUCT_MAP_KEY,
@@ -160,6 +161,8 @@ function shouldRetryDotykackaPosActions(body: Record<string, unknown>, status: n
     "order/hello",
     "order/pay",
     "order/issue-and-pay",
+    "order/split",
+    "order/split-issue-pay",
   ].includes(action);
 }
 
@@ -962,6 +965,7 @@ export async function syncXpayPaidToDotykacka(input: {
   cfg: DotykackaConfig;
   tableId: number;
   tipAmountCzk?: number;
+  splitItems?: XpaySplitItem[] | null;
 }): Promise<DotykackaSyncResult> {
   const accessToken = await getDotykackaAccessTokenForCloud(input.cfg);
   const listed = await listOpenDotykackaOrdersForTable(input.cfg, accessToken, input.tableId);
@@ -973,6 +977,51 @@ export async function syncXpayPaidToDotykacka(input: {
   }
 
   const tip = typeof input.tipAmountCzk === "number" && input.tipAmountCzk > 0 ? input.tipAmountCzk : 0;
+  const split = input.splitItems && input.splitItems.length > 0 ? input.splitItems : null;
+
+  if (split) {
+    const grouped = groupSplitItemsByOrder(split);
+    const errors: string[] = [];
+    let groupIndex = 0;
+    for (const [orderId, splitItems] of grouped) {
+      const tipForThis = groupIndex === 0 ? tip : 0;
+      groupIndex += 1;
+      const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
+      let paid = false;
+      let lastErr = "";
+      for (const methodId of methods) {
+        const posted = await postDotykackaPosAction(input.cfg, accessToken, {
+          action: "order/split-issue-pay",
+          "order-id": orderId,
+          "table-id": input.tableId,
+          "split-items": splitItems,
+          "payment-method-id": methodId,
+          ...(tipForThis ? { tips: tipForThis } : {}),
+        });
+        if (!posted.ok) {
+          lastErr = formatPosActionsHttpError(input.cfg, posted.status, posted.text);
+          continue;
+        }
+        if (!posActionSucceeded(posted.data)) {
+          const code = parseDotykackaPosActionCode(posted.data);
+          lastErr = `Dotykačka order/split-issue-pay code ${code ?? "?"}`;
+          continue;
+        }
+        paid = true;
+        break;
+      }
+      if (!paid) errors.push(`účet ${orderId}: ${lastErr || "split-pay selhal"}`);
+    }
+    if (errors.length > 0) {
+      return {
+        ok: false,
+        error: `Platba v XPay prošla, ale Dotykačka neodřízla položky: ${errors.join("; ")}`,
+        meta: { tableId: input.tableId, action: "xpay_split_pay" },
+      };
+    }
+    return { ok: true, meta: { tableId: input.tableId, action: "xpay_split_pay" } };
+  }
+
   const errors: string[] = [];
 
   for (let i = 0; i < listed.orders.length; i++) {
