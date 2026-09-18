@@ -33,6 +33,8 @@ model Restaurant {
   menuItemBadges      MenuItemBadge[]
   dotykacka           RestaurantDotykacka?
   storyous            RestaurantStoryous?
+  xpay                RestaurantXpay?
+  xpayPayments        XpayPayment[]
   welcome             RestaurantWelcome?
   kioskDeviceBindings KioskDeviceBinding[]
   integrationAuditEvents IntegrationAuditEvent[]
@@ -255,6 +257,52 @@ model RestaurantDotykacka {
   lastError    String?
 
   restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model RestaurantXpay {
+  restaurantId String @id
+  /** AES-GCM (stejný klíč jako Dotykačka refresh token). */
+  apiKeyEnc    String
+  /** sandbox | production */
+  environment  String  @default("sandbox")
+  disabled     Int     @default(0)
+  createdAtIso String?
+  updatedAtIso String
+  lastOkAtIso  String?
+  lastError    String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+}
+
+model XpayPayment {
+  id              String  @id
+  restaurantId    String
+  deviceId        String
+  tableId         String
+  tableLabel      String?
+  /** Celkem v haléřích (včetně spropitného) — částka odeslaná do XPay. */
+  amountHalere    Int
+  ordersTotalCzk  Int
+  tipPct          Int     @default(0)
+  tipAmountCzk    Int     @default(0)
+  /** pending | paid | failed | cancelled */
+  status          String  @default("pending")
+  payUrl          String
+  linkId          String?
+  securityToken   String?
+  locale          String?
+  paidAtIso       String?
+  cancelledAtIso  String?
+  createdAtIso    String
+  updatedAtIso    String
+  tillSettledAtIso String?
+  tillError       String?
+  notificationJson String?
+
+  restaurant Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@index([restaurantId, status, createdAtIso], map: "idx_xpay_payment_restaurant")
+  @@index([deviceId, status], map: "idx_xpay_payment_device")
 }
 
 model RestaurantStoryous {

@@ -7,7 +7,7 @@ import { getKioskDeviceSecretForPos } from "./kioskDeviceSecretStore";
  */
 export type PostPosJsonResult =
   | { ok: true }
-  | { ok: false; kind: "network" | "http"; status?: number; detail?: string };
+  | { ok: false; kind: "network" | "http"; status?: number; detail?: string; body?: unknown };
 
 function nestedPosError(value: unknown): string | undefined {
   if (!value || typeof value !== "object" || Array.isArray(value)) return undefined;
@@ -28,6 +28,17 @@ export function extractPosErrorDetail(data: unknown): string | undefined {
 }
 
 export async function postPosJson(url: string, body: unknown): Promise<PostPosJsonResult> {
+  const r = await postPosJsonData<Record<string, unknown>>(url, body);
+  if (!r.ok) return r;
+  return { ok: true };
+}
+
+export async function postPosJsonData<T = Record<string, unknown>>(
+  url: string,
+  body: unknown,
+): Promise<
+  { ok: true; data: T } | { ok: false; kind: "network" | "http"; status?: number; detail?: string; body?: unknown }
+> {
   try {
     const headers: Record<string, string> = { "content-type": "application/json" };
     const secret = getKioskDeviceSecretForPos();
@@ -49,11 +60,11 @@ export async function postPosJson(url: string, body: unknown): Promise<PostPosJs
     const detail = extractPosErrorDetail(data);
 
     if (!res.ok) {
-      return { ok: false, kind: "http", status: res.status, detail };
+      return { ok: false, kind: "http", status: res.status, detail, body: data };
     }
 
     if (data && typeof data === "object" && "ok" in data && (data as { ok: unknown }).ok === false) {
-      return { ok: false, kind: "http", status: res.status, detail };
+      return { ok: false, kind: "http", status: res.status, detail, body: data };
     }
 
     const forwardedStatus =
@@ -64,7 +75,7 @@ export async function postPosJson(url: string, body: unknown): Promise<PostPosJs
       return { ok: false, kind: "http", status: forwardedStatus, detail };
     }
 
-    return { ok: true };
+    return { ok: true, data: (data ?? {}) as T };
   } catch {
     return { ok: false, kind: "network" };
   }

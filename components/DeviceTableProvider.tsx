@@ -41,6 +41,7 @@ function needsKioskDeviceContext(pathname: string | null | undefined): boolean {
   if (pathname === "/setup" || pathname === "/virtual-pos") return false;
   if (pathname === "/pair" || pathname.startsWith("/pair/")) return false;
   if (pathname === "/kiosk/pair" || pathname.startsWith("/kiosk/pair/")) return false;
+  if (pathname.startsWith("/pay")) return false;
   if ((pathname === "/menu" || pathname.startsWith("/menu/")) && isAdminMenuPreviewOnClient()) return false;
   return true;
 }
@@ -431,7 +432,8 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
         pathname === "/setup" ||
         pathname === "/pair" ||
         pathname === "/kiosk/pair" ||
-        pathname?.startsWith("/kiosk/pair/")
+        pathname?.startsWith("/kiosk/pair/") ||
+        pathname?.startsWith("/pay")
       ) {
         return;
       }

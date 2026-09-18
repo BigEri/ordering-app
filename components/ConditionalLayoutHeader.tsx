@@ -9,7 +9,7 @@ import { usePosTableFields } from "./DeviceTableProvider";
 export function ConditionalLayoutHeader({ restaurantName }: { restaurantName: string }) {
   const pathname = usePathname();
   const { restaurantName: boundRestaurantName } = usePosTableFields();
-  if (pathname === "/" || pathname === "/virtual-pos" || pathname === "/setup" || pathname === "/pair" || pathname?.startsWith("/admin"))
+  if (pathname === "/" || pathname === "/virtual-pos" || pathname === "/setup" || pathname === "/pair" || pathname?.startsWith("/admin") || pathname?.startsWith("/pay"))
     return null;
   const fromKiosk = !isAdminMenuPreviewOnClient() ? boundRestaurantName?.trim() : "";
   const displayName = fromKiosk || restaurantName;

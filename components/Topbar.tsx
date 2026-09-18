@@ -8,6 +8,8 @@ import { localeTag } from "../lib/i18n/messages";
 import { flushPendingPosQueue, POS_QUEUE_FLUSH_DETAIL } from "../lib/pos/pendingPosQueue";
 import { isDotykackaAccountLockedError } from "../lib/pos/dotykackaGuestError";
 import { postPosJsonResilient } from "../lib/pos/postPosJsonResilient";
+import { postPosJsonData } from "../lib/pos/postPosJson";
+import { XpayQrDialog, type XpayKioskPayment } from "./XpayQrDialog";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
 import { LanguageMenu } from "./LanguageMenu";
@@ -40,6 +42,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   const [billPayErrorKey, setBillPayErrorKey] = React.useState<string | null>(null);
   const [billPayErrorDetail, setBillPayErrorDetail] = React.useState<string | null>(null);
   const [billPayLoading, setBillPayLoading] = React.useState(false);
+  const [xpayPayment, setXpayPayment] = React.useState<XpayKioskPayment | null>(null);
   const [callStaffLoading, setCallStaffLoading] = React.useState(false);
   const [topbarRetryLoading, setTopbarRetryLoading] = React.useState(false);
   const billOpenRef = React.useRef(false);
@@ -212,6 +215,43 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     }
     setBillPayLoading(true);
     try {
+      if (billPaymentMethod === "CARD") {
+        const xr = await postPosJsonData<XpayKioskPayment>("/api/pos/xpay/create-link", {
+          ...posTableFields(),
+          ordersTotal,
+          tipPct,
+          tipAmount,
+          billTotal,
+          locale,
+        });
+        if (xr.ok) {
+          if (xr.data.paymentId && xr.data.payUrl) {
+            setBillOpen(false);
+            setXpayPayment(xr.data);
+            return;
+          }
+        } else {
+          const notConfigured =
+            xr.kind === "http" &&
+            Boolean(
+              xr.body &&
+                typeof xr.body === "object" &&
+                !Array.isArray(xr.body) &&
+                (xr.body as { notConfigured?: unknown }).notConfigured === true,
+            );
+          if (!notConfigured) {
+            if (xr.kind === "network") {
+              setBillPayErrorKey("pos.error.network");
+              setBillPayErrorDetail(null);
+            } else {
+              setBillPayErrorKey("pos.error.http");
+              setBillPayErrorDetail(xr.detail ?? null);
+            }
+            return;
+          }
+        }
+      }
+
       // Žádost o účet (s výběrem spropitného) – posílá se až po explicitním kliknutí na "Zaplatit".
       const r = await postPosJsonResilient("/api/pos/bill-request", {
         ...posTableFields(),
@@ -246,7 +286,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     } finally {
       setBillPayLoading(false);
     }
-  }, [ordersTotal, tipPct, tipAmount, billTotal, billPaymentMethod, posTableFields, previewMode]);
+  }, [ordersTotal, tipPct, tipAmount, billTotal, billPaymentMethod, posTableFields, previewMode, locale]);
 
   return (
     <>
@@ -544,6 +584,10 @@ export function Topbar({ previewMode = false }: TopbarProps) {
             </p>
           </div>
         </div>
+      ) : null}
+
+      {xpayPayment ? (
+        <XpayQrDialog payment={xpayPayment} tableFields={posTableFields()} onClose={() => setXpayPayment(null)} />
       ) : null}
 
       {open ? (

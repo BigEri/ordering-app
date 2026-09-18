@@ -5,7 +5,8 @@ export type RestaurantWorkspaceSection =
   | "devices"
   | "welcome"
   | "dotykacka"
-  | "storyous";
+  | "storyous"
+  | "xpay";
 
 export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; labelKey: string }[] = [
   { id: "overview", labelKey: "admin.nav.overview" },
@@ -14,6 +15,7 @@ export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; labelKe
   { id: "devices", labelKey: "admin.nav.devices" },
   { id: "welcome", labelKey: "admin.nav.welcome" },
   { id: "dotykacka", labelKey: "admin.nav.dotykacka" },
+  { id: "xpay", labelKey: "admin.nav.xpay" },
   { id: "storyous", labelKey: "admin.nav.storyous" },
 ];
 
@@ -43,6 +45,7 @@ export function resolveRestaurantWorkspaceSection(
   if (searchTab === "devices") return "devices";
   if (searchTab === "welcome") return "welcome";
   if (searchTab === "dotykacka") return "dotykacka";
+  if (searchTab === "xpay") return "xpay";
   if (searchTab === "storyous") return "storyous";
   if (searchTab === "menu") return "menu";
   return "overview";

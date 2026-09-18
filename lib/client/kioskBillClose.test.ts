@@ -1,0 +1,33 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { clearKioskBillPaidByXpay, markKioskBillPaidByXpay, peekKioskBillPaidByXpay } from "./kioskBillClose";
+
+function installSessionStorageMock() {
+  const store = new Map<string, string>();
+  vi.stubGlobal("sessionStorage", {
+    getItem: (key: string) => store.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      store.set(key, value);
+    },
+    removeItem: (key: string) => {
+      store.delete(key);
+    },
+    clear: () => {
+      store.clear();
+    },
+  });
+}
+
+describe("kioskBillClose", () => {
+  beforeEach(() => {
+    installSessionStorageMock();
+  });
+
+  it("peeks a freshly marked XPay close", () => {
+    expect(peekKioskBillPaidByXpay()).toBe(false);
+    markKioskBillPaidByXpay();
+    expect(peekKioskBillPaidByXpay()).toBe(true);
+    clearKioskBillPaidByXpay();
+    expect(peekKioskBillPaidByXpay()).toBe(false);
+  });
+});

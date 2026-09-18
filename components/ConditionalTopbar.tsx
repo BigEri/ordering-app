@@ -11,7 +11,7 @@ function ConditionalTopbarInner() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const previewMode = isMenuOpenedFromAdmin({ from: searchParams.get("from") ?? undefined });
-  if (pathname === "/" || pathname === "/virtual-pos" || pathname === "/setup" || pathname === "/pair" || pathname?.startsWith("/admin"))
+  if (pathname === "/" || pathname === "/virtual-pos" || pathname === "/setup" || pathname === "/pair" || pathname?.startsWith("/admin") || pathname?.startsWith("/pay"))
     return null;
   return (
     <>

@@ -10,6 +10,7 @@ import {
   loadTableBillSession,
   saveTableBillSession,
 } from "../lib/client/tableBillSession";
+import { clearKioskBillPaidByXpay, peekKioskBillPaidByXpay } from "../lib/client/kioskBillClose";
 import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
 import { resetPendingOrderConfirmedState } from "../lib/pos/pendingPosQueue";
 import { useOrders } from "./OrdersProvider";
@@ -40,7 +41,7 @@ function formatCzk(n: number | null | undefined) {
 }
 
 function isWatcherPath(pathname: string): boolean {
-  if (pathname === "/" || pathname.startsWith("/admin") || pathname === "/virtual-pos") return false;
+  if (pathname === "/" || pathname.startsWith("/admin") || pathname.startsWith("/pay") || pathname === "/virtual-pos") return false;
   if (isAdminMenuPreviewOnClient()) return false;
   return true;
 }
@@ -52,6 +53,7 @@ export function TableBillSyncWatcher() {
   const { syncTableBillFromDotykacka, clearOrders, hasOpenTableBill, orders } = useOrders();
 
   const [issuedOpen, setIssuedOpen] = React.useState(false);
+  const [issuedPaid, setIssuedPaid] = React.useState(false);
   const [issuedTotal, setIssuedTotal] = React.useState<number | null>(null);
   const handledIssuedRef = React.useRef(false);
   const hadOpenBillRef = React.useRef(false);
@@ -91,6 +93,9 @@ export function TableBillSyncWatcher() {
 
       if (!handledIssuedRef.current && hadOpenBillRef.current) {
         handledIssuedRef.current = true;
+        const paidByXpay = peekKioskBillPaidByXpay();
+        if (paidByXpay) clearKioskBillPaidByXpay();
+        setIssuedPaid(paidByXpay);
         setIssuedTotal(lastTotalRef.current);
         setIssuedOpen(true);
         hadOpenBillRef.current = false;
@@ -207,20 +212,24 @@ export function TableBillSyncWatcher() {
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={t("issued.modal.aria")}
+      aria-label={issuedPaid ? t("paid.modal.aria") : t("issued.modal.aria")}
       onClick={() => setIssuedOpen(false)}
       className="modalOverlay modalOverlay--60"
     >
       <div onClick={(e) => e.stopPropagation()} className="modalCard">
-        <strong className="modalTitle">{t("issued.modal.title")}</strong>
+        <strong className="modalTitle">{issuedPaid ? t("paid.modal.title") : t("issued.modal.title")}</strong>
         <p className="textMuted" style={{ margin: 0 }}>
-          {issuedTotal != null
-            ? t("issued.modal.bodyWithTotal").replace("{{total}}", formatCzk(issuedTotal))
-            : t("issued.modal.body")}
+          {issuedPaid
+            ? issuedTotal != null
+              ? t("paid.modal.bodyWithTotal").replace("{{total}}", formatCzk(issuedTotal))
+              : t("paid.modal.body")
+            : issuedTotal != null
+              ? t("issued.modal.bodyWithTotal").replace("{{total}}", formatCzk(issuedTotal))
+              : t("issued.modal.body")}
         </p>
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button type="button" className="chip" onClick={() => setIssuedOpen(false)} style={{ cursor: "pointer" }}>
-            {t("issued.modal.close")}
+            {issuedPaid ? t("paid.modal.close") : t("issued.modal.close")}
           </button>
         </div>
       </div>

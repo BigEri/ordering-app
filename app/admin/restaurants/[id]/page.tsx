@@ -5,6 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 import { DevicesAdminClient } from "../../../../components/admin/DevicesAdminClient";
 import { StoryousSettingsClient } from "../../../../components/admin/StoryousSettingsClient";
 import { UsersAdminClient } from "../../../../components/admin/UsersAdminClient";
+import { XpaySettingsClient } from "../../../../components/admin/XpaySettingsClient";
 import { useAdminLanguage } from "../../../../components/admin/AdminLanguageProvider";
 import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
 import { localeTag } from "../../../../lib/i18n/messages";
@@ -35,7 +36,7 @@ type RestaurantLocalesResponse =
   | { ok: true; hasConfig: boolean; locales: { code: string; label: string; enabled: boolean }[] }
   | { ok: false; error: string };
 
-const TABS = ["overview", "menu", "users", "devices", "welcome", "dotykacka", "storyous"] as const;
+const TABS = ["overview", "menu", "users", "devices", "welcome", "dotykacka", "xpay", "storyous"] as const;
 type TabId = (typeof TABS)[number];
 
 function tabFromSearch(raw: string | null): TabId {
@@ -687,7 +688,7 @@ function RestaurantDetailInner() {
             {t("admin.overview.idLabel", { id })}
           </p>
         </div>
-        {tab === "overview" || tab === "dotykacka" || tab === "storyous" ? (
+        {tab === "overview" || tab === "dotykacka" || tab === "xpay" || tab === "storyous" ? (
           <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
             {t("admin.overview.refresh")}
           </button>
@@ -1132,6 +1133,8 @@ function RestaurantDetailInner() {
       ) : null}
 
       {tab === "storyous" && id ? <StoryousSettingsClient restaurantId={id} /> : null}
+
+      {tab === "xpay" && id ? <XpaySettingsClient restaurantId={id} /> : null}
 
       {tab === "dotykacka" ? (
         <section

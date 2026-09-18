@@ -11,6 +11,10 @@ export type AuditEventType =
   | "dotykacka_sync_failed"
   | "storyous_connected"
   | "storyous_disconnected"
+  | "xpay_connected"
+  | "xpay_disconnected"
+  | "xpay_paid"
+  | "xpay_till_settled"
   | "pos_order_sent"
   | "pos_order_failed";
 
