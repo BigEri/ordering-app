@@ -33,7 +33,7 @@ export function BillSplitDialog({
   onBack,
   onDismissError,
   t,
-  lineLabel,
+  lineParts,
 }: {
   pickLines: BillSplitPickLine[];
   pickedQty: Record<string, number>;
@@ -50,7 +50,7 @@ export function BillSplitDialog({
   onBack: () => void;
   onDismissError: () => void;
   t: (key: string) => string;
-  lineLabel: (line: ConfirmedOrderLine) => string;
+  lineParts: (line: ConfirmedOrderLine) => { title: string; detail?: string };
 }) {
   const move = (key: string, maxQty: number, delta: number) => {
     onPickedQty({
@@ -86,12 +86,14 @@ export function BillSplitDialog({
               {pickLines.map((l) => {
                 const remaining = l.qty - (pickedQty[l.key] ?? 0);
                 if (remaining <= 0) return null;
+                const parts = lineParts(l.line);
                 return (
                   <li key={`left-${l.key}`}>
                     <button type="button" className="billSplitRow" onClick={() => move(l.key, l.qty, 1)}>
                       <span className="billSplitRowQty">{remaining}×</span>
                       <span className="billSplitRowBody">
-                        <span className="billSplitRowName">{lineLabel(l.line)}</span>
+                        <span className="billSplitRowName">{parts.title}</span>
+                        {parts.detail ? <span className="billSplitRowDetail">{parts.detail}</span> : null}
                         <span className="textMuted2">{formatCzk(l.unitPriceCzk)}</span>
                       </span>
                       <strong className="billSplitRowPrice">{formatCzk(remaining * l.unitPriceCzk)}</strong>
@@ -113,12 +115,14 @@ export function BillSplitDialog({
               {pickLines.map((l) => {
                 const chosen = pickedQty[l.key] ?? 0;
                 if (chosen <= 0) return null;
+                const parts = lineParts(l.line);
                 return (
                   <li key={`right-${l.key}`}>
                     <button type="button" className="billSplitRow" onClick={() => move(l.key, l.qty, -1)}>
                       <span className="billSplitRowQty">{chosen}×</span>
                       <span className="billSplitRowBody">
-                        <span className="billSplitRowName">{lineLabel(l.line)}</span>
+                        <span className="billSplitRowName">{parts.title}</span>
+                        {parts.detail ? <span className="billSplitRowDetail">{parts.detail}</span> : null}
                         <span className="textMuted2">{formatCzk(l.unitPriceCzk)}</span>
                       </span>
                       <strong className="billSplitRowPrice">{formatCzk(chosen * l.unitPriceCzk)}</strong>

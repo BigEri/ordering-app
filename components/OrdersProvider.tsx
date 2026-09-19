@@ -7,6 +7,7 @@ import { loadConfirmedOrdersSession, saveConfirmedOrdersSession } from "../lib/c
 
 export type ConfirmedOrderLine = {
   name: string;
+  detail?: string;
   qty: number;
   unitPriceCzk: number;
   itemId?: number;
@@ -30,7 +31,7 @@ type OrdersContextValue = {
   addOrder: (order: Omit<ConfirmedOrder, "id" | "createdAtIso">) => void;
   /** Přepíše seznam podle otevřeného účtu u stolu v Dotyce. */
   syncTableBillFromDotykacka: (bill: {
-    lines: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+    lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
     totalCzk: number;
   }) => void;
   clearOrders: () => void;
@@ -58,7 +59,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
 
   const syncTableBillFromDotykacka = React.useCallback(
     (bill: {
-      lines: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+      lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
       totalCzk: number;
     }) => {
       if (bill.lines.length === 0) {
@@ -78,6 +79,7 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
             unitPriceCzk: l.unitPriceCzk,
             itemId: l.itemId,
             orderId: l.orderId,
+            ...(l.detail ? { detail: l.detail } : {}),
           })),
           totalCzk: bill.totalCzk,
         },

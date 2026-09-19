@@ -42,6 +42,15 @@ describe("tableBillSession", () => {
     expect(loadTableBillSession(scope)).toEqual(bill);
   });
 
+  it("round-trips customization detail", () => {
+    const bill = {
+      lines: [{ name: "Burger", detail: "Batátové hranolky", qty: 1, unitPriceCzk: 189, itemId: 1, orderId: 10 }],
+      totalCzk: 189,
+    };
+    saveTableBillSession(scope, bill);
+    expect(loadTableBillSession(scope)).toEqual(bill);
+  });
+
   it("rejects mismatched scope", () => {
     saveTableBillSession(scope, {
       lines: [{ name: "Cola", qty: 1, unitPriceCzk: 32 }],

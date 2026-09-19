@@ -4,7 +4,7 @@ export type TableBillSessionScope = {
 };
 
 export type TableBillSessionSnapshot = {
-  lines: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+  lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
   totalCzk: number;
 };
 
@@ -33,7 +33,8 @@ function parseLine(raw: unknown): TableBillSessionSnapshot["lines"][number] | nu
   if (!name || !Number.isFinite(qty) || qty <= 0 || !Number.isFinite(unitPriceCzk)) return null;
   const itemId = typeof raw.itemId === "number" && raw.itemId > 0 ? raw.itemId : undefined;
   const orderId = typeof raw.orderId === "number" && raw.orderId > 0 ? raw.orderId : undefined;
-  return { name, qty, unitPriceCzk, ...(itemId ? { itemId } : {}), ...(orderId ? { orderId } : {}) };
+  const detail = typeof raw.detail === "string" && raw.detail.trim() ? raw.detail.trim() : undefined;
+  return { name, qty, unitPriceCzk, ...(detail ? { detail } : {}), ...(itemId ? { itemId } : {}), ...(orderId ? { orderId } : {}) };
 }
 
 export function parseTableBillSessionPayload(raw: string): TableBillSessionPayload | null {

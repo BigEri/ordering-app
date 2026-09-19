@@ -40,14 +40,14 @@ function waitMs(ms: number) {
 
 type RemainingBill = {
   remaining: boolean | null;
-  lines: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+  lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
   totalCzk: number;
 };
 
 async function fetchRemainingBill(tableFields: Record<string, unknown>): Promise<RemainingBill> {
   const r = await postPosJsonData<{
     open?: boolean;
-    lines?: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+    lines?: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
     totalCzk?: number;
   }>("/api/pos/table-open-bill", tableFields);
   if (!r.ok) return { remaining: null, lines: [], totalCzk: 0 };

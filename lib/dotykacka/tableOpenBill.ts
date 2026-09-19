@@ -1,9 +1,12 @@
 import type { DotykackaConfig } from "./config";
 import { unitPriceCzkFromPosOrderItem } from "./posItemPrice";
 import { parseDotykackaPosActionCode } from "./syncOrderMerge";
+import { detailAfterTitle } from "../menu/billLineDisplay";
 
 export type TableBillLine = {
   name: string;
+  /** Přílohy / customizace (batáty, salátek…) — pod názvem jídla. */
+  detail?: string;
   qty: number;
   unitPriceCzk: number;
   itemId?: number;
@@ -18,9 +21,13 @@ export type TableOpenBillSnapshot = {
   orderIds: number[];
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
 function isDotykackaOrderOpenOnTable(order: Record<string, unknown>): boolean {
   if (order.paid === true) return false;
-  const canceled = order["canceled-date"];
+  const canceled = order["canceled-date"] ?? order.canceledDate;
   if (canceled != null && canceled !== "") return false;
   return true;
 }
@@ -35,8 +42,7 @@ function orderIdFromPos(order: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-function posItemId(item: Record<string, unknown>): number | undefined {
-  const raw = item.id ?? item["item-id"] ?? item.itemId ?? item._orderItemId;
+function positiveId(raw: unknown): number | undefined {
   if (typeof raw === "number" && Number.isFinite(raw) && raw > 0) return raw;
   if (typeof raw === "string" && /^\d+$/.test(raw.trim())) {
     const n = Number.parseInt(raw.trim(), 10);
@@ -45,20 +51,162 @@ function posItemId(item: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-function parsePosOrderItemLine(item: unknown, orderId: number | undefined): TableBillLine | null {
-  if (!item || typeof item !== "object" || Array.isArray(item)) return null;
-  const row = item as Record<string, unknown>;
-  const name = typeof row.name === "string" ? row.name.trim() : "";
-  const qtyRaw = row.qty;
+function posItemId(item: Record<string, unknown>): number | undefined {
+  return positiveId(item.id ?? item["item-id"] ?? item.itemId ?? item._orderItemId);
+}
+
+function relatedParentItemId(item: Record<string, unknown>): number | undefined {
+  return positiveId(
+    item._relatedOrderItemId ??
+      item["related-order-item-id"] ??
+      item.relatedOrderItemId ??
+      item["parent-item-id"] ??
+      item.parentItemId ??
+      item["parent-id"],
+  );
+}
+
+function itemQty(item: Record<string, unknown>): number | null {
+  const qtyRaw = item.qty ?? item.quantity;
   const qty = typeof qtyRaw === "number" ? qtyRaw : Number(qtyRaw);
-  if (!name || !Number.isFinite(qty) || qty <= 0) return null;
-  const unitPriceCzk = unitPriceCzkFromPosOrderItem(row);
-  if (unitPriceCzk === undefined) return null;
-  const itemId = posItemId(row);
-  const line: TableBillLine = { name, qty, unitPriceCzk };
-  if (orderId !== undefined) line.orderId = orderId;
-  if (itemId !== undefined) line.itemId = itemId;
+  if (!Number.isFinite(qty) || qty <= 0) return null;
+  return qty;
+}
+
+function stringField(row: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const v = row[key];
+    if (typeof v === "string" && v.trim()) return v.trim();
+  }
+  return "";
+}
+
+function isCanceledItem(row: Record<string, unknown>): boolean {
+  const canceled = row["canceled-date"] ?? row.canceledDate;
+  return canceled != null && canceled !== "";
+}
+
+function customizationNames(row: Record<string, unknown>): string[] {
+  const buckets = [row.customizations, row.orderItemCustomizations, row["order-item-customizations"]];
+  const names: string[] = [];
+  for (const bucket of buckets) {
+    if (!Array.isArray(bucket)) continue;
+    for (const c of bucket) {
+      if (!isRecord(c) || isCanceledItem(c)) continue;
+      const n = stringField(c, "name", "alternativeName", "alternative-name");
+      if (n) names.push(n);
+    }
+  }
+  return names;
+}
+
+type ParsedPosItem = {
+  name: string;
+  note: string;
+  extras: string[];
+  qty: number;
+  unitPriceCzk: number;
+  hasPrice: boolean;
+  itemId?: number;
+  orderId?: number;
+  relatedParentId?: number;
+};
+
+function uniqueLabels(values: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const raw of values) {
+    const v = raw.trim();
+    if (!v) continue;
+    const key = v.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+}
+
+export function composeBillLineLabel(name: string, note: string, extras: string[]): { name: string; detail?: string } {
+  const title = name.trim() || note.trim();
+  const extraKeep = uniqueLabels(extras).filter((e) => {
+    const hay = `${name} ${note}`.toLowerCase();
+    return !hay.includes(e.toLowerCase());
+  });
+  const fromNote = note && note !== title ? detailAfterTitle(title, note) ?? (note === name ? undefined : note) : undefined;
+  const detailParts = uniqueLabels([fromNote ?? "", ...extraKeep]);
+  const detail = detailParts.join(" · ") || undefined;
+  return detail ? { name: title || name, detail } : { name: title || name };
+}
+
+function parsePosItem(item: unknown, orderId: number | undefined): ParsedPosItem | null {
+  if (!isRecord(item) || isCanceledItem(item)) return null;
+  const name = stringField(item, "name", "alternativeName", "alternative-name");
+  const qty = itemQty(item);
+  if (!name || qty == null) return null;
+  const priced = unitPriceCzkFromPosOrderItem(item);
+  const relatedParentId = relatedParentItemId(item);
+  if (priced === undefined && relatedParentId === undefined) return null;
+  const itemId = posItemId(item);
+  const extras = customizationNames(item);
+  const subtitle = stringField(item, "subtitle");
+  if (subtitle) extras.unshift(subtitle);
+  return {
+    name,
+    note: stringField(item, "note"),
+    extras,
+    qty,
+    unitPriceCzk: priced ?? 0,
+    hasPrice: priced !== undefined,
+    itemId,
+    orderId,
+    relatedParentId,
+  };
+}
+
+function parsedToLine(row: ParsedPosItem, extraNames: string[], extraUnitPriceCzk: number): TableBillLine {
+  const labeled = composeBillLineLabel(row.name, row.note, [...row.extras, ...extraNames]);
+  const line: TableBillLine = {
+    name: labeled.name,
+    qty: row.qty,
+    unitPriceCzk: Math.round(row.unitPriceCzk + extraUnitPriceCzk),
+  };
+  if (labeled.detail) line.detail = labeled.detail;
+  if (row.orderId !== undefined) line.orderId = row.orderId;
+  if (row.itemId !== undefined) line.itemId = row.itemId;
   return line;
+}
+
+function foldRelatedItems(parsed: ParsedPosItem[]): TableBillLine[] {
+  const parentIds = new Set(parsed.filter((p) => !p.relatedParentId && p.itemId).map((p) => p.itemId as number));
+  const childrenByParent = new Map<number, ParsedPosItem[]>();
+  const standalone: ParsedPosItem[] = [];
+
+  for (const row of parsed) {
+    if (row.relatedParentId && parentIds.has(row.relatedParentId)) {
+      const list = childrenByParent.get(row.relatedParentId) ?? [];
+      list.push(row);
+      childrenByParent.set(row.relatedParentId, list);
+      continue;
+    }
+    standalone.push(row);
+  }
+
+  const lines: TableBillLine[] = [];
+  for (const row of standalone) {
+    if (!row.hasPrice && row.relatedParentId) {
+      /* osiřelá příloha bez rodiče na účtu — ukázat aspoň název */
+    } else if (!row.hasPrice) {
+      continue;
+    }
+    const kids = row.itemId ? childrenByParent.get(row.itemId) ?? [] : [];
+    const extraNames = kids.map((k) => k.name);
+    const extraUnit =
+      row.qty > 0
+        ? kids.reduce((sum, k) => sum + k.unitPriceCzk * k.qty, 0) / row.qty
+        : 0;
+    lines.push(parsedToLine(row, extraNames, extraUnit));
+  }
+  return lines;
 }
 
 function orderTotalCzkFromPos(order: Record<string, unknown>): number | undefined {
@@ -105,10 +253,12 @@ export function parseTableOpenBillFromPosListData(data: unknown): TableOpenBillS
 
     const items = wrap.items;
     if (!Array.isArray(items)) continue;
+    const parsed: ParsedPosItem[] = [];
     for (const item of items) {
-      const line = parsePosOrderItemLine(item, orderId);
-      if (line) lines.push(line);
+      const p = parsePosItem(item, orderId);
+      if (p) parsed.push(p);
     }
+    lines.push(...foldRelatedItems(parsed));
   }
 
   const totalCzk = hasOrderTotal

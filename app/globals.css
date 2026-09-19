@@ -1725,6 +1725,17 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   white-space: nowrap;
 }
 
+.billSplitRowDetail {
+  font-size: 13px;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
 .billSplitRowPrice {
   font-variant-numeric: tabular-nums;
   font-size: 14px;
@@ -1889,6 +1900,14 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   line-height: 1.45;
   font-weight: 600;
   color: var(--text);
+}
+
+.billItemRowDetail {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--muted);
 }
 
 .billItemRowUnit {

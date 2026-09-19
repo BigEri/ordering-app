@@ -114,4 +114,100 @@ describe("parseTableOpenBillFromPosListData", () => {
       name: "Pivo",
     });
   });
+
+  it("shows item note customizations on the bill line", () => {
+    const data = {
+      code: 0,
+      orders: [
+        {
+          order: { id: 10, paid: false, "price-total": 378 },
+          items: [
+            {
+              id: 1,
+              name: "Burger",
+              note: "Burger (Přílohy: Batátové hranolky)",
+              qty: 1,
+              "price-with-vat": { unit: 189 },
+            },
+            {
+              id: 2,
+              name: "Burger",
+              note: "Burger (Přílohy: Salátek)",
+              qty: 1,
+              "price-with-vat": { unit: 189 },
+            },
+          ],
+        },
+      ],
+    };
+    expect(parseTableOpenBillFromPosListData(data).lines).toEqual([
+      {
+        name: "Burger",
+        detail: "Přílohy: Batátové hranolky",
+        qty: 1,
+        unitPriceCzk: 189,
+        orderId: 10,
+        itemId: 1,
+      },
+      {
+        name: "Burger",
+        detail: "Přílohy: Salátek",
+        qty: 1,
+        unitPriceCzk: 189,
+        orderId: 10,
+        itemId: 2,
+      },
+    ]);
+  });
+
+  it("appends nested customizations and folds related side items into the parent", () => {
+    const data = {
+      code: 0,
+      orders: [
+        {
+          order: { id: 11, paid: false, "price-total": 234 },
+          items: [
+            {
+              id: 80,
+              name: "Burger",
+              qty: 1,
+              "price-with-vat": { unit: 189 },
+              customizations: [{ name: "Batátové hranolky" }],
+            },
+            {
+              id: 81,
+              name: "Salátek",
+              qty: 1,
+              "_relatedOrderItemId": 82,
+              "price-with-vat": { unit: 45 },
+            },
+            {
+              id: 82,
+              name: "Burger",
+              qty: 1,
+              "price-with-vat": { unit: 189 },
+            },
+          ],
+        },
+      ],
+    };
+    expect(parseTableOpenBillFromPosListData(data).lines).toEqual([
+      {
+        name: "Burger",
+        detail: "Batátové hranolky",
+        qty: 1,
+        unitPriceCzk: 189,
+        orderId: 11,
+        itemId: 80,
+      },
+      {
+        name: "Burger",
+        detail: "Salátek",
+        qty: 1,
+        unitPriceCzk: 234,
+        orderId: 11,
+        itemId: 82,
+      },
+    ]);
+  });
 });

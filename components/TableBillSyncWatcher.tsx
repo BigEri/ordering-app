@@ -32,7 +32,7 @@ type TableOpenBillResponse = {
   liveTill?: boolean;
   source?: string;
   open?: boolean;
-  lines?: Array<{ name: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+  lines?: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
   totalCzk?: number;
 };
 

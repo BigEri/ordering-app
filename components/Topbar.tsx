@@ -3,7 +3,7 @@
 import * as React from "react";
 
 import { requestTableBillSyncBurst } from "../lib/client/tableBillSync";
-import { buildOrderLineName } from "../lib/menu/orderLineLabel";
+import { billLineTitleAndDetail } from "../lib/menu/billLineDisplay";
 import { localeTag } from "../lib/i18n/messages";
 import { flushPendingPosQueue, POS_QUEUE_FLUSH_DETAIL } from "../lib/pos/pendingPosQueue";
 import { isDotykackaAccountLockedError } from "../lib/pos/dotykackaGuestError";
@@ -149,8 +149,8 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   const tipAmount = React.useMemo(() => Math.round((selectedItemsTotal * tipPct) / 100), [selectedItemsTotal, tipPct]);
   const billTotal = React.useMemo(() => selectedItemsTotal + tipAmount, [selectedItemsTotal, tipAmount]);
 
-  const billLineLabel = React.useCallback(
-    (l: ConfirmedOrderLine) => (l.snapshot ? buildOrderLineName(l.snapshot, locale) : l.name),
+  const billLineParts = React.useCallback(
+    (l: ConfirmedOrderLine) => billLineTitleAndDetail(l, locale),
     [locale],
   );
 
@@ -487,10 +487,12 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                       <ul className="billItemsList">
                         {o.lines.map((line, idx) => {
                           const lineTotal = line.qty * line.unitPriceCzk;
+                          const parts = billLineParts(line);
                           return (
                             <li key={`${o.id}-${idx}`} className="billItemRow">
                               <div className="billItemRowBody">
-                                <p className="billItemRowName">{billLineLabel(line)}</p>
+                                <p className="billItemRowName">{parts.title}</p>
+                                {parts.detail ? <p className="billItemRowDetail">{parts.detail}</p> : null}
                                 <p className="billItemRowUnit">
                                   {t("bill.lineQty").replace("{{qty}}", String(line.qty))}{" "}
                                   <span className="textMuted2">{formatCzk(line.unitPriceCzk)}</span>
@@ -682,7 +684,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
             setBillPayErrorDetail(null);
           }}
           t={t}
-          lineLabel={billLineLabel}
+          lineParts={billLineParts}
         />
       ) : null}
 
@@ -761,12 +763,17 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                   </div>
 
                   <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 2 }}>
-                    {o.lines.map((l, idx) => (
-                      <li key={`${o.id}-${idx}`} style={{ fontSize: 14 }}>
-                        {(l.snapshot ? buildOrderLineName(l.snapshot, locale) : l.name)} × {l.qty}
-                        <span className="textMuted2"> ({formatCzk(l.qty * l.unitPriceCzk)})</span>
-                      </li>
-                    ))}
+                    {o.lines.map((l, idx) => {
+                      const parts = billLineParts(l);
+                      return (
+                        <li key={`${o.id}-${idx}`} style={{ fontSize: 14 }}>
+                          {parts.title}
+                          {parts.detail ? <span className="textMuted2"> · {parts.detail}</span> : null}
+                          {" "}× {l.qty}
+                          <span className="textMuted2"> ({formatCzk(l.qty * l.unitPriceCzk)})</span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
