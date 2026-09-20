@@ -212,10 +212,10 @@ export async function syncOrderConfirmedToStoryous(
   const o = rec(payload);
   if (!o) return { ok: false, error: "Neplatné tělo objednávky", meta: {} };
   const deskId = deskIdFromPayload(o);
-  if (!deskId) return { ok: false, error: "Chybí ID stolu (deskId ze Storyous).", meta: {} };
+  if (!deskId) return { ok: false, error: "Chybí ID stolu ze Storyous.", meta: {} };
   const items = buildStoryousDeliveryItems(o.lines);
   if (items.length === 0) {
-    return { ok: false, error: "Objednávka nemá žádné položky se Storyous productId.", meta: { deskId } };
+    return { ok: false, error: "Objednávku se nepodařilo odeslat do Storyous — položky nemají vazbu na pokladnu.", meta: { deskId } };
   }
   const tableLabel = tableLabelFromPayload(o, deskId);
   return postOrderToTable(cfg, {
@@ -235,13 +235,13 @@ async function syncSignalToStoryous(
   const o = rec(payload);
   if (!o) return { ok: false, error: "Neplatné tělo požadavku", meta: {} };
   const deskId = deskIdFromPayload(o);
-  if (!deskId) return { ok: false, error: "Chybí ID stolu (deskId ze Storyous).", meta: {} };
+  if (!deskId) return { ok: false, error: "Chybí ID stolu ze Storyous.", meta: {} };
   const signalId = await resolveSignalItemId(cfg);
   if (!signalId) {
     return {
       ok: false,
       error:
-        "Ve Storyous chybí 0 Kč variabilní položka pro přivolání obsluhy / žádost o účet. Přidejte ji v pokladně (stejně jako dummy položka 0 %).",
+        "Ve Storyous chybí položka za 0 Kč pro přivolání obsluhy a žádost o účet. Přidejte v pokladně variabilní položku za 0 Kč.",
       meta: { deskId, action: `${kind}_missing_signal_item` },
     };
   }

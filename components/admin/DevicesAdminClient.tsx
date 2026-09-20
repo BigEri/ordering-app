@@ -41,12 +41,19 @@ function batteryLevelColor(percent: number): string {
   return "var(--success)";
 }
 
+type TillHealth = {
+  source?: "storyous" | "dotykacka";
+  syncConfigured?: boolean;
+  hint?: string | null;
+};
+
 type HealthPayload = {
   ok?: boolean;
   ts?: string;
   imageStorageConfigured?: boolean;
   pos?: { configured?: boolean };
   sentry?: { configured?: boolean };
+  till?: TillHealth;
   dotykacka?: { syncConfigured?: boolean; hint?: string | null };
 };
 
@@ -55,6 +62,7 @@ type IntegrationsStatusPayload = {
   ts?: string;
   pos?: { configured?: boolean };
   sentry?: { configured?: boolean };
+  till?: TillHealth;
   dotykacka?: { syncConfigured?: boolean; hint?: string | null };
 };
 
@@ -188,9 +196,14 @@ export function DevicesAdminClient({
             ts: intData.ts ?? merged?.ts,
             pos: { configured: intData.pos?.configured },
             sentry: { configured: intData.sentry?.configured },
+            till: {
+              source: intData.till?.source,
+              syncConfigured: intData.till?.syncConfigured ?? intData.dotykacka?.syncConfigured,
+              hint: intData.till?.hint ?? intData.dotykacka?.hint ?? null,
+            },
             dotykacka: {
-              syncConfigured: intData.dotykacka?.syncConfigured,
-              hint: intData.dotykacka?.hint ?? null,
+              syncConfigured: intData.till?.syncConfigured ?? intData.dotykacka?.syncConfigured,
+              hint: intData.till?.hint ?? intData.dotykacka?.hint ?? null,
             },
           };
         }
@@ -629,6 +642,10 @@ export function DevicesAdminClient({
     return m;
   }, [posTables]);
 
+  const tillSource = health?.till?.source ?? posTablesSource;
+  const tillConfigured = health?.till?.syncConfigured ?? health?.dotykacka?.syncConfigured;
+  const tillHint = health?.till?.hint ?? health?.dotykacka?.hint ?? null;
+
   return (
     <div className={embedded ? undefined : "adminPage"}>
       {embedded ? null : (
@@ -731,16 +748,20 @@ export function DevicesAdminClient({
             </li>
             <li
               style={{
-                color: health.dotykacka?.syncConfigured ? "var(--success)" : "#fcd34d",
+                color: tillConfigured ? "var(--success)" : "#fcd34d",
                 fontSize: 13,
               }}
             >
-              {health.dotykacka?.syncConfigured
-                ? t("admin.devices.healthDotykackaYes")
-                : t("admin.devices.healthDotykackaNo")}
-              {health.dotykacka?.syncConfigured === false && health.dotykacka?.hint ? (
+              {tillConfigured
+                ? tillSource === "storyous"
+                  ? t("admin.devices.healthStoryousYes")
+                  : t("admin.devices.healthDotykackaYes")
+                : tillSource === "storyous"
+                  ? t("admin.devices.healthStoryousNo")
+                  : t("admin.devices.healthDotykackaNo")}
+              {tillConfigured === false && tillHint ? (
                 <span className="textMuted2" style={{ display: "block", marginTop: 4, color: "var(--muted)" }}>
-                  {health.dotykacka.hint}
+                  {tillHint}
                 </span>
               ) : null}
             </li>
@@ -866,7 +887,9 @@ export function DevicesAdminClient({
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.device")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.table")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>
-                  {posTablesSource === "storyous" ? "Storyous (stůl)" : t("admin.devices.col.dotykackaTable")}
+                  {posTablesSource === "storyous"
+                    ? t("admin.devices.col.storyousTable")
+                    : t("admin.devices.col.dotykackaTable")}
                 </th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.apkOnDevice")}</th>
                 <th style={{ textAlign: "left", padding: "10px 12px" }}>{t("admin.devices.col.battery")}</th>

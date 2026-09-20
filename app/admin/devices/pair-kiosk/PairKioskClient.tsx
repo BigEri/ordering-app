@@ -402,7 +402,7 @@ export function PairKioskClient({
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <span className="textMuted2" style={{ fontSize: 13 }}>
             {tablesSource === "storyous"
-              ? "Stůl ze Storyous"
+              ? t("admin.devices.col.storyousTable")
               : t("admin.devices.pairKioskTableFromDoty")}
           </span>
           {tablesLoading ? <p className="textMuted" style={{ margin: 0 }}>{t("admin.devices.loading")}</p> : null}

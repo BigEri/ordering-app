@@ -188,6 +188,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.col.device": "Zařízení (ID)",
     "admin.devices.col.table": "Stůl",
     "admin.devices.col.dotykackaTable": "Pokladna (stůl)",
+    "admin.devices.col.storyousTable": "Storyous (stůl)",
     "admin.devices.col.status": "Stav",
     "admin.devices.col.battery": "Baterie",
     "admin.devices.batteryUnknown": "neznámá (starší APK)",
@@ -214,25 +215,27 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.healthLoading": "Kontroluji…",
     "admin.devices.healthErr": "Kontrola stavu API se nezdařila.",
     "admin.devices.healthDbWarn":
-      "Rychlá kontrola databáze teď neodpovídá (přetížení spojení). Dotykačka a zařízení níže mohou být v pořádku — zkuste Obnovit za chvíli.",
+      "Rychlá kontrola databáze teď neodpovídá (přetížení spojení). Pokladna a zařízení níže mohou být v pořádku — zkuste Obnovit za chvíli.",
     "admin.devices.healthPosYes": "Externí POS webhook je nastaven (volitelné).",
     "admin.devices.healthPosNo":
-      "Externí POS webhook není nastaven (volitelné — objednávky jdou přes Dotykačku).",
+      "Externí POS webhook není nastaven (volitelné — objednávky jdou přes pokladnu).",
     "admin.devices.healthSentryYes": "Sledování chyb (Sentry) je zapnuté.",
     "admin.devices.healthSentryNo":
       "Sledování chyb (Sentry) není zapnuté (volitelné — nastavte SENTRY_DSN na Vercelu).",
     "admin.devices.healthDotykackaYes": "Dotykačka je připojená a připravená k odesílání objednávek.",
     "admin.devices.healthDotykackaNo": "Dotykačka není kompletně nastavená pro vaši restauraci.",
+    "admin.devices.healthStoryousYes": "Storyous je připojený a připravený k odesílání objednávek.",
+    "admin.devices.healthStoryousNo": "Storyous není kompletně nastavený pro vaši restauraci.",
     "admin.devices.healthImageYes": "Úložiště fotek (S3/R2) je nastavené.",
     "admin.devices.healthImageNo":
       "Úložiště fotek není nastavené — na Vercelu po redeployi fotky zmizí (viz .env.example).",
-    "admin.devices.dotykackaHint": "Tip: pokud vybíráte stůl z Dotykačky, použijte jeho ID, ne jen název na plánku.",
+    "admin.devices.dotykackaHint": "Tip: pokud vybíráte stůl z pokladny, použijte jeho ID, ne jen název na plánku.",
     "admin.devices.col.actions": "Akce",
     "admin.devices.reload": "Vynutit obnovení",
     "admin.devices.reloadHint":
-      "Tablet v režimu host obnoví stránku do ~15 s (musí být online). Zároveň se zruší cache menu z Dotykačky — další načtení /menu stáhne aktuální data. Tlačítko „Obnovit“ nahoře jen aktualizuje tento seznam.",
+      "Tablet v režimu host obnoví stránku do ~15 s (musí být online). Zároveň se zruší cache menu z pokladny — další načtení /menu stáhne aktuální data. Tlačítko „Obnovit“ nahoře jen aktualizuje tento seznam.",
     "admin.devices.reloadOk":
-      "{device} — tablet obnoví menu do ~15 s (musí být online v režimu host). Cache Dotykačky zrušena. Nonce: {nonce}",
+      "{device} — tablet obnoví menu do ~15 s (musí být online v režimu host). Cache menu zrušena. Nonce: {nonce}",
     "admin.devices.reloadErr": "Požadavek na obnovení se nezdařil.",
     "admin.devices.reloadAll": "Vynutit obnovení všech tabletů",
     "admin.devices.reloadAllHint":
@@ -241,7 +244,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "{devices} tablet(ů) dostane signál k obnovení do ~15 s (online, režim host). Cache menu zrušena.",
     "admin.devices.refreshMenuFromDotykacka": "Obnovit menu z pokladny",
     "admin.devices.refreshMenuFromDotykackaHint":
-      "Stáhne aktuální menu z pokladny (Storyous nebo Dotykačka), zruší server cache a vynutí obnovení všech tabletů vaší provozovny.",
+      "Stáhne aktuální menu z pokladny, zruší server cache a vynutí obnovení všech tabletů vaší provozovny.",
     "admin.devices.refreshMenuFromDotykackaOk":
       "Menu z pokladny obnoveno ({sections} sekcí). {devices} tablet(ů) dostane signál k obnovení.",
     "admin.devices.refreshMenuFromDotykackaWarn":
@@ -284,7 +287,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.refreshAllHint": "Obnoví seznam zařízení i kontrolu API v adminu — na tablety nic neposílá.",
     "admin.devices.pairKioskTitle": "Párování u stolů (kiosk)",
     "admin.devices.pairKioskSubtitle":
-      "Zadejte kód z tabletu a vyberte stůl z pokladny. ID i název se vyplní automaticky. Pokud stoly nevidíte, nejdřív u vaší restaurace dokončete propojení se Storyous nebo Dotykačkou.",
+      "Zadejte kód z tabletu a vyberte stůl z pokladny. ID i název se vyplní automaticky. Pokud stoly nevidíte, nejdřív u vaší restaurace dokončete propojení pokladny.",
     "admin.devices.pairKioskLoginHint": "Pro párování se přihlaste do administrace.",
     "admin.devices.pairKioskLoginCta": "Přihlásit se",
     "admin.devices.pairKioskRestaurant": "Restaurace",
@@ -484,6 +487,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.col.device": "Device ID",
     "admin.devices.col.table": "Table",
     "admin.devices.col.dotykackaTable": "Till table",
+    "admin.devices.col.storyousTable": "Storyous table",
     "admin.devices.col.status": "Status",
     "admin.devices.col.battery": "Battery",
     "admin.devices.batteryUnknown": "unknown (older APK)",
@@ -510,25 +514,27 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.healthLoading": "Checking…",
     "admin.devices.healthErr": "/api/health is unavailable.",
     "admin.devices.healthDbWarn":
-      "Quick database check timed out (connection pool). Dotykačka and devices below may still work — try Refresh in a moment.",
+      "Quick database check timed out (connection pool). The till and devices below may still work — try Refresh in a moment.",
     "admin.devices.healthPosYes":
       "Optional external POS webhook (`POS_NOTIFICATION_URL`): set — events are also POSTed to your URL.",
     "admin.devices.healthPosNo":
-      "Optional external POS webhook (`POS_NOTIFICATION_URL`): not set — not required for Dotykacka order sync.",
+      "Optional external POS webhook (`POS_NOTIFICATION_URL`): not set — not required for till order sync.",
     "admin.devices.healthSentryYes": "Sentry: DSN set (error monitoring)",
     "admin.devices.healthSentryNo": "Sentry: DSN not set (optional — set SENTRY_DSN on Vercel)",
     "admin.devices.healthDotykackaYes": "Dotykacka: order sync ready for active restaurant",
     "admin.devices.healthDotykackaNo": "Dotykacka: not fully configured for active restaurant",
+    "admin.devices.healthStoryousYes": "Storyous: order sync ready for active restaurant",
+    "admin.devices.healthStoryousNo": "Storyous: not fully configured for active restaurant",
     "admin.devices.healthImageYes": "Image storage (S3/R2) configured",
     "admin.devices.healthImageNo": "Image storage not configured — uploads may be lost on redeploy",
     "admin.devices.dotykackaHint":
-      "Dotykacka: use the table id from the API (GET …/tables → data[].id) in “Table number / ID”, not only the floor-plan label.",
+      "Till: use the table id from the API in “Table number / ID”, not only the floor-plan label.",
     "admin.devices.col.actions": "Actions",
     "admin.devices.reload": "Force reload",
     "admin.devices.reloadHint":
-      "Host-mode tablet reloads within ~15 s (must be online). Also clears Dotykacka menu cache so the next /menu load fetches fresh data. The top “Refresh” button only updates this list.",
+      "Host-mode tablet reloads within ~15 s (must be online). Also clears till menu cache so the next /menu load fetches fresh data. The top “Refresh” button only updates this list.",
     "admin.devices.reloadOk":
-      "{device} — tablet reloads menu within ~15 s (host mode, online). Dotykacka cache cleared. Nonce: {nonce}",
+      "{device} — tablet reloads menu within ~15 s (host mode, online). Menu cache cleared. Nonce: {nonce}",
     "admin.devices.reloadErr": "Reload request failed.",
     "admin.devices.reloadAll": "Force reload all tablets",
     "admin.devices.reloadAllHint":
@@ -537,7 +543,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "{devices} tablet(s) notified to reload within ~15 s (online, host mode). Menu cache cleared.",
     "admin.devices.refreshMenuFromDotykacka": "Refresh menu from till",
     "admin.devices.refreshMenuFromDotykackaHint":
-      "Fetches the current menu from the till (Storyous or Dotykacka), clears server cache, and signals all tablets for your venue to reload.",
+      "Fetches the current menu from the till, clears server cache, and signals all tablets for your venue to reload.",
     "admin.devices.refreshMenuFromDotykackaOk":
       "Menu refreshed from till ({sections} sections). {devices} tablet(s) notified to reload.",
     "admin.devices.refreshMenuFromDotykackaWarn":
@@ -580,7 +586,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.refreshAllHint": "Refreshes the device list and API check in admin — does not signal tablets.",
     "admin.devices.pairKioskTitle": "Kiosk pairing (tables)",
     "admin.devices.pairKioskSubtitle":
-      "Enter the code from the tablet and pick a table from the till — ID and label fill in automatically. Finish Storyous or Dotykacka connection for the venue first.",
+      "Enter the code from the tablet and pick a table from the till — ID and label fill in automatically. Finish the till connection for the venue first.",
     "admin.devices.pairKioskLoginHint": "Sign in to the admin area to pair devices.",
     "admin.devices.pairKioskLoginCta": "Sign in",
     "admin.devices.pairKioskRestaurant": "Restaurant",
@@ -779,7 +785,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.backMenu": "메뉴로",
     "admin.devices.col.device": "기기 ID",
     "admin.devices.col.table": "테이블",
-    "admin.devices.col.dotykackaTable": "Dotykačka 테이블",
+    "admin.devices.col.dotykackaTable": "포스 테이블",
+    "admin.devices.col.storyousTable": "Storyous 테이블",
     "admin.devices.col.status": "상태",
     "admin.devices.col.battery": "배터리",
     "admin.devices.batteryUnknown": "알 수 없음(이전 APK)",
@@ -806,25 +813,27 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.healthLoading": "확인 중…",
     "admin.devices.healthErr": "/api/health를 사용할 수 없습니다.",
     "admin.devices.healthDbWarn":
-      "DB 빠른 확인이 시간 초과되었습니다(연결 풀). 아래 Dotykačka·기기는 정상일 수 있습니다 — 잠시 후 새로 고침하세요.",
+      "DB 빠른 확인이 시간 초과되었습니다(연결 풀). 아래 포스·기기는 정상일 수 있습니다 — 잠시 후 새로 고침하세요.",
     "admin.devices.healthPosYes":
       "선택 외부 POS 웹훅(`POS_NOTIFICATION_URL`): 설정됨 — 이벤트를 해당 URL로 추가 POST합니다.",
     "admin.devices.healthPosNo":
-      "선택 외부 POS 웹훅(`POS_NOTIFICATION_URL`): 미설정 — Dotykacka 주문 동기화에는 필요 없습니다.",
+      "선택 외부 POS 웹훅(`POS_NOTIFICATION_URL`): 미설정 — 포스 주문 동기화에는 필요 없습니다.",
     "admin.devices.healthSentryYes": "Sentry: DSN 설정됨(오류 모니터링)",
     "admin.devices.healthSentryNo": "Sentry: DSN 미설정",
     "admin.devices.healthDotykackaYes": "Dotykacka: 활성 매장 주문 동기화 준비됨",
     "admin.devices.healthDotykackaNo": "Dotykacka: 활성 매장에 대해 설정이 완료되지 않음",
+    "admin.devices.healthStoryousYes": "Storyous: 활성 매장 주문 동기화 준비됨",
+    "admin.devices.healthStoryousNo": "Storyous: 활성 매장에 대해 설정이 완료되지 않음",
     "admin.devices.healthImageYes": "이미지 저장소(S3/R2) 설정됨",
     "admin.devices.healthImageNo": "이미지 저장소 미설정 — 재배포 시 업로드가 사라질 수 있음",
     "admin.devices.dotykackaHint":
-      "Dotykacka: ‘테이블 번호 / ID’에는 API의 테이블 id(GET …/tables → data[].id)를 입력하세요.",
+      "포스: ‘테이블 번호 / ID’에는 포스의 테이블 id를 입력하세요.",
     "admin.devices.col.actions": "동작",
     "admin.devices.reload": "강제 새로 고침",
     "admin.devices.reloadHint":
-      "호스트 모드 태블릿은 ~15초 안에 새로 고칩니다(온라인 필요). Dotykacka 메뉴 캐시도 지워 다음 /menu 로드 시 최신 데이터를 받습니다. 상단 ‘새로 고침’은 이 목록만 갱신합니다.",
+      "호스트 모드 태블릿은 ~15초 안에 새로 고칩니다(온라인 필요). 포스 메뉴 캐시도 지워 다음 /menu 로드 시 최신 데이터를 받습니다. 상단 ‘새로 고침’은 이 목록만 갱신합니다.",
     "admin.devices.reloadOk":
-      "{device} — 태블릿이 ~15초 안에 메뉴를 새로 고칩니다(호스트 모드, 온라인). Dotykacka 캐시 삭제됨. Nonce: {nonce}",
+      "{device} — 태블릿이 ~15초 안에 메뉴를 새로 고칩니다(호스트 모드, 온라인). 메뉴 캐시 삭제됨. Nonce: {nonce}",
     "admin.devices.reloadErr": "새로 고침 요청에 실패했습니다.",
     "admin.devices.reloadAll": "모든 태블릿 강제 새로 고침",
     "admin.devices.reloadAllHint":
@@ -833,7 +842,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "{devices}대 태블릿에 ~15초 내 새로 고침 신호(온라인, 호스트 모드). 메뉴 캐시 삭제됨.",
     "admin.devices.refreshMenuFromDotykacka": "포스에서 메뉴 새로 고침",
     "admin.devices.refreshMenuFromDotykackaHint":
-      "포스(Storyous 또는 Dotykacka)에서 최신 메뉴를 가져옵니다(서버 캐시 삭제)하고 해당 매장의 모든 태블릿에 새로 고침 신호를 보냅니다.",
+      "포스에서 최신 메뉴를 가져옵니다(서버 캐시 삭제)하고 해당 매장의 모든 태블릿에 새로 고침 신호를 보냅니다.",
     "admin.devices.refreshMenuFromDotykackaOk":
       "포스 메뉴 새로 고침 완료(섹션 {sections}개). {devices}대 태블릿에 알림.",
     "admin.devices.refreshMenuFromDotykackaWarn":
@@ -867,7 +876,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.lastSeenHint": "마지막 확인",
     "admin.devices.editTable": "테이블 수정",
     "admin.devices.editTableTitle": "기기의 테이블 변경",
-    "admin.devices.editTableHint": "Dotykacka 테이블 ID와 표시 이름이 바뀝니다. 매장은 그대로입니다.",
+    "admin.devices.editTableHint": "포스 테이블 ID와 표시 이름이 바뀝니다. 매장은 그대로입니다.",
     "admin.devices.editTableSave": "저장",
     "admin.devices.editTableSaving": "저장 중…",
     "admin.devices.editTableCancel": "취소",
@@ -876,21 +885,21 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "admin.devices.refreshAllHint": "관리자에서 기기 목록과 API 확인을 새로 고칩니다 — 태블릿에는 신호를 보내지 않습니다.",
     "admin.devices.pairKioskTitle": "테이블 키오스크 연결",
     "admin.devices.pairKioskSubtitle":
-      "태블릿 화면(/menu, QR 스캔 후)의 6자 코드를 입력하고 Dotykacka 테이블을 선택하세요. ID와 이름이 자동으로 채워집니다. 먼저 매장에서 Dotykacka OAuth를 완료하세요.",
+      "태블릿 화면의 코드를 입력하고 포스 테이블을 선택하세요. ID와 이름이 자동으로 채워집니다. 먼저 매장에서 포스 연결을 완료하세요.",
     "admin.devices.pairKioskLoginHint": "연결하려면 관리자로 로그인하세요.",
     "admin.devices.pairKioskLoginCta": "로그인",
     "admin.devices.pairKioskRestaurant": "매장",
     "admin.devices.pairKioskRestaurantPlaceholder": "— 매장 선택 —",
     "admin.devices.pairKioskCode": "태블릿 코드",
-    "admin.devices.pairKioskTableFromDoty": "Dotykacka 테이블",
+    "admin.devices.pairKioskTableFromDoty": "포스 테이블",
     "admin.devices.pairKioskTablePlaceholder": "— 테이블 선택 —",
     "admin.devices.pairKioskTableManualOption": "ID와 이름을 직접 입력…",
-    "admin.devices.pairKioskNoTables": "Dotykacka 테이블이 없습니다. POS 연결을 확인하거나 아래에 직접 입력하세요.",
+    "admin.devices.pairKioskNoTables": "포스에서 테이블을 불러오지 못했습니다. 연결을 확인하거나 아래에 직접 입력하세요.",
     "admin.devices.pairKioskNoActiveRestaurant": "관리 상단에서 활성 매장을 선택하세요.",
     "admin.devices.pairKioskSubmit": "태블릿 연결",
     "admin.devices.pairKioskSubmitting": "연결 중…",
     "admin.devices.pairKioskSuccess": "연결됨. 태블릿에서 /menu를 새로 고칠 수 있습니다.",
-    "admin.devices.pairKioskTablesErr": "Dotykacka 테이블을 불러오지 못했습니다.",
+    "admin.devices.pairKioskTablesErr": "포스에서 테이블을 불러오지 못했습니다. 다시 시도해 주세요.",
     "admin.devices.pairKioskSelectRestaurantErr": "활성 매장을 바꾸지 못했습니다.",
     "admin.devices.pairKioskFromQrHint":
       "태블릿 환영 화면 QR에서 온 링크입니다. 로그인 후 코드가 자동으로 채워지거나, 태블릿이 페어링을 생성할 때까지 잠시 기다리세요.",

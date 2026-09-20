@@ -17,7 +17,7 @@
 2. Sjeďte na **Párování u stolů (kiosk)**  
    *(nebo otevřete odkaz z QR na tabletu, pokud ho máte)*.
 3. Zadejte **kód z tabletu** (přesně jak je na obrazovce).
-4. Vyberte **stůl z Dotykačky** (číslo stolu).
+4. Vyberte **stůl z pokladny** (číslo stolu).
 5. Klikněte **Spárovat tablet**.
 6. Na tabletu počkejte chvíli nebo otevřete menu znovu (výběr jazyka → menu).
 
@@ -27,26 +27,26 @@
 
 ## 2. Přivolání obsluhy a žádost o účet
 
-Na účet stolu hosta přibude řádek **0 Kč** (Přivolání obsluhy / Žádost o platbu) s poznámkou. V pokladně ho uvidíte u daného stolu. Může se i vytisknout bon (štítek `oa-volani`).
+Na účet stolu hosta přibude řádek **0 Kč** (Přivolání obsluhy / Žádost o platbu) s poznámkou. V pokladně ho uvidíte u daného stolu.
 
-**Co dělat:** otevřít účet stolu v Dotypos — nahoře je 0 Kč řádek. Jít k hostovi. Řádek na účtu hosta klidně nechte, je za 0 Kč.
+**Co dělat:** otevřít účet stolu v pokladně — nahoře je 0 Kč řádek. Jít k hostovi. Řádek na účtu hosta klidně nechte, je za 0 Kč.
 
-Žádost o účet navíc potřebuje už otevřený účet u stolu hosta.
+Žádost o účet **nezavře účet v pokladně**. U Storyous se kartou na tabletu neplatí — obsluha účtuje v pokladně. Až je účet ve Storyous zaplacený, tablet ukáže **Zaplaceno**.
 
 ---
 
-## 3. Změnili jsme cenu nebo jídlo v Dotykačce — na tabletu je pořád staré menu
+## 3. Změnili jsme cenu nebo jídlo v pokladně — na tabletu je pořád staré menu
 
-**Změna v Dotykačce se na tablet sama hned nepropsala.**
+**Změna v pokladně se na tablet sama hned nepropsala.**
 
 **Co udělat:**
 
 1. **Admin** → **Zařízení**.
-2. Nahoře klikněte **Obnovit menu z Dotykačky**.
+2. Nahoře klikněte **Obnovit menu z pokladny**.
 3. Počkejte **cca 15 sekund** — tablety v provozu se samy obnoví (musí být **online**).
 4. Na tabletu zkontrolujte cenu / položku v menu.
 
-**Poznámka:** Skrytí jídla jen v naší administraci (bez Dotykačky) se projeví jinak — na tabletu stačí obnovit stránku.
+**Poznámka:** Skrytí jídla jen v naší administraci (bez změny v pokladně) se projeví jinak — na tabletu stačí obnovit stránku.
 
 ---
 
@@ -73,19 +73,14 @@ Na účet stolu hosta přibude řádek **0 Kč** (Přivolání obsluhy / Žádos
 | **Tablet** | Banner **„Problém s připojením“** → slabá WiFi; host ať zkusí znovu nebo přivolá obsluhu |
 | **Tablet — košík** | Po potvrzení jsou **3 tečky** `…` cca **10 s** — to je normální čekání |
 | **Tablet — chyba** | Červená hláška u tlačítka Potvrdit → host ať zkusí **Potvrdit znovu** nebo přivolá obsluhu |
-| **Dotykačka u stolu** | Je účet otevřený? Jsou tam položky od hosta? |
-| **Dotykačka** | Není účet zamčený u pokladny? (někdo na něm pracuje) |
+| **Pokladna u stolu** | Jsou tam položky od hosta? Není účet zrovna otevřený v pokladně (někdo na něm pracuje)? |
 
 **Co udělat vy:**
 
-1. V Dotyce **doplňte objednávku ručně**, pokud na tabletu neodešla.
+1. V pokladně **doplňte objednávku ručně**, pokud na tabletu neodešla.
 2. Zkontrolujte **WiFi** na tabletu.
 3. V adminu u tabletu **Vynutit obnovení**.
 4. Opakuje se to → **vedoucí**.
-
----
-
-| **Aktualizace APK tabletů** | Native kiosk: Zařízení → **Aktualizovat APK**. AirDroid MDM: v AirDroid App Library → Update → Force Install (ne z adminu). Viz `docs/KIOSK-APK-UPDATE.md` |
 
 ---
 
@@ -94,18 +89,17 @@ Na účet stolu hosta přibude řádek **0 Kč** (Přivolání obsluhy / Žádos
 | Problém | Kde v adminu | Tlačítko / akce |
 |--------|----------------|------------------|
 | Nepárovaný tablet | Zařízení → Párování | **Spárovat tablet** |
-| Staré ceny / menu z Dotyce | Zařízení (nahoře) | **Obnovit menu z Dotykačky** |
+| Staré ceny / menu z pokladny | Zařízení (nahoře) | **Obnovit menu z pokladny** |
 | Tablet zaseknutý | Zařízení → řádek tabletu | **Vynutit obnovení** |
-| Nová verze APK (native kiosk) | Zařízení → řádek tabletu | **Aktualizovat APK** (potvrdit dialog) |
-| Nová verze APK (AirDroid MDM) | AirDroid konzole | App Library → Update → Force Install |
-| Objednávka nešla | Dotykačka + WiFi | ručně v Dotyce + případně vynutit obnovení |
+| Nová verze APK | Zařízení → řádek tabletu | **Aktualizovat APK** (potvrdit dialog) |
+| Objednávka nešla | Pokladna + WiFi | ručně v pokladně + případně vynutit obnovení |
 
 ---
 
 ## Kdy volat vedoucího / technika
 
 - Párování opakovaně nefunguje
-- Dotykačka není propojená (v adminu hláška u Dotykačky)
+- Pokladna není propojená (v adminu žlutá hláška u Storyous / Dotykačky)
 - Více tabletů najednou nefunguje
 - Cokoli, v čem si nejste jistí
 

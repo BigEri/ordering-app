@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it } from "vitest";
 
-import { isPosNotificationConfigured, isSentryConfigured } from "./integrationsStatus";
+import {
+  isPosNotificationConfigured,
+  isSentryConfigured,
+  STORYOUS_CONNECT_HINT,
+  storyousIntegrationFromRow,
+} from "./integrationsStatus";
 
 describe("integrationsStatus env helpers", () => {
   const prev: Record<string, string | undefined> = {};
@@ -35,5 +40,24 @@ describe("integrationsStatus env helpers", () => {
     expect(isPosNotificationConfigured()).toBe(false);
     setEnv("POS_NOTIFICATION_URL", "https://example.com/hook");
     expect(isPosNotificationConfigured()).toBe(true);
+  });
+});
+
+describe("storyousIntegrationFromRow", () => {
+  it("asks to finish setup without restaurant id", () => {
+    expect(storyousIntegrationFromRow("", null).hint).toMatch(/Přehledu administrace/);
+  });
+
+  it("asks to connect Storyous when there is no row", () => {
+    expect(storyousIntegrationFromRow("rid-1", null)).toEqual({
+      syncConfigured: false,
+      hint: STORYOUS_CONNECT_HINT,
+    });
+  });
+
+  it("is ready when merchant and place are set", () => {
+    expect(
+      storyousIntegrationFromRow("rid-1", { disabled: 0, merchantId: "m", placeId: "p" }),
+    ).toEqual({ syncConfigured: true, hint: null });
   });
 });

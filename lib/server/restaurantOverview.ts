@@ -1,4 +1,4 @@
-import { getDotykackaIntegrationStatus } from "./integrationsStatus";
+import { getDotykackaIntegrationStatus, STORYOUS_CONNECT_HINT } from "./integrationsStatus";
 import { parseRestaurantPos, type RestaurantPos } from "../pos/restaurantPos";
 import { prisma } from "./prisma";
 
@@ -120,7 +120,8 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
     const hasWelcome = welcomeByRid.get(r.id) ?? false;
     const managerCount = managersByRid.get(r.id) ?? 0;
 
-    const posConfigured = storyousByRid.has(r.id) || dotykacka.syncConfigured;
+    const pos = parseRestaurantPos(r.pos) ?? "dotykacka";
+    const posConfigured = pos === "storyous" ? storyousByRid.has(r.id) : dotykacka.syncConfigured;
     const onboarding: RestaurantOnboardingFlags = {
       dotykacka: posConfigured,
       device: deviceCount >= 1,
@@ -135,14 +136,10 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
     return {
       id: r.id,
       name: r.name,
-      pos: parseRestaurantPos(r.pos) ?? "dotykacka",
+      pos,
       dotykacka: {
         syncConfigured: posConfigured,
-        hint: posConfigured
-          ? null
-          : storyousByRid.has(r.id)
-            ? null
-            : dotykacka.hint,
+        hint: posConfigured ? null : pos === "storyous" ? STORYOUS_CONNECT_HINT : dotykacka.hint,
       },
       deviceCount,
       menuImageCount,

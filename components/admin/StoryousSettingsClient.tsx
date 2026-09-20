@@ -194,8 +194,11 @@ export function StoryousSettingsClient({ restaurantId }: { restaurantId: string 
       }}
     >
       <h2 style={{ margin: "0 0 10px", fontSize: "1.1rem" }}>{t("admin.storyous.title")}</h2>
-      <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
+      <p className="textMuted2" style={{ margin: "0 0 10px", fontSize: 13, lineHeight: 1.55 }}>
         {t("admin.storyous.intro")}
+      </p>
+      <p className="textMuted2" style={{ margin: "0 0 14px", fontSize: 13, lineHeight: 1.55 }}>
+        {t("admin.storyous.opsHint")}
       </p>
 
       {loading ? <p className="textMuted">{t("admin.storyous.loading")}</p> : null}
