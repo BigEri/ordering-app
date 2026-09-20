@@ -11,6 +11,8 @@ model Restaurant {
   id          String             @id
   name        String
   createdAtIso String
+  /** Jedna provozovna = jedna pokladna: dotykacka | storyous. */
+  pos         String             @default("dotykacka")
 
   /** Servisní PIN kiosk tabletu — jen superadmin; ověření offline přes salt+SHA-256. */
   kioskServicePinSalt String?

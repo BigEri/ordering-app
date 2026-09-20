@@ -89,6 +89,69 @@ export async function fetchStoryousMenuTree(
   return storyousGet(creds, `/menu/${encodeURIComponent(mid)}?placeId=${encodeURIComponent(pid)}`);
 }
 
+async function storyousGetOptional(creds: StoryousAppCredentials, path: string): Promise<unknown | null> {
+  try {
+    return await storyousGet(creds, path);
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchStoryousTimeBasedMenu(
+  creds: StoryousAppCredentials,
+  merchantId: string,
+  placeId: string,
+): Promise<unknown | null> {
+  const mid = merchantId.trim();
+  const pid = placeId.trim();
+  return storyousGetOptional(creds, `/menu/${encodeURIComponent(mid)}/timeBased/${encodeURIComponent(pid)}`);
+}
+
+export async function fetchStoryousRemainingAmounts(
+  creds: StoryousAppCredentials,
+  merchantId: string,
+  placeId: string,
+): Promise<unknown | null> {
+  const mid = merchantId.trim();
+  const pid = placeId.trim();
+  return storyousGetOptional(
+    creds,
+    `/menu/${encodeURIComponent(mid)}/timeBased/${encodeURIComponent(pid)}/remainingAmounts`,
+  );
+}
+
+export async function fetchStoryousDeliveryOrderStatus(
+  creds: StoryousAppCredentials,
+  merchantId: string,
+  placeId: string,
+  orderId: string,
+): Promise<{ orderId: string; externalId: string; state: string } | null> {
+  const sourceId = storyousSourceId(merchantId, placeId);
+  const json = await storyousGet(
+    creds,
+    `/delivery/orders/${encodeURIComponent(sourceId)}/${encodeURIComponent(orderId.trim())}`,
+  );
+  const rec = json && typeof json === "object" && !Array.isArray(json) ? (json as Record<string, unknown>) : null;
+  const state = typeof rec?.state === "string" ? rec.state.trim() : "";
+  if (!state) return null;
+  return {
+    orderId: typeof rec?.orderId === "string" ? rec.orderId : orderId,
+    externalId: typeof rec?.externalId === "string" ? rec.externalId : "",
+    state,
+  };
+}
+
+export async function fetchStoryousBills(
+  creds: StoryousAppCredentials,
+  merchantId: string,
+  placeId: string,
+  fromIso: string,
+): Promise<unknown | null> {
+  const sourceId = storyousSourceId(merchantId, placeId);
+  const q = new URLSearchParams({ from: fromIso, limit: "50" });
+  return storyousGetOptional(creds, `/bills/${encodeURIComponent(sourceId)}?${q.toString()}`);
+}
+
 export async function storyousPostJson(
   creds: StoryousAppCredentials,
   path: string,

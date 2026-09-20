@@ -5,6 +5,9 @@ import { getDotykackaConfig } from "../../../../lib/dotykacka/config";
 import { fetchTableOpenBillFromDotykacka } from "../../../../lib/dotykacka/tableOpenBill";
 import { getRestaurantMenuSource } from "../../../../lib/menu/restaurantMenuSource";
 import { resolvePosTrustFromPayload } from "../../../../lib/pos/resolvePosTrustFromPayload";
+import { fetchStoryousBills } from "../../../../lib/storyous/client";
+import { getStoryousConfig } from "../../../../lib/storyous/config";
+import { latestPaidBillForDesk, parseStoryousPaidBills } from "../../../../lib/storyous/paidBill";
 
 export const dynamic = "force-dynamic";
 
@@ -28,16 +31,62 @@ export async function POST(req: Request) {
 
   const source = await getRestaurantMenuSource(posTrust.restaurantId);
   if (source === "storyous") {
-    return NextResponse.json({
-      ok: true,
-      configured: true,
-      liveTill: false,
-      source: "storyous",
-      open: false,
-      lines: [],
-      totalCzk: 0,
-      orderIds: [],
-    });
+    const tableId = typeof o.tableId === "string" ? o.tableId.trim() : o.tableId != null ? String(o.tableId).trim() : "";
+    if (!tableId) {
+      return NextResponse.json({
+        ok: true,
+        configured: true,
+        liveTill: false,
+        source: "storyous",
+        open: false,
+        lines: [],
+        totalCzk: 0,
+        orderIds: [],
+      });
+    }
+    try {
+      const cfg = await getStoryousConfig(posTrust.restaurantId);
+      if (!cfg) {
+        return NextResponse.json({
+          ok: true,
+          configured: false,
+          liveTill: false,
+          source: "storyous",
+          open: false,
+          lines: [],
+          totalCzk: 0,
+          orderIds: [],
+        });
+      }
+      const fromIso = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString();
+      const billsJson = await fetchStoryousBills(cfg, cfg.merchantId, cfg.placeId, fromIso);
+      const paid = latestPaidBillForDesk(parseStoryousPaidBills(billsJson), tableId, Date.now() - 8 * 60 * 60 * 1000);
+      return NextResponse.json({
+        ok: true,
+        configured: true,
+        liveTill: false,
+        source: "storyous",
+        open: false,
+        lines: [],
+        totalCzk: paid?.totalCzk ?? 0,
+        orderIds: [],
+        paidBill: paid
+          ? { billId: paid.billId, totalCzk: paid.totalCzk, paidAtMs: paid.paidAtMs }
+          : null,
+      });
+    } catch {
+      return NextResponse.json({
+        ok: true,
+        configured: true,
+        liveTill: false,
+        source: "storyous",
+        open: false,
+        lines: [],
+        totalCzk: 0,
+        orderIds: [],
+        paidBill: null,
+      });
+    }
   }
 
   const cfgFull = await getDotykackaConfig(posTrust.restaurantId);

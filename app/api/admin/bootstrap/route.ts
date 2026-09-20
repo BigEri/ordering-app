@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 
+import { parseRestaurantPos } from "../../../../lib/pos/restaurantPos";
 import { ensureCoreLocalesAndMessages, nowIso } from "../../../../lib/server/db";
 import { PASSWORD_MIN_LENGTH, isPasswordLongEnough } from "../../../../lib/server/passwordPolicy";
 import { prisma } from "../../../../lib/server/prisma";
@@ -51,9 +52,10 @@ export async function POST(req: Request) {
   const restaurantName = typeof o.restaurantName === "string" ? o.restaurantName.trim() : "";
   const email = typeof o.email === "string" ? o.email.trim() : "";
   const password = typeof o.password === "string" ? o.password : "";
+  const pos = parseRestaurantPos(o.pos);
   const initialLocalesRaw = o.initialLocales;
-  if (!restaurantName || !email || !password) {
-    return NextResponse.json({ ok: false, error: "Missing restaurantName/email/password" }, { status: 400 });
+  if (!restaurantName || !email || !password || !pos) {
+    return NextResponse.json({ ok: false, error: "Missing restaurantName/email/password/pos" }, { status: 400 });
   }
   if (!isPasswordLongEnough(password)) {
     return NextResponse.json(
@@ -91,7 +93,7 @@ export async function POST(req: Request) {
 
     await prisma.$transaction(
       async (tx) => {
-        await tx.restaurant.create({ data: { id: restaurantId, name: restaurantName, createdAtIso } });
+        await tx.restaurant.create({ data: { id: restaurantId, name: restaurantName, pos, createdAtIso } });
         await tx.user.create({
           data: { id: userId, email, passwordHash, globalRole: "SUPER_ADMIN", createdAtIso },
         });

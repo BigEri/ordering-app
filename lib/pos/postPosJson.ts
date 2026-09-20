@@ -6,7 +6,7 @@ import { getKioskDeviceSecretForPos } from "./kioskDeviceSecretStore";
  * Kontroluje HTTP stav, JSON `{ ok: false }` a `forwardedStatus` z virtuálního POS.
  */
 export type PostPosJsonResult =
-  | { ok: true }
+  | { ok: true; body?: unknown }
   | { ok: false; kind: "network" | "http"; status?: number; detail?: string; body?: unknown };
 
 function nestedPosError(value: unknown): string | undefined {
@@ -30,7 +30,7 @@ export function extractPosErrorDetail(data: unknown): string | undefined {
 export async function postPosJson(url: string, body: unknown): Promise<PostPosJsonResult> {
   const r = await postPosJsonData<Record<string, unknown>>(url, body);
   if (!r.ok) return r;
-  return { ok: true };
+  return { ok: true, body: r.data };
 }
 
 export async function postPosJsonData<T = Record<string, unknown>>(

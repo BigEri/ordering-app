@@ -88,6 +88,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "pos.error.billDotykacka":
       "Žádost o účet se nepodařilo odeslat. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
     "pos.error.tableId": "Zařízení nemá platné číslo stolu pro pokladnu. V adminu zkontrolujte přiřazení tabletu ke stolu a zkuste to znovu.",
+    "pos.storyous.declinedTitle": "Objednávka odmítnuta",
+    "pos.storyous.declined": "Pokladna objednávku odmítla. Přivolejte obsluhu.",
     "pos.error.queued":
       "Požadavek se nepodařilo odeslat. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
     "pos.error.offlineHint":
@@ -382,6 +384,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "pos.error.billDotykacka":
       "We could not send your bill request. Please try again, or call a staff member.",
     "pos.error.tableId": "This device does not have a valid POS table number. Check the tablet-to-table binding in admin and try again.",
+    "pos.storyous.declinedTitle": "Order declined",
+    "pos.storyous.declined": "The till declined the order. Please call a staff member.",
     "pos.error.queued":
       "We could not send the request. Please try again, or call a staff member.",
     "pos.error.offlineHint":
@@ -676,6 +680,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "pos.error.billDotykacka":
       "계산서 요청을 보내지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
     "pos.error.tableId": "이 기기에 POS 테이블 번호가 올바르게 설정되어 있지 않습니다. 관리자에서 테이블 연결을 확인한 뒤 다시 시도하세요.",
+    "pos.storyous.declinedTitle": "주문이 거절되었습니다",
+    "pos.storyous.declined": "포스에서 주문을 거절했습니다. 직원을 불러 주세요.",
     "pos.error.queued":
       "요청을 보내지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
     "pos.error.offlineHint":

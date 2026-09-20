@@ -1,3 +1,5 @@
+import type { RestaurantPos } from "../../lib/pos/restaurantPos";
+
 export type RestaurantWorkspaceSection =
   | "overview"
   | "menu"
@@ -23,6 +25,21 @@ export const RESTAURANT_WORKSPACE_NAV: { id: RestaurantWorkspaceSection; labelKe
 export function workspaceNavForRole(isSuperAdmin: boolean): typeof RESTAURANT_WORKSPACE_NAV {
   if (isSuperAdmin) return RESTAURANT_WORKSPACE_NAV;
   return RESTAURANT_WORKSPACE_NAV.filter((x) => x.id !== "overview");
+}
+
+/** Admin menu podle pokladny provozovny: Dotykačka (+ QR platba) nebo Storyous. */
+export function workspaceNavForRestaurant(
+  isSuperAdmin: boolean,
+  pos: RestaurantPos | null,
+): typeof RESTAURANT_WORKSPACE_NAV {
+  const byRole = workspaceNavForRole(isSuperAdmin);
+  if (pos === "storyous") {
+    return byRole.filter((x) => x.id !== "dotykacka" && x.id !== "xpay");
+  }
+  if (pos === "dotykacka") {
+    return byRole.filter((x) => x.id !== "storyous");
+  }
+  return byRole.filter((x) => x.id !== "dotykacka" && x.id !== "xpay" && x.id !== "storyous");
 }
 
 export function managerRestaurantHomeHref(restaurantId: string): string {

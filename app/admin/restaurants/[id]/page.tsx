@@ -8,12 +8,13 @@ import { UsersAdminClient } from "../../../../components/admin/UsersAdminClient"
 import { XpaySettingsClient } from "../../../../components/admin/XpaySettingsClient";
 import { useAdminLanguage } from "../../../../components/admin/AdminLanguageProvider";
 import { WelcomeSettingsClient } from "../../welcome/WelcomeSettingsClient";
+import { parseRestaurantPos } from "../../../../lib/pos/restaurantPos";
 import { localeTag } from "../../../../lib/i18n/messages";
 import { Suspense } from "react";
 import * as React from "react";
 
 type RestaurantDetailResponse =
-  | { ok: true; restaurant: { id: string; name: string; createdAtIso: string } }
+  | { ok: true; restaurant: { id: string; name: string; pos: string; createdAtIso: string } }
   | { ok: false; error: string };
 
 type DotykackaSettingsResponse =
@@ -69,6 +70,19 @@ function RestaurantDetailInner() {
   const [nameDraft, setNameDraft] = React.useState("");
   const [savingName, setSavingName] = React.useState(false);
   const [contextSync, setContextSync] = React.useState<"idle" | "syncing" | "done" | "err">("idle");
+
+  const restaurantPos = detail && detail.ok ? parseRestaurantPos(detail.restaurant.pos) : null;
+
+  React.useEffect(() => {
+    if (!id || !restaurantPos) return;
+    if (restaurantPos === "storyous" && (tab === "dotykacka" || tab === "xpay")) {
+      window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}?tab=storyous`);
+      return;
+    }
+    if (restaurantPos === "dotykacka" && tab === "storyous") {
+      window.location.replace(`/admin/restaurants/${encodeURIComponent(id)}?tab=dotykacka`);
+    }
+  }, [id, restaurantPos, tab]);
 
   /** Přehled je jen pro SUPER_ADMIN — vedoucí pryč na Menu. */
   React.useEffect(() => {
@@ -415,16 +429,16 @@ function RestaurantDetailInner() {
   }, [id, t]);
 
   React.useEffect(() => {
-    if (tab !== "dotykacka" || !id) return;
+    if (tab !== "dotykacka" || restaurantPos !== "dotykacka" || !id) return;
     void loadDotykacka();
-  }, [tab, id, loadDotykacka]);
+  }, [tab, restaurantPos, id, loadDotykacka]);
 
   /** Po OAuth stačí cloud + token — načteme seznam poboček z API (nevyžaduje už uložené branchId). */
   React.useEffect(() => {
-    if (tab !== "dotykacka" || !id) return;
+    if (tab !== "dotykacka" || restaurantPos !== "dotykacka" || !id) return;
     if (!dotyk || dotyk.ok !== true || !dotyk.hasRow || !dotyk.hasRefreshToken) return;
     void loadBranchesFromDotykacka();
-  }, [tab, id, dotyk, loadBranchesFromDotykacka]);
+  }, [tab, restaurantPos, id, dotyk, loadBranchesFromDotykacka]);
 
   /** Při vstupu do detailu nastavit cookie aktivní restaurace = tento řádek (přehled pro více provozoven). */
   React.useEffect(() => {
@@ -687,6 +701,14 @@ function RestaurantDetailInner() {
           <p className="textMuted2" style={{ margin: 0, fontSize: 12, fontFamily: "ui-monospace, monospace", wordBreak: "break-all" }}>
             {t("admin.overview.idLabel", { id })}
           </p>
+          {restaurantPos ? (
+            <p className="textMuted2" style={{ margin: "6px 0 0", fontSize: 13 }}>
+              {t("admin.overview.posLabel")}{" "}
+              <strong style={{ color: "var(--text)" }}>
+                {restaurantPos === "storyous" ? t("admin.nav.storyous") : t("admin.nav.dotykacka")}
+              </strong>
+            </p>
+          ) : null}
         </div>
         {tab === "overview" || tab === "dotykacka" || tab === "xpay" || tab === "storyous" ? (
           <button type="button" className="chip" onClick={() => void load()} style={{ cursor: "pointer" }}>
@@ -1132,11 +1154,13 @@ function RestaurantDetailInner() {
         </section>
       ) : null}
 
-      {tab === "storyous" && id ? <StoryousSettingsClient restaurantId={id} /> : null}
+      {tab === "storyous" && restaurantPos === "storyous" && id ? (
+        <StoryousSettingsClient restaurantId={id} />
+      ) : null}
 
-      {tab === "xpay" && id ? <XpaySettingsClient restaurantId={id} /> : null}
+      {tab === "xpay" && restaurantPos === "dotykacka" && id ? <XpaySettingsClient restaurantId={id} /> : null}
 
-      {tab === "dotykacka" ? (
+      {tab === "dotykacka" && restaurantPos === "dotykacka" ? (
         <section
           style={{
             marginTop: 16,

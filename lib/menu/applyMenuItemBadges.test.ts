@@ -26,4 +26,10 @@ describe("applyMenuItemBadges", () => {
     const sections = [sec([{ id: "a", name: "Burger", priceCzk: 100 }])];
     expect(applyMenuItemBadges(sections, {})).toBe(sections);
   });
+
+  it("nechá štítky z pokladny, když admin položku neupravoval", () => {
+    const sections = [sec([{ id: "a", name: "Burger", priceCzk: 100, badges: ["vegan"] }])];
+    const out = applyMenuItemBadges(sections, { b: ["popular"] });
+    expect(out[0]!.items[0]!.badges).toEqual(["vegan"]);
+  });
 });

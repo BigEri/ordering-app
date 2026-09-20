@@ -1,4 +1,5 @@
 import { getDotykackaIntegrationStatus } from "./integrationsStatus";
+import { parseRestaurantPos, type RestaurantPos } from "../pos/restaurantPos";
 import { prisma } from "./prisma";
 
 export type RestaurantOnboardingFlags = {
@@ -11,6 +12,7 @@ export type RestaurantOnboardingFlags = {
 export type RestaurantOverviewItem = {
   id: string;
   name: string;
+  pos: RestaurantPos;
   dotykacka: { syncConfigured: boolean; hint: string | null };
   deviceCount: number;
   menuImageCount: number;
@@ -51,7 +53,7 @@ function parseWelcomeHasCustom(imageUrlsJson: string | null | undefined): boolea
 export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPayload> {
   const rows = await prisma.restaurant.findMany({
     orderBy: { createdAtIso: "desc" },
-    select: { id: true, name: true },
+    select: { id: true, name: true, pos: true },
   });
 
   if (rows.length === 0) {
@@ -133,6 +135,7 @@ export async function buildRestaurantsOverview(): Promise<RestaurantsOverviewPay
     return {
       id: r.id,
       name: r.name,
+      pos: parseRestaurantPos(r.pos) ?? "dotykacka",
       dotykacka: {
         syncConfigured: posConfigured,
         hint: posConfigured

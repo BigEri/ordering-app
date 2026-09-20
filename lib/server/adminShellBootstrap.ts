@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 
 import { activeRestaurantCookieName, getSessionFromCookieHeader } from "./auth";
+import type { RestaurantPos } from "../pos/restaurantPos";
+import { parseRestaurantPos } from "../pos/restaurantPos";
 import { prisma } from "./prisma";
 import { assertSessionVersion } from "./sessionVersion";
 
@@ -14,7 +16,7 @@ export type AdminShellBootstrapMe = {
 
 export type AdminShellBootstrap = {
   me: AdminShellBootstrapMe;
-  restaurants: { id: string; name: string }[];
+  restaurants: { id: string; name: string; pos: RestaurantPos | null }[];
   restaurantMap: Record<string, string>;
   activeLabel: string | null;
 };
@@ -46,12 +48,12 @@ export async function getAdminShellBootstrap(): Promise<AdminShellBootstrap | nu
     select: { restaurantId: true, role: true },
   });
 
-  let restaurants: { id: string; name: string }[];
+  let restaurants: { id: string; name: string; pos: RestaurantPos | null }[];
   if (session.globalRole === "SUPER_ADMIN") {
     restaurants = await prisma.restaurant.findMany({
       orderBy: { createdAtIso: "desc" },
-      select: { id: true, name: true },
-    });
+      select: { id: true, name: true, pos: true },
+    }).then((rows) => rows.map((r) => ({ id: r.id, name: r.name, pos: parseRestaurantPos(r.pos) })));
   } else {
     const restIds = memberships.map((m) => m.restaurantId);
     if (restIds.length === 0) {
@@ -59,11 +61,11 @@ export async function getAdminShellBootstrap(): Promise<AdminShellBootstrap | nu
     } else {
       const rows = await prisma.restaurant.findMany({
         where: { id: { in: restIds } },
-        select: { id: true, name: true, createdAtIso: true },
+        select: { id: true, name: true, pos: true, createdAtIso: true },
       });
       restaurants = rows
         .sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id, "en"))
-        .map((r) => ({ id: r.id, name: r.name }));
+        .map((r) => ({ id: r.id, name: r.name, pos: parseRestaurantPos(r.pos) }));
     }
   }
 

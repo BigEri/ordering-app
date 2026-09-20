@@ -7,6 +7,7 @@ import { AdminChipLink } from "../../../components/admin/AdminNavLink";
 import { postSelectActiveRestaurant } from "../../../lib/admin/clientRestaurantSelect";
 import type { RestaurantsDashboardPageData } from "../../../lib/server/restaurantsDashboardPage";
 import type { RestaurantOverviewItem, RestaurantsOverviewPayload } from "../../../lib/server/restaurantOverview";
+import { restaurantPosTab, type RestaurantPos } from "../../../lib/pos/restaurantPos";
 
 type MeResponse =
   | {
@@ -35,7 +36,10 @@ type ListFilter = "all" | "incomplete" | "ready";
 function OnboardingChecklist({ item }: { item: RestaurantOverviewItem }) {
   const { t } = useAdminLanguage();
   const steps: { key: keyof RestaurantOverviewItem["onboarding"]; label: string }[] = [
-    { key: "dotykacka", label: t("admin.dashboard.stepDotykacka") },
+    {
+      key: "dotykacka",
+      label: item.pos === "storyous" ? t("admin.dashboard.stepStoryous") : t("admin.dashboard.stepDotykacka"),
+    },
     { key: "device", label: t("admin.dashboard.stepDevice") },
     { key: "welcome", label: t("admin.dashboard.stepWelcome") },
     { key: "menuPhoto", label: t("admin.dashboard.stepMenuPhoto") },
@@ -109,6 +113,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
   const [listFilter, setListFilter] = React.useState<ListFilter>("all");
 
   const [restaurantName, setRestaurantName] = React.useState("");
+  const [pos, setPos] = React.useState<RestaurantPos | "">("");
   const [managerEmail, setManagerEmail] = React.useState("");
   const [managerPassword, setManagerPassword] = React.useState("");
 
@@ -165,6 +170,10 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
   const onCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     setErr(null);
+    if (!pos) {
+      setErr(t("admin.dashboard.createPosMissing"));
+      return;
+    }
     setCreating(true);
     try {
       const r = await fetch("/api/admin/restaurants", {
@@ -172,6 +181,7 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           restaurantName,
+          pos,
           managerEmail,
           managerPassword,
         }),
@@ -182,10 +192,11 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
         return;
       }
       setRestaurantName("");
+      setPos("");
       setManagerEmail("");
       setManagerPassword("");
       await load();
-      window.location.href = `/admin/restaurants/${j.restaurantId}`;
+      window.location.href = `/admin/restaurants/${j.restaurantId}?tab=${restaurantPosTab(pos)}`;
     } catch {
       setErr(t("admin.dashboard.createNetworkErr"));
     } finally {
@@ -330,6 +341,9 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                     <div className="adminRestaurantCard__meta">
                       <div className="adminRestaurantCard__titleRow">
                         <strong style={{ fontSize: "1.05rem" }}>{r.name}</strong>
+                        <span className="textMuted2" style={{ fontSize: 13 }}>
+                          {r.pos === "storyous" ? t("admin.nav.storyous") : t("admin.nav.dotykacka")}
+                        </span>
                         <StatusBadge item={r} />
                       </div>
                       <span className="adminRestaurantCard__id" title={t("admin.dashboard.internalIdTitle")}>
@@ -361,12 +375,22 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                       <button
                         type="button"
                         className="chip"
-                        onClick={() => void onOpen(r.id, `/admin/restaurants/${r.id}?tab=dotykacka`)}
+                        onClick={() =>
+                          void onOpen(r.id, `/admin/restaurants/${r.id}?tab=${restaurantPosTab(r.pos)}`)
+                        }
                         disabled={actionsDisabled}
                         style={{ cursor: actionsDisabled ? "not-allowed" : "pointer" }}
-                        title={t("admin.dashboard.actionDotykackaTitle")}
+                        title={
+                          r.pos === "storyous"
+                            ? t("admin.dashboard.actionStoryousTitle")
+                            : t("admin.dashboard.actionDotykackaTitle")
+                        }
                       >
-                        {busy ? "…" : t("admin.dashboard.actionDotykacka")}
+                        {busy
+                          ? "…"
+                          : r.pos === "storyous"
+                            ? t("admin.nav.storyous")
+                            : t("admin.dashboard.actionDotykacka")}
                       </button>
                       <button
                         type="button"
@@ -441,6 +465,27 @@ export function RestaurantsDashboard({ pageData }: RestaurantsDashboardProps) {
                 autoComplete="off"
               />
             </label>
+            <fieldset style={{ margin: 0, padding: 0, border: "none", display: "grid", gap: 8 }}>
+              <legend style={{ padding: 0 }}>{t("admin.dashboard.createPos")}</legend>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="restaurant-pos"
+                  checked={pos === "dotykacka"}
+                  onChange={() => setPos("dotykacka")}
+                />
+                <span>{t("admin.dashboard.createPosDotykacka")}</span>
+              </label>
+              <label style={{ display: "flex", gap: 8, alignItems: "center", cursor: "pointer" }}>
+                <input
+                  type="radio"
+                  name="restaurant-pos"
+                  checked={pos === "storyous"}
+                  onChange={() => setPos("storyous")}
+                />
+                <span>{t("admin.dashboard.createPosStoryous")}</span>
+              </label>
+            </fieldset>
             <label style={{ display: "grid", gap: 6 }}>
               <span>{t("admin.dashboard.createEmail")}</span>
               <input

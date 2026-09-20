@@ -4,6 +4,7 @@ import crypto from "crypto";
 
 import { requireAdminSession } from "../../../../lib/server/adminGuard";
 import { nowIso } from "../../../../lib/server/db";
+import { parseRestaurantPos } from "../../../../lib/pos/restaurantPos";
 import { prisma } from "../../../../lib/server/prisma";
 
 export const dynamic = "force-dynamic";
@@ -14,18 +15,18 @@ export async function GET(req: Request) {
     if (session.globalRole === "SUPER_ADMIN") {
       const rows = await prisma.restaurant.findMany({
         orderBy: { createdAtIso: "desc" },
-        select: { id: true, name: true },
+        select: { id: true, name: true, pos: true },
       });
       return NextResponse.json({ ok: true, restaurants: rows });
     }
     const rows = await prisma.membership.findMany({
       where: { userId: session.userId },
-      select: { restaurant: { select: { id: true, name: true, createdAtIso: true } } },
+      select: { restaurant: { select: { id: true, name: true, pos: true, createdAtIso: true } } },
     });
     const restaurants = rows
       .map((r) => r.restaurant)
       .sort((a, b) => b.createdAtIso.localeCompare(a.createdAtIso) || a.id.localeCompare(b.id, "en"));
-    return NextResponse.json({ ok: true, restaurants: restaurants.map((r) => ({ id: r.id, name: r.name })) });
+    return NextResponse.json({ ok: true, restaurants: restaurants.map((r) => ({ id: r.id, name: r.name, pos: r.pos })) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
     if (msg === "UNAUTHORIZED") return NextResponse.json({ ok: false, error: "Unauthorized" }, { status: 401 });
@@ -53,8 +54,9 @@ export async function POST(req: Request) {
     const restaurantName = typeof o.restaurantName === "string" ? o.restaurantName.trim() : "";
     const managerEmail = typeof o.managerEmail === "string" ? o.managerEmail.trim() : "";
     const managerPassword = typeof o.managerPassword === "string" ? o.managerPassword : "";
-    if (!restaurantName || !managerEmail || !managerPassword) {
-      return NextResponse.json({ ok: false, error: "Missing restaurantName/managerEmail/managerPassword" }, { status: 400 });
+    const pos = parseRestaurantPos(o.pos);
+    if (!restaurantName || !managerEmail || !managerPassword || !pos) {
+      return NextResponse.json({ ok: false, error: "Missing restaurantName/managerEmail/managerPassword/pos" }, { status: 400 });
     }
 
     const createdAtIso = nowIso();
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
     const managerEmailTrimmed = managerEmail.trim();
 
     const result = await prisma.$transaction(async (tx) => {
-      await tx.restaurant.create({ data: { id: restaurantId, name: restaurantName, createdAtIso } });
+      await tx.restaurant.create({ data: { id: restaurantId, name: restaurantName, pos, createdAtIso } });
 
       const existingUser = await tx.user.findFirst({
         where: { email: { equals: managerEmailTrimmed, mode: "insensitive" } },

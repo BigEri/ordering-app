@@ -31,7 +31,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
 
     const row = await prisma.restaurant.findUnique({
       where: { id: restaurantId },
-      select: { id: true, name: true, createdAtIso: true },
+      select: { id: true, name: true, pos: true, createdAtIso: true },
     });
 
     if (!row) {
@@ -83,7 +83,7 @@ export async function PATCH(req: Request, ctx: { params: Promise<{ id: string }>
     await prisma.restaurant.update({ where: { id: restaurantId }, data: { name } });
     const row = await prisma.restaurant.findUnique({
       where: { id: restaurantId },
-      select: { id: true, name: true, createdAtIso: true },
+      select: { id: true, name: true, pos: true, createdAtIso: true },
     });
     if (!row) return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
 

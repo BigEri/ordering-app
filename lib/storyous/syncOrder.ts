@@ -2,6 +2,8 @@ import { type StoryousRestaurantConfig } from "./config";
 import { fetchStoryousMenuTree, storyousPostJson } from "./client";
 import { findStoryousSignalProductId } from "./mapMenu";
 import { storyousSourceId } from "./env";
+import { getPublicAppBaseUrl } from "../server/publicAppUrl";
+import type { StoryousDeliveryAddition } from "./orderAdditions";
 
 export type StoryousSyncMeta = {
   action?: string;
@@ -20,6 +22,7 @@ type OrderLineInput = {
   qty?: number;
   unitPriceCzk?: number;
   menuItemId?: string;
+  storyousAdditions?: StoryousDeliveryAddition[];
 };
 
 const signalProductCache = new Map<string, string | null>();
@@ -27,6 +30,23 @@ const signalProductCache = new Map<string, string | null>();
 function rec(payload: unknown): Record<string, unknown> | null {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
   return payload as Record<string, unknown>;
+}
+
+function parseJsonText(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return null;
+  }
+}
+
+export function orderIdFromStoryousDeliveryResponse(json: unknown): string | undefined {
+  const root = rec(json);
+  if (!root) return undefined;
+  if (typeof root.orderId === "string" && root.orderId.trim()) return root.orderId.trim();
+  const nested = rec(root.order);
+  if (nested && typeof nested.orderId === "string" && nested.orderId.trim()) return nested.orderId.trim();
+  return undefined;
 }
 
 function deskIdFromPayload(payload: Record<string, unknown>): string {
@@ -49,9 +69,21 @@ function externalIdFromPayload(payload: Record<string, unknown>, suffix: string)
   return `tf-${deviceId.slice(0, 24)}-${suffix}-${Date.now()}`;
 }
 
-export function buildStoryousDeliveryItems(lines: unknown): { itemId: string; count: number; unitPriceWithVat: number; note?: string }[] {
+export function buildStoryousDeliveryItems(lines: unknown): {
+  itemId: string;
+  count: number;
+  unitPriceWithVat: number;
+  note?: string;
+  additions?: StoryousDeliveryAddition[];
+}[] {
   if (!Array.isArray(lines)) return [];
-  const out: { itemId: string; count: number; unitPriceWithVat: number; note?: string }[] = [];
+  const out: {
+    itemId: string;
+    count: number;
+    unitPriceWithVat: number;
+    note?: string;
+    additions?: StoryousDeliveryAddition[];
+  }[] = [];
   for (const row of lines) {
     if (!row || typeof row !== "object") continue;
     const line = row as OrderLineInput;
@@ -61,7 +93,18 @@ export function buildStoryousDeliveryItems(lines: unknown): { itemId: string; co
     if (!itemId) continue;
     const price = typeof line.unitPriceCzk === "number" && Number.isFinite(line.unitPriceCzk) ? line.unitPriceCzk : 0;
     const note = typeof line.name === "string" && line.name.trim() ? line.name.trim() : undefined;
-    out.push({ itemId, count: qty, unitPriceWithVat: price, ...(note ? { note } : {}) });
+    const additions = Array.isArray(line.storyousAdditions)
+      ? line.storyousAdditions.filter(
+          (a) => a && typeof a.additionId === "string" && a.additionId.trim() && a.countPerMainItem > 0,
+        )
+      : [];
+    out.push({
+      itemId,
+      count: qty,
+      unitPriceWithVat: price,
+      ...(note ? { note } : {}),
+      ...(additions.length ? { additions } : {}),
+    });
   }
   return out;
 }
@@ -98,11 +141,15 @@ async function postOrderToTable(
     externalId: string;
     deskId: string;
     tableLabel: string;
-    items: { itemId: string; count: number; unitPriceWithVat: number; note?: string }[];
+    items: ReturnType<typeof buildStoryousDeliveryItems>;
     note: string;
   },
 ): Promise<StoryousSyncResult> {
   const sourceId = storyousSourceId(cfg.merchantId, cfg.placeId);
+  const publicBase = getPublicAppBaseUrl();
+  const notifyBase = publicBase
+    ? `${publicBase}/api/integrations/storyous/delivery-notify?externalId=${encodeURIComponent(input.externalId)}`
+    : "";
   const body = {
     externalId: input.externalId,
     deliveryType: "orderToTable",
@@ -113,11 +160,30 @@ async function postOrderToTable(
     note: input.note,
     deskId: input.deskId,
     autoConfirm: true,
+    ...(notifyBase
+      ? {
+          notification: {
+            confirm: `${notifyBase}&state=CONFIRMED`,
+            dispatch: `${notifyBase}&state=DISPATCHED`,
+            decline: `${notifyBase}&state=DECLINED`,
+          },
+        }
+      : {}),
   };
   const posted = await storyousPostJson(cfg, `/delivery/orders/${encodeURIComponent(sourceId)}`, body);
   if (!posted.ok) {
     if (posted.status === 409) {
-      return { ok: true, meta: { action: "delivery_order_exists", httpStatus: 409, deskId: input.deskId, externalId: input.externalId } };
+      const orderId = orderIdFromStoryousDeliveryResponse(parseJsonText(posted.text));
+      return {
+        ok: true,
+        meta: {
+          action: "delivery_order_exists",
+          httpStatus: 409,
+          deskId: input.deskId,
+          externalId: input.externalId,
+          ...(orderId ? { orderId } : {}),
+        },
+      };
     }
     const snippet = posted.text.replace(/\s+/g, " ").trim().slice(0, 400);
     return {
@@ -126,8 +192,7 @@ async function postOrderToTable(
       meta: { action: "delivery_order", httpStatus: posted.status, deskId: input.deskId, externalId: input.externalId },
     };
   }
-  const json = posted.json && typeof posted.json === "object" ? (posted.json as Record<string, unknown>) : null;
-  const orderId = typeof json?.orderId === "string" ? json.orderId : undefined;
+  const orderId = orderIdFromStoryousDeliveryResponse(posted.json);
   return {
     ok: true,
     meta: {

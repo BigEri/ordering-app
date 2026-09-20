@@ -10,10 +10,23 @@ function sleep(ms: number) {
 }
 
 export type PostPosResilientResult =
-  | { ok: true }
+  | { ok: true; storyousOrderId?: string }
   | { ok: false; kind: "http"; status?: number; detail?: string }
   | { ok: false; kind: "queued"; pendingId: string }
   | { ok: false; kind: "network" };
+
+function storyousOrderIdFromBody(body: unknown): string | undefined {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return undefined;
+  const rec = body as Record<string, unknown>;
+  if (typeof rec.orderId === "string" && rec.orderId.trim()) return rec.orderId.trim();
+  for (const key of ["storyous", "till"] as const) {
+    const nested = rec[key];
+    if (!nested || typeof nested !== "object" || Array.isArray(nested)) continue;
+    const id = (nested as Record<string, unknown>).orderId;
+    if (typeof id === "string" && id.trim()) return id.trim();
+  }
+  return undefined;
+}
 
 export type ClientOrderSnapshot = {
   lines: Array<{ name: string; qty: number; unitPriceCzk: number; snapshot?: OrderLineSnapshotInput }>;
@@ -46,13 +59,13 @@ export async function postPosJsonResilient(
   }
 
   let last: PostPosJsonResult = await tryOnce();
-  if (last.ok) return { ok: true };
+  if (last.ok) return { ok: true, storyousOrderId: storyousOrderIdFromBody(last.body) };
   if (last.kind === "http") return { ok: false, kind: "http", status: last.status, detail: last.detail };
 
   for (const delay of RETRY_DELAYS_MS) {
     await sleep(delay);
     last = await tryOnce();
-    if (last.ok) return { ok: true };
+    if (last.ok) return { ok: true, storyousOrderId: storyousOrderIdFromBody(last.body) };
     if (last.kind === "http") return { ok: false, kind: "http", status: last.status, detail: last.detail };
   }
 

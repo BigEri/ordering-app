@@ -9,6 +9,7 @@ export function SetupClient({ initialToken }: { initialToken: string }) {
   const [status, setStatus] = React.useState<StatusPayload | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [restaurantName, setRestaurantName] = React.useState("");
+  const [pos, setPos] = React.useState<"dotykacka" | "storyous" | "">("");
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [token, setToken] = React.useState(initialToken);
@@ -47,6 +48,7 @@ export function SetupClient({ initialToken }: { initialToken: string }) {
         },
         body: JSON.stringify({
           restaurantName: restaurantName.trim(),
+          pos,
           email: email.trim(),
           password,
         }),
@@ -156,6 +158,17 @@ export function SetupClient({ initialToken }: { initialToken: string }) {
             style={{ padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border)" }}
           />
         </label>
+        <fieldset style={{ margin: 0, padding: 0, border: "none", display: "flex", flexDirection: "column", gap: 8 }}>
+          <legend style={{ fontSize: 13, opacity: 0.85, padding: 0 }}>Pokladna</legend>
+          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="radio" name="setup-pos" checked={pos === "dotykacka"} onChange={() => setPos("dotykacka")} required />
+            <span>Dotykačka</span>
+          </label>
+          <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input type="radio" name="setup-pos" checked={pos === "storyous"} onChange={() => setPos("storyous")} required />
+            <span>Storyous</span>
+          </label>
+        </fieldset>
         <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ fontSize: 13, opacity: 0.85 }}>E-mail správce</span>
           <input

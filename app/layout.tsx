@@ -12,6 +12,7 @@ import { LanguageProvider } from "../components/LanguageProvider";
 import { MenuCartProvider } from "../components/MenuCartProvider";
 import { OrdersProvider } from "../components/OrdersProvider";
 import { TableBillSyncWatcher } from "../components/TableBillSyncWatcher";
+import { StoryousOrderStatusWatcher } from "../components/StoryousOrderStatusWatcher";
 import { PosPendingFlush } from "../components/PosPendingFlush";
 import { getPublicRestaurantDisplayNameFromIncomingRequest } from "../lib/server/incomingPublicRequest";
 
@@ -44,6 +45,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
             <MenuCartProvider>
               <DeviceTableProvider>
                 <TableBillSyncWatcher />
+                <StoryousOrderStatusWatcher />
                 <div className="container">
                   <ConditionalLayoutHeader restaurantName={restaurantDisplayName} />
                   <ConditionalTopbar />

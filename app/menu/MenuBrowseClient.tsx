@@ -35,10 +35,12 @@ import { localeTag } from "../../lib/i18n/messages";
 import { useMenuCart, type MenuCartState } from "../../components/MenuCartProvider";
 import { useOrders } from "../../components/OrdersProvider";
 import { requestTableBillSyncBurst } from "../../lib/client/tableBillSync";
+import { markStoryousSessionOrder, rememberStoryousOrderId } from "../../lib/client/storyousKioskSession";
 import {
   buildDotykackaPosCustomizations,
   makeMenuCartLineKey,
 } from "../../lib/menu/dotykackaLine";
+import { buildStoryousPosAdditions } from "../../lib/storyous/orderAdditions";
 import { buildOrderLineName, menuCartLineToSnapshot, orderLineUnitPriceCzk } from "../../lib/menu/orderLineLabel";
 import {
   hasPendingOrderConfirmed,
@@ -1016,12 +1018,14 @@ export function MenuBrowseClient({
     const linesPos = linesBase.map(({ l, unitPriceCzk }) => {
       const snap = menuCartLineToSnapshot(l);
       const dk = buildDotykackaPosCustomizations(l.item, l.dotykackaPicks);
+      const stAdd = buildStoryousPosAdditions(l.item, l.dotykackaPicks);
       return {
         name: buildOrderLineName(snap, "cs"),
         qty: l.qty,
         unitPriceCzk,
         menuItemId: l.item.id,
         ...(dk.length > 0 ? { dotykackaCustomizations: dk } : {}),
+        ...(stAdd.length > 0 ? { storyousAdditions: stAdd } : {}),
       };
     });
 
@@ -1047,6 +1051,8 @@ export function MenuBrowseClient({
       );
 
       if (r.ok) {
+        markStoryousSessionOrder();
+        if (r.storyousOrderId) rememberStoryousOrderId(r.storyousOrderId);
         addOrder({ lines: linesStore, totalCzk: totalCzkPos });
         await resetPendingOrderConfirmedState();
         applyCart(() => ({}), { skipPendingGuard: true });
@@ -1079,6 +1085,7 @@ export function MenuBrowseClient({
         .detail;
       if (!d?.lines) return;
       addOrder({ lines: d.lines, totalCzk: d.totalCzk });
+      markStoryousSessionOrder();
       applyPendingOrderReset();
       applyCart(() => ({}), { skipPendingGuard: true });
       setCartOpen(true);

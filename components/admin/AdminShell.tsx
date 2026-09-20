@@ -6,14 +6,14 @@ import * as React from "react";
 import { postSelectActiveRestaurant } from "../../lib/admin/clientRestaurantSelect";
 import { publicMenuUrlFromAdmin } from "../../lib/admin/publicMenuPreviewUrl";
 import type { AdminShellBootstrap } from "../../lib/server/adminShellBootstrap";
+import { parseRestaurantPos, type RestaurantPos } from "../../lib/pos/restaurantPos";
 import { AdminNavLink } from "./AdminNavLink";
 import { AdminShellProvider } from "./AdminShellContext";
 import {
-  RESTAURANT_WORKSPACE_NAV,
   resolveRestaurantWorkspaceSection,
   restaurantWorkspaceHref,
   swapRestaurantIdInPath,
-  workspaceNavForRole,
+  workspaceNavForRestaurant,
 } from "./restaurantWorkspaceNav";
 import { AdminLanguageMenu } from "./AdminLanguageMenu";
 import { useAdminLanguage } from "./AdminLanguageProvider";
@@ -46,7 +46,7 @@ export function AdminShell({
   const searchParams = useSearchParams();
   const { t } = useAdminLanguage();
   const [me, setMe] = React.useState<MeOk | null>(bootstrap?.me ?? null);
-  const [restaurants, setRestaurants] = React.useState<{ id: string; name: string }[]>(
+  const [restaurants, setRestaurants] = React.useState<{ id: string; name: string; pos: RestaurantPos | null }[]>(
     () => bootstrap?.restaurants ?? [],
   );
   const [restaurantNameById, setRestaurantNameById] = React.useState<Record<string, string>>(
@@ -74,10 +74,16 @@ export function AdminShell({
         fetch("/api/admin/restaurants", { cache: "no-store", credentials: "same-origin" }),
       ]);
       const meJ = (await meR.json()) as MeOk | { ok: false };
-      const rJ = (await rR.json()) as { ok?: boolean; restaurants?: { id: string; name: string }[] };
+      const rJ = (await rR.json()) as {
+        ok?: boolean;
+        restaurants?: { id: string; name: string; pos?: string }[];
+      };
       if (!meR.ok || !meJ.ok) return;
       setMe(meJ);
-      const list = rR.ok && rJ.ok && rJ.restaurants ? rJ.restaurants : [];
+      const list =
+        rR.ok && rJ.ok && rJ.restaurants
+          ? rJ.restaurants.map((x) => ({ id: x.id, name: x.name, pos: parseRestaurantPos(x.pos) }))
+          : [];
       setRestaurants(list);
       setRestaurantNameById((prev) => {
         const next = { ...prev };
@@ -121,9 +127,22 @@ export function AdminShell({
     void (async () => {
       try {
         const r = await fetch(`/api/admin/restaurants/${id}`, { cache: "no-store", credentials: "same-origin" });
-        const j = (await r.json()) as { ok?: boolean; restaurant?: { name?: string } };
+        const j = (await r.json()) as { ok?: boolean; restaurant?: { name?: string; pos?: string } };
         if (cancelled || !j.ok || !j.restaurant?.name) return;
         setRestaurantNameById((prev) => ({ ...prev, [id]: j.restaurant!.name! }));
+        const pos = parseRestaurantPos(j.restaurant.pos);
+        if (pos) {
+          setRestaurants((prev) => {
+            const i = prev.findIndex((x) => x.id === id);
+            if (i >= 0) {
+              if (prev[i]!.pos === pos) return prev;
+              const next = [...prev];
+              next[i] = { ...next[i]!, pos };
+              return next;
+            }
+            return [...prev, { id, name: j.restaurant!.name!, pos }];
+          });
+        }
       } catch {
         /* ignore */
       }
@@ -157,7 +176,9 @@ export function AdminShell({
         href: restaurantWorkspaceHref(workspaceRid, "overview"),
       });
       if (section !== "overview") {
-        const navItem = RESTAURANT_WORKSPACE_NAV.find((x) => x.id === section);
+        const navItem = workspaceNavForRestaurant(isSuper, restaurants.find((r) => r.id === workspaceRid)?.pos ?? null).find(
+          (x) => x.id === section,
+        );
         const label = navItem ? t(navItem.labelKey) : section;
         items.push({ label, href: undefined });
         if (pathname.includes("/menu/translations")) {
@@ -177,6 +198,7 @@ export function AdminShell({
     workspaceName,
     section,
     pathname,
+    restaurants,
     t,
   ]);
 
@@ -280,7 +302,10 @@ export function AdminShell({
 
             {navRestaurantId ? (
               <>
-                {workspaceNavForRole(isSuper).map((item) => {
+                {workspaceNavForRestaurant(
+                  isSuper,
+                  restaurants.find((r) => r.id === navRestaurantId)?.pos ?? null,
+                ).map((item) => {
                   const href = restaurantWorkspaceHref(navRestaurantId, item.id);
                   const active =
                     inWorkspace &&

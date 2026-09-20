@@ -57,7 +57,15 @@ function payloadDeviceId(sanitized: unknown): string | null {
   return typeof d === "string" && d.trim() ? d.trim() : null;
 }
 
-type TillSyncResult = { ok: true; meta?: unknown } | { ok: false; error: string; meta?: unknown };
+function orderIdFromTillMeta(meta: unknown): string | undefined {
+  if (!meta || typeof meta !== "object" || Array.isArray(meta)) return undefined;
+  const id = (meta as Record<string, unknown>).orderId;
+  return typeof id === "string" && id.trim() ? id.trim() : undefined;
+}
+
+type TillSyncResult =
+  | { ok: true; meta?: unknown; orderId?: string }
+  | { ok: false; error: string; meta?: unknown };
 
 async function maybeSyncTill(
   eventType: string,
@@ -98,7 +106,7 @@ async function runTillSyncWithAudit(input: {
   eventType: string;
   sanitized: unknown;
   clientRequestId: string | undefined;
-}): Promise<{ ok: boolean; error?: string; source?: "storyous" | "dotykacka" } | undefined> {
+}): Promise<{ ok: boolean; error?: string; source?: "storyous" | "dotykacka"; orderId?: string } | undefined> {
   const { eventType, sanitized, clientRequestId } = input;
   const rid = payloadRestaurantId(sanitized);
   const deviceId = payloadDeviceId(sanitized);
@@ -141,8 +149,9 @@ async function runTillSyncWithAudit(input: {
       }
     }
 
+    const orderId = result.ok ? orderIdFromTillMeta(result.meta) : undefined;
     return result.ok
-      ? { ok: true, source }
+      ? { ok: true, source, ...(orderId ? { orderId } : {}) }
       : { ok: false, error: result.error, source };
   } catch (e) {
     const error = e instanceof Error ? e.message : "Sync do pokladny selhal";

@@ -1,7 +1,12 @@
 import { getStoryousConfig } from "./config";
 import { getStoryousAppCredentials } from "./env";
-import { fetchStoryousMenuTree } from "./client";
+import {
+  fetchStoryousMenuTree,
+  fetchStoryousRemainingAmounts,
+  fetchStoryousTimeBasedMenu,
+} from "./client";
 import { mapStoryousMenuTree } from "./mapMenu";
+import { applyStoryousRemainingAmounts, mapStoryousTimeBasedSections } from "./timeBasedMenu";
 import type { DotykackaMenuSection } from "../dotykacka/dotykackaMenuSections";
 
 export async function fetchStoryousProductsForMenu(
@@ -23,7 +28,17 @@ export async function fetchStoryousProductsForMenu(
   }
   try {
     const tree = await fetchStoryousMenuTree(cfg, cfg.merchantId, cfg.placeId);
-    return { ok: true, sections: mapStoryousMenuTree(tree) };
+    let sections = mapStoryousMenuTree(tree);
+    const [timeBased, remaining] = await Promise.all([
+      fetchStoryousTimeBasedMenu(cfg, cfg.merchantId, cfg.placeId),
+      fetchStoryousRemainingAmounts(cfg, cfg.merchantId, cfg.placeId),
+    ]);
+    if (timeBased) {
+      const extra = mapStoryousTimeBasedSections(timeBased, tree);
+      if (extra.length) sections = [...extra, ...sections];
+    }
+    if (remaining) sections = applyStoryousRemainingAmounts(sections, remaining);
+    return { ok: true, sections };
   } catch (e) {
     const raw = e instanceof Error ? e.message : "Nepodařilo se načíst menu ze Storyous.";
     return { ok: false, error: raw };

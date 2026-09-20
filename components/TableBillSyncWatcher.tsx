@@ -12,6 +12,12 @@ import {
 } from "../lib/client/tableBillSession";
 import { clearKioskBillPaidByXpay, peekKioskBillPaidByXpay } from "../lib/client/kioskBillClose";
 import { peekKioskSplitPayContinue } from "../lib/client/kioskSplitPay";
+import {
+  clearStoryousKioskSession,
+  setStoryousLastPaidBillId,
+  storyousLastPaidBillId,
+  storyousSessionSinceMs,
+} from "../lib/client/storyousKioskSession";
 import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
 import { resetPendingOrderConfirmedState } from "../lib/pos/pendingPosQueue";
 import { useOrders } from "./OrdersProvider";
@@ -34,6 +40,7 @@ type TableOpenBillResponse = {
   open?: boolean;
   lines?: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
   totalCzk?: number;
+  paidBill?: { billId: string; totalCzk: number; paidAtMs: number } | null;
 };
 
 function formatCzk(n: number | null | undefined) {
@@ -121,7 +128,7 @@ export function TableBillSyncWatcher() {
     if (!readyRef.current) return;
 
     const fields = posTableFieldsRef.current();
-    if (!fields.deviceId?.trim() || !/^\d+$/.test(String(fields.tableId ?? "").trim())) return;
+    if (!fields.deviceId?.trim() || !String(fields.tableId ?? "").trim()) return;
 
     try {
       const r = await fetch("/api/pos/table-open-bill", {
@@ -133,12 +140,37 @@ export function TableBillSyncWatcher() {
       const j = (await r.json()) as TableOpenBillResponse;
       if (!r.ok || !j.ok) return;
       if (j.configured === false) return;
-      if (j.liveTill === false || j.source === "storyous") return;
+      if (j.source === "storyous" || j.liveTill === false) {
+        const paid = j.paidBill;
+        const since = storyousSessionSinceMs();
+        if (
+          paid &&
+          orders.length > 0 &&
+          since > 0 &&
+          paid.paidAtMs >= since - 30_000 &&
+          paid.billId !== storyousLastPaidBillId()
+        ) {
+          setStoryousLastPaidBillId(paid.billId);
+          handledIssuedRef.current = true;
+          setIssuedPaid(true);
+          setIssuedTotal(typeof paid.totalCzk === "number" ? paid.totalCzk : lastTotalRef.current);
+          setIssuedOpen(true);
+          hadOpenBillRef.current = false;
+          lastTotalRef.current = null;
+          void resetPendingOrderConfirmedState();
+          clearOrders();
+          clearStoryousKioskSession();
+          window.setTimeout(() => {
+            window.location.href = buildKioskWelcomeUrl();
+          }, 4500);
+        }
+        return;
+      }
       applyBillSnapshot(j);
     } catch {
       /* síť — další pokus z intervalu nebo po interakci */
     }
-  }, [applyBillSnapshot, pathname]);
+  }, [applyBillSnapshot, pathname, orders.length]);
 
   const syncNowRef = React.useRef(syncNow);
   syncNowRef.current = syncNow;
@@ -158,7 +190,7 @@ export function TableBillSyncWatcher() {
     const fields = posTableFields();
     const deviceId = fields.deviceId?.trim() ?? "";
     const tableId = String(fields.tableId ?? "").trim();
-    if (!deviceId || !/^\d+$/.test(tableId)) return;
+    if (!deviceId || !tableId) return;
 
     const cached = loadTableBillSession({ deviceId, tableId });
     if (cached) syncTableBillFromDotykacka(cached);
