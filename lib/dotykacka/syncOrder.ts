@@ -19,6 +19,7 @@ import {
   resolveBillRequestProductId,
 } from "./billRequestProduct";
 import { groupSplitItemsByOrder, type XpaySplitItem } from "./splitBill";
+import { findRecentPaidOrderId, writeDotykackaPaidTip } from "./recordPaidTip";
 import {
   DOTYKACKA_STAFF_CALL_PRINT_TAG,
   DOTYKACKA_STAFF_CALL_PRODUCT_MAP_KEY,
@@ -972,12 +973,45 @@ export async function syncXpayPaidToDotykacka(input: {
   if (!listed.ok) {
     return { ok: false, error: listed.message, meta: { tableId: input.tableId, action: "xpay_pay_list" } };
   }
+
+  const tip = typeof input.tipAmountCzk === "number" && input.tipAmountCzk > 0 ? Math.round(input.tipAmountCzk) : 0;
+  const split = input.splitItems && input.splitItems.length > 0 ? input.splitItems : null;
+
+  const persistTip = async (orderId: number, tipAmount: number): Promise<string | null> => {
+    if (tipAmount < 1) return null;
+    return writeDotykackaPaidTip({
+      cfg: input.cfg,
+      accessToken,
+      orderId,
+      tipAmountCzk: tipAmount,
+    });
+  };
+
   if (listed.orders.length === 0) {
+    if (tip > 0) {
+      const orderId = await findRecentPaidOrderId({
+        cfg: input.cfg,
+        accessToken,
+        tableId: input.tableId,
+      });
+      if (!orderId) {
+        return {
+          ok: false,
+          error: "Účet v Dotykačce je už zavřený, ale spropitné se nepodařilo dohledat k zápisu.",
+          meta: { tableId: input.tableId, action: "xpay_tip" },
+        };
+      }
+      const tipErr = await persistTip(orderId, tip);
+      if (tipErr) {
+        return {
+          ok: false,
+          error: `Platba prošla, ale spropitné se do Dotykačky nezapsalo: ${tipErr}`,
+          meta: { tableId: input.tableId, action: "xpay_tip" },
+        };
+      }
+    }
     return { ok: true, meta: { tableId: input.tableId, action: "xpay_pay_already_closed" } };
   }
-
-  const tip = typeof input.tipAmountCzk === "number" && input.tipAmountCzk > 0 ? input.tipAmountCzk : 0;
-  const split = input.splitItems && input.splitItems.length > 0 ? input.splitItems : null;
 
   if (split) {
     const grouped = groupSplitItemsByOrder(split);
@@ -1011,12 +1045,19 @@ export async function syncXpayPaidToDotykacka(input: {
         break;
       }
       if (!paid) errors.push(`účet ${orderId}: ${lastErr || "split-pay selhal"}`);
+      else {
+        const tipErr = await persistTip(orderId, tipForThis);
+        if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);
+      }
     }
     if (errors.length > 0) {
+      const onlyTip = errors.every((e) => e.includes("spropitné"));
       return {
         ok: false,
-        error: `Platba v XPay prošla, ale Dotykačka neodřízla položky: ${errors.join("; ")}`,
-        meta: { tableId: input.tableId, action: "xpay_split_pay" },
+        error: onlyTip
+          ? `Platba prošla, ale spropitné se do Dotykačky nezapsalo: ${errors.join("; ")}`
+          : `Platba v XPay prošla, ale Dotykačka neodřízla položky: ${errors.join("; ")}`,
+        meta: { tableId: input.tableId, action: onlyTip ? "xpay_tip" : "xpay_split_pay" },
       };
     }
     return { ok: true, meta: { tableId: input.tableId, action: "xpay_split_pay" } };
@@ -1061,6 +1102,10 @@ export async function syncXpayPaidToDotykacka(input: {
       break;
     }
     if (!paid) errors.push(`účet ${orderId}: ${lastErr || "pay selhal"}`);
+    else {
+      const tipErr = await persistTip(orderId, tipForThis);
+      if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);
+    }
   }
 
   const verify = await listOpenDotykackaOrdersForTable(input.cfg, accessToken, input.tableId);
@@ -1081,10 +1126,13 @@ export async function syncXpayPaidToDotykacka(input: {
   }
 
   if (errors.length > 0) {
+    const onlyTip = errors.every((e) => e.includes("spropitné"));
     return {
       ok: false,
-      error: `Platba v XPay prošla, ale Dotykačka účet neuzavřela: ${errors.join("; ")}`,
-      meta: { tableId: input.tableId, action: "xpay_pay" },
+      error: onlyTip
+        ? `Platba prošla a účet se uzavřel, ale spropitné se do Dotykačky nezapsalo: ${errors.join("; ")}`
+        : `Platba v XPay prošla, ale Dotykačka účet neuzavřela: ${errors.join("; ")}`,
+      meta: { tableId: input.tableId, action: onlyTip ? "xpay_tip" : "xpay_pay" },
     };
   }
   return { ok: true, meta: { tableId: input.tableId, action: "xpay_pay" } };
