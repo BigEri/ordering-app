@@ -53,6 +53,7 @@ type DeviceConfigJson = {
     tableLabel: string;
     restaurantId?: string | null;
     restaurantName?: string | null;
+    pos?: "dotykacka" | "storyous" | null;
     deviceSecret?: string | null;
   } | null;
   reloadNonce?: number;
@@ -378,6 +379,8 @@ type DeviceTableContextValue = {
   posTableFields: () => { tableId: string; tableLabel: string; deviceId: string; restaurantId?: string | null };
   /** Název provozovny z vazby tabletu (ne výchozí PUBLIC_RESTAURANT_ID). */
   restaurantName: string | null;
+  /** Pokladna provozovny z vazby tabletu — karta na Storyous jde jen jako žádost o účet. */
+  tillSource: "dotykacka" | "storyous" | null;
 };
 
 const DeviceTableContext = React.createContext<DeviceTableContextValue | null>(null);
@@ -392,6 +395,7 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
   /** Veřejné menu: ID provozovny pro POS API (per-tenant Dotykačka). */
   const [menuRestaurantId, setMenuRestaurantId] = React.useState<string | null>(null);
   const [boundRestaurantName, setBoundRestaurantName] = React.useState<string | null>(null);
+  const [tillSource, setTillSource] = React.useState<"dotykacka" | "storyous" | null>(null);
   const [pairingCode, setPairingCode] = React.useState<string | null>(null);
   const [pairingExpiresAtIso, setPairingExpiresAtIso] = React.useState<string | null>(null);
   const [needsPairing, setNeedsPairing] = React.useState(false);
@@ -403,14 +407,17 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
     tableLabel: string;
     restaurantId?: string | null;
     restaurantName?: string | null;
+    pos?: "dotykacka" | "storyous" | null;
     deviceSecret?: string | null;
   } | null;
 
   const applyRestaurantFromBinding = React.useCallback((binding: ConfigBinding) => {
     const rid = binding?.restaurantId?.trim() || null;
     const name = binding?.restaurantName?.trim() || null;
+    const pos = binding?.pos === "storyous" || binding?.pos === "dotykacka" ? binding.pos : null;
     setMenuRestaurantId(rid);
     setBoundRestaurantName(name);
+    setTillSource(pos);
   }, []);
 
   const applyDeviceSecret = React.useCallback((secret: string | null | undefined) => {
@@ -708,8 +715,9 @@ export function DeviceTableProvider({ children }: { children: React.ReactNode })
       needsPairing,
       posTableFields,
       restaurantName: boundRestaurantName,
+      tillSource,
     }),
-    [deviceId, tableId, tableLabel, ready, pairingCode, pairingExpiresAtIso, needsPairing, posTableFields, boundRestaurantName],
+    [deviceId, tableId, tableLabel, ready, pairingCode, pairingExpiresAtIso, needsPairing, posTableFields, boundRestaurantName, tillSource],
   );
 
   return <DeviceTableContext.Provider value={value}>{children}</DeviceTableContext.Provider>;
@@ -725,6 +733,7 @@ const POS_TABLE_FIELDS_FALLBACK: DeviceTableContextValue = {
   pairingExpiresAtIso: null,
   needsPairing: false,
   restaurantName: null,
+  tillSource: null,
   posTableFields: () => ({ tableId: "1", tableLabel: "Stůl 1", deviceId: "", restaurantId: null }),
 };
 
