@@ -141,10 +141,29 @@ export function XpayQrDialog({
     if (!isSplit) {
       markKioskBillPaidByXpay();
       clearOrdersRef.current();
-      const id = window.setTimeout(() => {
-        goWelcome();
-      }, 4500);
-      return () => window.clearTimeout(id);
+      let cancelled = false;
+      let welcomeTimer = 0;
+      const run = async () => {
+        for (let i = 0; i < 6 && !cancelled; i += 1) {
+          const r = await postPosJsonData<XpayKioskPayment>("/api/pos/xpay/status", {
+            ...tableFieldsRef.current,
+            paymentId: current.paymentId,
+          });
+          if (cancelled) return;
+          if (r.ok && r.data.tillSettled) {
+            setTillError(null);
+            break;
+          }
+          if (r.ok && r.data.tillError && i >= 4) setTillError(r.data.tillError);
+          await waitMs(700);
+        }
+        if (!cancelled) welcomeTimer = window.setTimeout(() => goWelcome(), 1200);
+      };
+      void run();
+      return () => {
+        cancelled = true;
+        window.clearTimeout(welcomeTimer);
+      };
     }
 
     let cancelled = false;
@@ -159,8 +178,15 @@ export function XpayQrDialog({
         if (cancelled) return;
         if (r.ok) {
           setCurrent((prev) => ({ ...prev, ...r.data, split: true }));
-          if (r.data.tillError) setTillError(r.data.tillError);
-          if (r.data.tillSettled || r.data.tillError) break;
+          if (r.data.tillSettled) {
+            setTillError(null);
+            break;
+          }
+          const tipStillOpen = Boolean(r.data.tillError?.includes("spropitné"));
+          if (r.data.tillError && (!tipStillOpen || i >= 5)) {
+            setTillError(r.data.tillError);
+            break;
+          }
         }
         await waitMs(800);
       }

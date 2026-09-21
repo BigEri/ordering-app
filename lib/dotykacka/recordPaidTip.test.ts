@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { pickMoneyLogForTip, pickRecentPaidOrderId } from "./recordPaidTip";
+import { orderIdFromPosPayData, pickMoneyLogForTip, pickRecentPaidOrderId } from "./recordPaidTip";
 
 describe("pickMoneyLogForTip", () => {
   it("picks the sale payment for the order", () => {
@@ -25,6 +25,28 @@ describe("pickMoneyLogForTip", () => {
         10,
       ),
     ).toEqual({ id: 8, tipAmount: 15 });
+  });
+
+  it("reads orderId when the cloud omits _orderId", () => {
+    expect(pickMoneyLogForTip([{ id: 3, orderId: 10, transactionType: "SALE", tipAmount: 0 }], 10)).toEqual({
+      id: 3,
+      tipAmount: 0,
+    });
+  });
+});
+
+describe("orderIdFromPosPayData", () => {
+  it("reads the paid order from a pos-action response", () => {
+    expect(orderIdFromPosPayData({ order: { id: 44, paid: true } })).toBe(44);
+  });
+
+  it("prefers the newly paid split order over the original open bill", () => {
+    expect(
+      orderIdFromPosPayData({
+        order: { id: 10, paid: false },
+        orders: [{ order: { id: 10, paid: false } }, { order: { id: 81, paid: true } }],
+      }),
+    ).toBe(81);
   });
 });
 

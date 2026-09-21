@@ -19,7 +19,7 @@ import {
   resolveBillRequestProductId,
 } from "./billRequestProduct";
 import { groupSplitItemsByOrder, type XpaySplitItem } from "./splitBill";
-import { findRecentPaidOrderId, writeDotykackaPaidTip } from "./recordPaidTip";
+import { findRecentPaidOrderId, orderIdFromPosPayData, primeDotykackaOrderTip, writeDotykackaPaidTip } from "./recordPaidTip";
 import {
   DOTYKACKA_STAFF_CALL_PRINT_TAG,
   DOTYKACKA_STAFF_CALL_PRODUCT_MAP_KEY,
@@ -1022,6 +1022,7 @@ export async function syncXpayPaidToDotykacka(input: {
       groupIndex += 1;
       const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
       let paid = false;
+      let paidData: unknown = null;
       let lastErr = "";
       for (const methodId of methods) {
         const posted = await postDotykackaPosAction(input.cfg, accessToken, {
@@ -1042,11 +1043,13 @@ export async function syncXpayPaidToDotykacka(input: {
           continue;
         }
         paid = true;
+        paidData = posted.data;
         break;
       }
       if (!paid) errors.push(`účet ${orderId}: ${lastErr || "split-pay selhal"}`);
       else {
-        const tipErr = await persistTip(orderId, tipForThis);
+        const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
+        const tipErr = await persistTip(tipOrderId, tipForThis);
         if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);
       }
     }
@@ -1068,6 +1071,14 @@ export async function syncXpayPaidToDotykacka(input: {
   for (let i = 0; i < listed.orders.length; i++) {
     const orderId = listed.orders[i]!.orderId;
     const tipForThis = i === 0 ? tip : 0;
+    if (tipForThis > 0) {
+      await primeDotykackaOrderTip({
+        cfg: input.cfg,
+        accessToken,
+        orderId,
+        tipAmountCzk: tipForThis,
+      });
+    }
     const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
     const variants: Record<string, unknown>[] = [];
     for (const methodId of methods) {
@@ -1086,6 +1097,7 @@ export async function syncXpayPaidToDotykacka(input: {
     }
 
     let paid = false;
+    let paidData: unknown = null;
     let lastErr = "";
     for (const body of variants) {
       const posted = await postDotykackaPosAction(input.cfg, accessToken, body);
@@ -1099,11 +1111,13 @@ export async function syncXpayPaidToDotykacka(input: {
         continue;
       }
       paid = true;
+      paidData = posted.data;
       break;
     }
     if (!paid) errors.push(`účet ${orderId}: ${lastErr || "pay selhal"}`);
     else {
-      const tipErr = await persistTip(orderId, tipForThis);
+      const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
+      const tipErr = await persistTip(tipOrderId, tipForThis);
       if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);
     }
   }
