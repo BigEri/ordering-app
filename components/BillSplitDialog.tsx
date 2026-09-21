@@ -142,17 +142,21 @@ export function BillSplitDialog({
             {t("bill.tip")}
           </span>
           <div className="billTipChips" role="group" aria-labelledby="bill-split-tip-label">
-            {([0, 5, 10, 15] as const).map((pct) => (
-              <button
-                key={pct}
-                type="button"
-                className={`chip billTipChip ${tipPct === pct ? "chipActive billTipChip--active" : ""}`}
-                onClick={() => onTipPct(pct)}
-                style={{ cursor: "pointer" }}
-              >
-                {pct} %
-              </button>
-            ))}
+            {([0, 5, 10, 15] as const).map((pct) => {
+              const amount = Math.round((selectedTotal * pct) / 100);
+              return (
+                <button
+                  key={pct}
+                  type="button"
+                  className={`chip billTipChip ${tipPct === pct ? "chipActive billTipChip--active" : ""}`}
+                  onClick={() => onTipPct(pct)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <span>{pct} %</span>
+                  <span className="billTipChipAmount">{formatCzk(amount)}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 

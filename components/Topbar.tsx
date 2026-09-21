@@ -31,7 +31,7 @@ type TopbarProps = {
 
 export function Topbar({ previewMode = false }: TopbarProps) {
   const { t, locale } = useLanguage();
-  const { posTableFields } = usePosTableFields();
+  const { posTableFields, tillSource } = usePosTableFields();
   const { orders } = useOrders();
   const [open, setOpen] = React.useState(false);
   const [callStaffOpen, setCallStaffOpen] = React.useState(false);
@@ -83,6 +83,8 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   }, [orders]);
 
   const canSplitCard = pickLines.length > 1 || pickLines.some((l) => l.qty > 1);
+  const kioskCardPay = tillSource !== "storyous";
+  const showCardSplit = kioskCardPay && canSplitCard;
 
   const selectedItemsTotal = React.useMemo(() => {
     if (billPaymentMethod !== "CARD" || cardShare !== "separate") return ordersTotal;
@@ -229,6 +231,10 @@ export function Topbar({ previewMode = false }: TopbarProps) {
   }, [topbarError, sendStaffCall, openBillRequest, previewMode]);
 
   React.useEffect(() => {
+    if (tillSource === "storyous") setCardShare("together");
+  }, [tillSource]);
+
+  React.useEffect(() => {
     if (!billOpen) {
       setBillPayErrorKey(null);
       setBillPayErrorDetail(null);
@@ -253,8 +259,9 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     }
     setBillPayLoading(true);
     try {
-      if (billPaymentMethod === "CARD") {
-        if (cardShare === "separate" && selectedItemsTotal < 1) {
+      const useSplit = kioskCardPay && billPaymentMethod === "CARD" && cardShare === "separate";
+      if (billPaymentMethod === "CARD" && kioskCardPay) {
+        if (useSplit && selectedItemsTotal < 1) {
           setBillPayErrorKey("bill.split.needItems");
           return;
         }
@@ -265,7 +272,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
           tipAmount,
           billTotal,
           locale,
-          ...(billPaymentMethod === "CARD" && cardShare === "separate"
+          ...(useSplit
             ? {
                 splitItems: pickLines
                   .filter((l) => (pickedQty[l.key] ?? 0) > 0)
@@ -348,6 +355,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     posTableFields,
     previewMode,
     locale,
+    kioskCardPay,
   ]);
 
   return (
@@ -454,7 +462,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
         </div>
       ) : null}
 
-      {billOpen && !(billPaymentMethod === "CARD" && cardShare === "separate" && canSplitCard) ? (
+      {billOpen && !(billPaymentMethod === "CARD" && cardShare === "separate" && showCardSplit) ? (
         <div
           role="dialog"
           aria-modal="true"
@@ -523,17 +531,21 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                   role="group"
                   aria-labelledby="bill-tip-label"
                 >
-                  {([0, 5, 10, 15] as const).map((pct) => (
-                    <button
-                      key={pct}
-                      type="button"
-                      className={`chip billTipChip ${tipPct === pct ? "chipActive billTipChip--active" : ""}`}
-                      onClick={() => setTipPct(pct)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {pct} %
-                    </button>
-                  ))}
+                  {([0, 5, 10, 15] as const).map((pct) => {
+                    const amount = Math.round((selectedItemsTotal * pct) / 100);
+                    return (
+                      <button
+                        key={pct}
+                        type="button"
+                        className={`chip billTipChip ${tipPct === pct ? "chipActive billTipChip--active" : ""}`}
+                        onClick={() => setTipPct(pct)}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <span>{pct} %</span>
+                        <span className="billTipChipAmount">{formatCzk(amount)}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -558,7 +570,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                   ))}
                 </div>
               </div>
-              {billPaymentMethod === "CARD" && canSplitCard ? (
+              {billPaymentMethod === "CARD" && showCardSplit ? (
                 <div className="billTipBlock">
                   <span className="billTipLabel" id="bill-share-label">
                     {t("bill.split.who")}
@@ -590,7 +602,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                 </div>
               ) : null}
               <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <span className="textMuted">{t("bill.tipAmount")}</span>
+                <span className="textMuted">{t("bill.tip")}</span>
                 <strong style={{ fontVariantNumeric: "tabular-nums" }}>{formatCzk(tipAmount)}</strong>
               </div>
             </div>
@@ -659,7 +671,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
         </div>
       ) : null}
 
-      {billOpen && billPaymentMethod === "CARD" && cardShare === "separate" && canSplitCard ? (
+      {billOpen && billPaymentMethod === "CARD" && cardShare === "separate" && showCardSplit ? (
         <BillSplitDialog
           pickLines={pickLines}
           pickedQty={pickedQty}
