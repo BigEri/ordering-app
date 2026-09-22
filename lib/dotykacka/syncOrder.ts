@@ -1034,12 +1034,17 @@ export async function syncXpayPaidToDotykacka(input: {
     if (tipAmount < 1) return false;
     const productId = await resolveDotykackaTipProductId(input.cfg, accessToken);
     if (productId == null) return false;
-    const posted = await postDotykackaPosAction(input.cfg, accessToken, {
-      action: "order/add-item",
-      "order-id": orderId,
-      items: [tipLineItem(productId, tipAmount)],
-    });
-    return posted.ok && posActionSucceeded(posted.data);
+    const item = tipLineItem(productId, tipAmount);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const posted = await postDotykackaPosAction(input.cfg, accessToken, {
+        action: "order/add-item",
+        "order-id": orderId,
+        items: [item],
+      });
+      if (posted.ok && posActionSucceeded(posted.data)) return true;
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+    }
+    return false;
   };
 
   if (listed.orders.length === 0) {

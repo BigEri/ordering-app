@@ -27,16 +27,61 @@ function orderIdOf(row: Record<string, unknown>): number | null {
 }
 
 const TIP_PRODUCT_NAMES = new Set(["spropitné", "spropitne", "dýško", "dysko"]);
+const TIP_PRODUCT_EXTERNAL_ID = "tableflow-tip";
+
+function externalIdsOf(row: Record<string, unknown>): string[] {
+  const ids: string[] = [];
+  if (typeof row.externalId === "string" && row.externalId.trim()) ids.push(row.externalId.trim());
+  if (Array.isArray(row.externalIds)) {
+    for (const id of row.externalIds) {
+      if (typeof id === "string" && id.trim()) ids.push(id.trim());
+    }
+  }
+  return ids;
+}
 
 export function pickTipProductId(rows: unknown[]): number | null {
+  let byName: number | null = null;
   for (const row of rows) {
     if (!isRecord(row)) continue;
-    const name = typeof row.name === "string" ? row.name.trim().toLowerCase() : "";
-    if (!TIP_PRODUCT_NAMES.has(name)) continue;
     const id = asId(row.id);
-    if (id != null) return id;
+    if (id == null) continue;
+    if (externalIdsOf(row).includes(TIP_PRODUCT_EXTERNAL_ID)) return id;
+    const name = typeof row.name === "string" ? row.name.trim().toLowerCase() : "";
+    if (TIP_PRODUCT_NAMES.has(name) && byName == null) byName = id;
   }
-  return null;
+  return byName;
+}
+
+/** Skrytá položka, kterou pokladna umí prodat. `order/pay` kolonku spropitného nemá. */
+export function tipProductCreateBody(sample: Record<string, unknown>): Record<string, unknown> | null {
+  const categoryId = asId(sample._categoryId);
+  const vat = asAmount(sample.vat);
+  const unit = typeof sample.unit === "string" ? sample.unit.trim() : "";
+  if (categoryId == null || vat < 1 || !unit) return null;
+  return {
+    _categoryId: categoryId,
+    name: "Spropitné",
+    externalId: TIP_PRODUCT_EXTERNAL_ID,
+    externalIds: [TIP_PRODUCT_EXTERNAL_ID],
+    deleted: false,
+    display: false,
+    discountPercent: 0,
+    discountPermitted: false,
+    flags: 4,
+    hexColor: "#888888",
+    onSale: false,
+    packaging: 1,
+    points: 0,
+    priceWithoutVat: 0,
+    priceWithVat: 0,
+    requiresPriceEntry: true,
+    stockDeduct: false,
+    stockOverdraft: "ALLOW",
+    unit,
+    vat,
+    tags: ["oa-tip"],
+  };
 }
 
 /** Řádek, který zvedne součet účtu o spropitné dřív, než ho pokladna zavře. */
@@ -233,17 +278,55 @@ export async function resolveDotykackaTipProductId(
     if (Number.isFinite(envId) && envId !== 0) return envId;
   }
   const cached = tipProductByCloud.get(cfg.cloudId);
-  if (cached !== undefined) return cached;
-  let found: number | null = null;
+  if (cached != null) return cached;
+  const filters = [
+    `externalId|eq|${TIP_PRODUCT_EXTERNAL_ID}`,
+    "name|eq|Spropitné",
+    "name|eq|Dýško",
+  ];
+  for (const filter of filters) {
+    const listed = await cloudFetch(
+      cfg,
+      accessToken,
+      `/products?page=1&limit=20&filter=${encodeURIComponent(filter)}`,
+    );
+    if (!listed.ok) continue;
+    const found = pickTipProductId(rowsFromList(listed.json));
+    if (found != null) {
+      tipProductByCloud.set(cfg.cloudId, found);
+      return found;
+    }
+  }
+  let scanned: number | null = null;
   for (let page = 1; page <= 6; page += 1) {
     const listed = await cloudFetch(cfg, accessToken, `/products?page=${page}&limit=100`);
     if (!listed.ok) break;
     const rows = rowsFromList(listed.json);
-    found = pickTipProductId(rows);
-    if (found != null || rows.length < 100) break;
+    scanned = pickTipProductId(rows);
+    if (scanned != null || rows.length < 100) break;
   }
-  tipProductByCloud.set(cfg.cloudId, found);
-  return found;
+  if (scanned != null) {
+    tipProductByCloud.set(cfg.cloudId, scanned);
+    return scanned;
+  }
+  const created = await createDotykackaTipProduct(cfg, accessToken);
+  if (created != null) tipProductByCloud.set(cfg.cloudId, created);
+  return created;
+}
+
+async function createDotykackaTipProduct(
+  cfg: Pick<DotykackaConfig, "apiBase" | "cloudId">,
+  accessToken: string,
+): Promise<number | null> {
+  const sampleList = await cloudFetch(cfg, accessToken, "/products?page=1&limit=1");
+  if (!sampleList.ok) return null;
+  const sample = rowsFromList(sampleList.json)[0];
+  if (!sample) return null;
+  const body = tipProductCreateBody(sample);
+  if (!body) return null;
+  const posted = await cloudFetch(cfg, accessToken, "/products", { method: "POST", body: [body] });
+  if (!posted.ok) return null;
+  return pickTipProductId(rowsFromList(posted.json)) ?? asId(entityBody(posted.json)?.id);
 }
 
 /** Očekávané spropitné na ještě otevřeném účtu, než ho pokladna uzavře. */

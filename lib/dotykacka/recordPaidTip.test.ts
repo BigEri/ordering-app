@@ -6,6 +6,7 @@ import {
   pickMoneyLogForTip,
   pickRecentPaidOrderId,
   pickTipProductId,
+  tipProductCreateBody,
   posOrderTipBody,
   posPayWithTip,
   recentPaidOrdersPath,
@@ -63,7 +64,20 @@ describe("orderIdFromPosPayData", () => {
 describe("tip line", () => {
   it("uses a Spropitné product so the closed bill matches the card", () => {
     expect(pickTipProductId([{ id: 9, name: "Pivo" }, { id: 4, name: "Spropitné" }])).toBe(4);
+    expect(pickTipProductId([{ id: 8, name: "Pivo", externalId: "tableflow-tip" }])).toBe(8);
     expect(tipLineItem(4, 42)).toMatchObject({ id: 4, "manual-price": 42, note: "Spropitné" });
+    expect(
+      tipProductCreateBody({ _categoryId: 3, vat: 1.12, unit: "Pieces" }),
+    ).toMatchObject({
+      _categoryId: 3,
+      name: "Spropitné",
+      externalId: "tableflow-tip",
+      display: false,
+      vat: 1.12,
+      unit: "Pieces",
+      priceWithVat: 0,
+    });
+    expect(tipProductCreateBody({ _categoryId: 3, vat: 0, unit: "Pieces" })).toBeNull();
   });
 });
 
