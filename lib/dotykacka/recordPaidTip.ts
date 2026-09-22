@@ -26,6 +26,44 @@ function orderIdOf(row: Record<string, unknown>): number | null {
   return asId(row._orderId) ?? asId(row.orderId);
 }
 
+const TIP_PRODUCT_NAMES = new Set(["spropitné", "spropitne", "tip"]);
+
+export function pickTipProductId(rows: unknown[]): number | null {
+  for (const row of rows) {
+    if (!isRecord(row)) continue;
+    const name = typeof row.name === "string" ? row.name.trim().toLowerCase() : "";
+    if (!TIP_PRODUCT_NAMES.has(name)) continue;
+    const id = asId(row.id);
+    if (id != null) return id;
+  }
+  return null;
+}
+
+/** Řádek, který zvedne součet účtu o spropitné. Dotykačka po zaplacení částku platby už nezmění. */
+export function tipLineItem(productId: number, tipCzk: number): {
+  id: number;
+  qty: number;
+  "manual-price": number;
+  note: string;
+  tags: string[];
+} {
+  return { id: productId, qty: 1, "manual-price": tipCzk, note: "Spropitné", tags: ["oa-tip"] };
+}
+
+export function orderAlreadyHasTipLine(items: unknown[], tipCzk: number): boolean {
+  return items.some((item) => {
+    if (!isRecord(item)) return false;
+    const tags = Array.isArray(item.tags) ? item.tags : [];
+    if (tags.some((tag) => tag === "oa-tip")) return true;
+    const note = typeof item.note === "string" ? item.note.trim().toLowerCase() : "";
+    const name = typeof item.name === "string" ? item.name.trim().toLowerCase() : "";
+    if (note !== "spropitné" && !TIP_PRODUCT_NAMES.has(name)) return false;
+    if (tipCzk < 1) return true;
+    const price = asAmount(item["manual-price"] ?? item.manualPrice ?? item["price-with-vat"] ?? item.priceWithVat);
+    return price === 0 || Math.round(price) === tipCzk;
+  });
+}
+
 /** Platba (SALE) k účtu, kam se má zapsat spropitné. */
 export function pickMoneyLogForTip(rows: unknown[], orderId: number): { id: number; tipAmount: number } | null {
   const matches = rows.filter(isRecord).filter((row) => orderIdOf(row) === orderId);
@@ -98,11 +136,25 @@ function isHardTipFailure(detail: string): boolean {
 }
 
 function apiDetail(status: number, json: unknown): string {
-  if (isRecord(json) && typeof json.message === "string" && json.message.trim()) {
-    return `${status}: ${json.message.trim().slice(0, 180)}`;
-  }
-  if (typeof json === "string" && json.trim()) return `${status}: ${json.trim().slice(0, 180)}`;
-  return String(status);
+  const message =
+    isRecord(json) && typeof json.message === "string" && json.message.trim()
+      ? json.message.trim()
+      : typeof json === "string" && json.trim()
+        ? json.trim()
+        : "";
+  const violations = isRecord(json) && Array.isArray(json.violations) ? json.violations : [];
+  const extra = violations
+    .map((row) => {
+      if (!isRecord(row)) return "";
+      const field = typeof row.field === "string" ? row.field : typeof row.property === "string" ? row.property : "";
+      const text = typeof row.message === "string" ? row.message : "";
+      return [field, text].filter(Boolean).join(" ");
+    })
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("; ");
+  const body = [message, extra].filter(Boolean).join(" — ").slice(0, 220);
+  return body ? `${status}: ${body}` : String(status);
 }
 
 function entityBody(json: unknown): Record<string, unknown> | null {
@@ -173,6 +225,34 @@ async function writeEntityTip(
   return { ok: false, detail: "tip se po zápisu nepropsal" };
 }
 
+const tipProductByCloud = new Map<number, number | null>();
+
+/** Položka Spropitné v katalogu. Bez ní jde na účet jen jídlo a spropitné se po zaplacení už nezapíše. */
+export async function resolveDotykackaTipProductId(
+  cfg: Pick<DotykackaConfig, "apiBase" | "cloudId"> & { productMap?: Record<string, number> },
+  accessToken: string,
+): Promise<number | null> {
+  const mapped = cfg.productMap?.["oa-tip"];
+  if (typeof mapped === "number" && Number.isFinite(mapped) && mapped !== 0) return mapped;
+  const envRaw = process.env.DOTYKACKA_TIP_PRODUCT_ID?.trim();
+  if (envRaw) {
+    const envId = Number(envRaw);
+    if (Number.isFinite(envId) && envId !== 0) return envId;
+  }
+  const cached = tipProductByCloud.get(cfg.cloudId);
+  if (cached !== undefined) return cached;
+  let found: number | null = null;
+  for (let page = 1; page <= 6; page += 1) {
+    const listed = await cloudFetch(cfg, accessToken, `/products?page=${page}&limit=100`);
+    if (!listed.ok) break;
+    const rows = rowsFromList(listed.json);
+    found = pickTipProductId(rows);
+    if (found != null || rows.length < 100) break;
+  }
+  tipProductByCloud.set(cfg.cloudId, found);
+  return found;
+}
+
 /** Očekávané spropitné na ještě otevřeném účtu, než ho pokladna uzavře. */
 export async function primeDotykackaOrderTip(input: {
   cfg: Pick<DotykackaConfig, "apiBase" | "cloudId">;
@@ -210,11 +290,7 @@ export async function writeDotykackaPaidTip(input: {
     );
     if (!orderWrite.ok) lastErr = `Dotykačka účet tip ${orderWrite.detail}`;
 
-    const listed = await cloudFetch(
-      input.cfg,
-      input.accessToken,
-      `/money-logs?limit=20&sort=-id&filter=${encodeURIComponent(`_orderId|eq|${input.orderId}`)}`,
-    );
+    const listed = await cloudFetch(input.cfg, input.accessToken, moneyLogsForOrderPath(input.orderId));
     if (!listed.ok) {
       lastErr = `Dotykačka money-logs ${apiDetail(listed.status, listed.json)}`;
       permanent = listed.status === 403 || listed.status === 401;
@@ -238,6 +314,11 @@ export async function writeDotykackaPaidTip(input: {
     await new Promise((r) => setTimeout(r, 800));
   }
   return lastErr;
+}
+
+/** Platby k účtu. Řazení podle `id` API odmítne. */
+export function moneyLogsForOrderPath(orderId: number): string {
+  return `/money-logs?page=1&limit=20&filter=${encodeURIComponent(`_orderId|eq|${orderId}`)}`;
 }
 
 /** `id` u účtů nejde řadit (API vrátí 400). Bereme nejnovější podle versionDate. */

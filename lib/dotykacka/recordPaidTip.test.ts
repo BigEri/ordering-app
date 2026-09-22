@@ -1,6 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { orderIdFromPosPayData, pickMoneyLogForTip, pickRecentPaidOrderId, recentPaidOrdersPath } from "./recordPaidTip";
+import {
+  moneyLogsForOrderPath,
+  orderAlreadyHasTipLine,
+  orderIdFromPosPayData,
+  pickMoneyLogForTip,
+  pickRecentPaidOrderId,
+  pickTipProductId,
+  recentPaidOrdersPath,
+  tipLineItem,
+} from "./recordPaidTip";
 
 describe("pickMoneyLogForTip", () => {
   it("picks the sale payment for the order", () => {
@@ -47,6 +56,27 @@ describe("orderIdFromPosPayData", () => {
         orders: [{ order: { id: 10, paid: false } }, { order: { id: 81, paid: true } }],
       }),
     ).toBe(81);
+  });
+});
+
+describe("tip line", () => {
+  it("finds a Spropitné product and builds a line for the missing amount", () => {
+    expect(pickTipProductId([{ id: 9, name: "Pivo" }, { id: 4, name: "Spropitné" }])).toBe(4);
+    expect(tipLineItem(4, 42)).toMatchObject({ id: 4, qty: 1, "manual-price": 42, note: "Spropitné" });
+  });
+
+  it("does not add the tip line twice", () => {
+    expect(orderAlreadyHasTipLine([{ name: "Spropitné", "manual-price": 42 }], 42)).toBe(true);
+    expect(orderAlreadyHasTipLine([{ name: "Burger", "price-with-vat": 189 }], 42)).toBe(false);
+  });
+});
+
+describe("moneyLogsForOrderPath", () => {
+  it("does not sort by id, because Dotykačka rejects that", () => {
+    const path = moneyLogsForOrderPath(81);
+    expect(path).toContain("page=1");
+    expect(path).toContain("_orderId%7Ceq%7C81");
+    expect(path).not.toContain("sort=");
   });
 });
 

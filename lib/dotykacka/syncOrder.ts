@@ -21,7 +21,15 @@ import {
   resolveBillRequestProductId,
 } from "./billRequestProduct";
 import { groupSplitItemsByOrder, type XpaySplitItem } from "./splitBill";
-import { findRecentPaidOrderId, orderIdFromPosPayData, primeDotykackaOrderTip, writeDotykackaPaidTip } from "./recordPaidTip";
+import {
+  findRecentPaidOrderId,
+  orderAlreadyHasTipLine,
+  orderIdFromPosPayData,
+  primeDotykackaOrderTip,
+  resolveDotykackaTipProductId,
+  tipLineItem,
+  writeDotykackaPaidTip,
+} from "./recordPaidTip";
 import {
   DOTYKACKA_STAFF_CALL_PRINT_TAG,
   DOTYKACKA_STAFF_CALL_PRODUCT_MAP_KEY,
@@ -266,7 +274,7 @@ function orderIdFromPos(order: Record<string, unknown>): number | undefined {
   return undefined;
 }
 
-type ListedOrder = { orderId: number; externalId?: string; note?: unknown };
+type ListedOrder = { orderId: number; externalId?: string; note?: unknown; hasTipLine: boolean };
 
 function parseOpenOrdersFromPosListData(data: unknown): ListedOrder[] | null {
   if (!data || typeof data !== "object") return null;
@@ -279,14 +287,19 @@ function parseOpenOrdersFromPosListData(data: unknown): ListedOrder[] | null {
   const out: ListedOrder[] = [];
   for (const row of orders) {
     if (!row || typeof row !== "object") continue;
-    const wrap = row as { order?: unknown };
+    const wrap = row as { order?: unknown; items?: unknown };
     const ord = wrap.order;
     if (!ord || typeof ord !== "object") continue;
     const o = ord as Record<string, unknown>;
     if (!isDotykackaOrderOpenForMerge(o)) continue;
     const id = orderIdFromPos(o);
     if (id === undefined) continue;
-    out.push({ orderId: id, externalId: orderExternalIdFromPos(o), note: o.note });
+    out.push({
+      orderId: id,
+      externalId: orderExternalIdFromPos(o),
+      note: o.note,
+      hasTipLine: Array.isArray(wrap.items) && orderAlreadyHasTipLine(wrap.items, 0),
+    });
   }
   return out;
 }
@@ -1009,6 +1022,23 @@ export async function syncXpayPaidToDotykacka(input: {
     });
   };
 
+  const putTipOnOpenOrder = async (
+    orderId: number,
+    tipAmount: number,
+    already: boolean,
+  ): Promise<"on-bill" | "missing-product" | "failed"> => {
+    if (tipAmount < 1 || already) return "on-bill";
+    const productId = await resolveDotykackaTipProductId(input.cfg, accessToken);
+    if (productId == null) return "missing-product";
+    const posted = await postDotykackaPosAction(input.cfg, accessToken, {
+      action: "order/add-item",
+      "order-id": orderId,
+      items: [tipLineItem(productId, tipAmount)],
+    });
+    if (!posted.ok || !posActionSucceeded(posted.data)) return "failed";
+    return "on-bill";
+  };
+
   if (listed.orders.length === 0) {
     if (tip > 0) {
       const found = await findRecentPaidOrderId({
@@ -1042,6 +1072,11 @@ export async function syncXpayPaidToDotykacka(input: {
     for (const [orderId, splitItems] of grouped) {
       const tipForThis = groupIndex === 0 ? tip : 0;
       groupIndex += 1;
+      const tipState = await putTipOnOpenOrder(
+        orderId,
+        tipForThis,
+        listed.orders.some((row) => row.orderId === orderId && row.hasTipLine),
+      );
       const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
       let paid = false;
       let paidData: unknown = null;
@@ -1070,9 +1105,17 @@ export async function syncXpayPaidToDotykacka(input: {
       }
       if (!paid) errors.push(`účet ${orderId}: ${lastErr || "split-pay selhal"}`);
       else {
-        const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
-        const tipErr = await persistTip(tipOrderId, tipForThis);
-        if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);
+        if (tipState !== "on-bill") {
+          const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
+          const tipErr = await persistTip(tipOrderId, tipForThis);
+          if (tipErr) {
+            const why =
+              tipState === "missing-product"
+                ? `v Dotykačce chybí položka Spropitné, na účtu zůstalo jen jídlo (${tipErr})`
+                : tipErr;
+            errors.push(`účet ${orderId}: spropitné: ${why}`);
+          }
+        }
       }
     }
     if (errors.length > 0) {
@@ -1093,7 +1136,8 @@ export async function syncXpayPaidToDotykacka(input: {
   for (let i = 0; i < listed.orders.length; i++) {
     const orderId = listed.orders[i]!.orderId;
     const tipForThis = i === 0 ? tip : 0;
-    if (tipForThis > 0) {
+    const tipState = await putTipOnOpenOrder(orderId, tipForThis, listed.orders[i]?.hasTipLine === true);
+    if (tipState !== "on-bill" && tipForThis > 0) {
       await primeDotykackaOrderTip({
         cfg: input.cfg,
         accessToken,
@@ -1138,9 +1182,17 @@ export async function syncXpayPaidToDotykacka(input: {
     }
     if (!paid) errors.push(`účet ${orderId}: ${lastErr || "pay selhal"}`);
     else {
-      const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
-      const tipErr = await persistTip(tipOrderId, tipForThis);
-      if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);
+      if (tipState !== "on-bill") {
+        const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
+        const tipErr = await persistTip(tipOrderId, tipForThis);
+        if (tipErr) {
+          const why =
+            tipState === "missing-product"
+              ? `v Dotykačce chybí položka Spropitné, na účtu zůstalo jen jídlo (${tipErr})`
+              : tipErr;
+          errors.push(`účet ${orderId}: spropitné: ${why}`);
+        }
+      }
     }
   }
 
