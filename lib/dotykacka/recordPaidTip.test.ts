@@ -77,6 +77,7 @@ describe("tip line", () => {
       unit: "Pieces",
       priceWithVat: 0,
     });
+    expect(tipProductCreateBody({ _categoryId: 3, vat: 1.12, unit: "Pieces" })).not.toHaveProperty("externalIds");
     expect(tipProductCreateBody({ _categoryId: "-201", vat: "1", unit: "Piece" })).toMatchObject({
       _categoryId: -201,
       vat: 1,

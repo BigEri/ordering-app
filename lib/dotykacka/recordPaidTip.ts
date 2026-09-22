@@ -69,7 +69,6 @@ export function tipProductCreateBody(sample: Record<string, unknown>): Record<st
     _categoryId: categoryId,
     name: "Spropitné",
     externalId: TIP_PRODUCT_EXTERNAL_ID,
-    externalIds: [TIP_PRODUCT_EXTERNAL_ID],
     deleted: false,
     display: true,
     discountPercent: 0,
@@ -275,16 +274,16 @@ const tipProductByCloud = new Map<number, number | null>();
 export async function resolveDotykackaTipProductId(
   cfg: Pick<DotykackaConfig, "apiBase" | "cloudId"> & { productMap?: Record<string, number> },
   accessToken: string,
-): Promise<number | null> {
+): Promise<{ id: number | null; error?: string }> {
   const mapped = cfg.productMap?.["oa-tip"];
-  if (typeof mapped === "number" && Number.isFinite(mapped) && mapped !== 0) return mapped;
+  if (typeof mapped === "number" && Number.isFinite(mapped) && mapped !== 0) return { id: mapped };
   const envRaw = process.env.DOTYKACKA_TIP_PRODUCT_ID?.trim();
   if (envRaw) {
     const envId = Number(envRaw);
-    if (Number.isFinite(envId) && envId !== 0) return envId;
+    if (Number.isFinite(envId) && envId !== 0) return { id: envId };
   }
   const cached = tipProductByCloud.get(cfg.cloudId);
-  if (cached != null) return cached;
+  if (cached != null) return { id: cached };
   const filters = [
     `externalId|eq|${TIP_PRODUCT_EXTERNAL_ID}`,
     "name|eq|Spropitné",
@@ -300,7 +299,7 @@ export async function resolveDotykackaTipProductId(
     const found = pickTipProductId(rowsFromList(listed.json));
     if (found != null) {
       tipProductByCloud.set(cfg.cloudId, found);
-      return found;
+      return { id: found };
     }
   }
   let scanned: number | null = null;
@@ -313,31 +312,33 @@ export async function resolveDotykackaTipProductId(
   }
   if (scanned != null) {
     tipProductByCloud.set(cfg.cloudId, scanned);
-    return scanned;
+    return { id: scanned };
   }
   const created = await createDotykackaTipProduct(cfg, accessToken);
-  if (created != null) tipProductByCloud.set(cfg.cloudId, created);
+  if (created.id != null) tipProductByCloud.set(cfg.cloudId, created.id);
   return created;
 }
 
 async function createDotykackaTipProduct(
   cfg: Pick<DotykackaConfig, "apiBase" | "cloudId">,
   accessToken: string,
-): Promise<number | null> {
+): Promise<{ id: number | null; error?: string }> {
   const sampleList = await cloudFetch(cfg, accessToken, "/products?page=1&limit=30");
-  if (!sampleList.ok) return null;
+  if (!sampleList.ok) return { id: null, error: `Dotykačka products ${apiDetail(sampleList.status, sampleList.json)}` };
   const samples = rowsFromList(sampleList.json);
   const sample =
     samples.find((row) => {
       const categoryId = Number(row._categoryId);
       return Number.isFinite(categoryId) && categoryId > 0 && tipProductCreateBody(row) != null;
     }) ?? samples.find((row) => tipProductCreateBody(row) != null);
-  if (!sample) return null;
+  if (!sample) return { id: null, error: "V Dotykačce chybí kategorie, do které jde založit Spropitné." };
   const body = tipProductCreateBody(sample);
-  if (!body) return null;
+  if (!body) return { id: null, error: "Z položek v Dotykačce nejde složit Spropitné." };
   const posted = await cloudFetch(cfg, accessToken, "/products", { method: "POST", body: [body] });
-  if (!posted.ok) return null;
-  return pickTipProductId(rowsFromList(posted.json)) ?? asId(entityBody(posted.json)?.id);
+  if (!posted.ok) return { id: null, error: `Dotykačka Spropitné ${apiDetail(posted.status, posted.json)}` };
+  const id = pickTipProductId(rowsFromList(posted.json)) ?? asId(entityBody(posted.json)?.id);
+  if (id == null) return { id: null, error: "Dotykačka Spropitné založila, ale nevrátila jeho číslo." };
+  return { id };
 }
 
 /** Očekávané spropitné na ještě otevřeném účtu, než ho pokladna uzavře. */
