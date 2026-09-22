@@ -481,6 +481,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
               </button>
             </header>
 
+            <div className="billPayBody">
             {orders.length > 0 ? (
               <section className="billItemsSection" aria-label={t("bill.itemsHeading")}>
                 <strong className="billItemsHeading">{t("bill.itemsHeading")}</strong>
@@ -607,11 +608,6 @@ export function Topbar({ previewMode = false }: TopbarProps) {
               </div>
             </div>
 
-            <footer className="modalCard__footer">
-              <strong>{t("bill.total")}</strong>
-              <strong style={{ fontVariantNumeric: "tabular-nums" }}>{formatCzk(billTotal)}</strong>
-            </footer>
-
             {billPayErrorKey ? (
               <div role="alert" className="orderPosErrorRow">
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 600 }}>{t(billPayErrorKey)}</p>
@@ -654,6 +650,13 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                 </div>
               </div>
             ) : null}
+            </div>
+
+            <div className="billPayDock">
+            <footer className="modalCard__footer">
+              <strong>{t("bill.total")}</strong>
+              <strong style={{ fontVariantNumeric: "tabular-nums" }}>{formatCzk(billTotal)}</strong>
+            </footer>
 
             <button
               type="button"
@@ -667,6 +670,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
             >
               {billPayLoading ? t("bill.pay.sending") : t("bill.pay")}
             </button>
+            </div>
           </div>
         </div>
       ) : null}

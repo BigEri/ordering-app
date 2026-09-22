@@ -1631,30 +1631,49 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   z-index: 58;
 }
 
+.modalOverlay--55,
+.modalOverlay--58 {
+  overflow-y: auto;
+  place-items: safe center;
+}
+
 .modalOverlay--55 {
   z-index: 55;
 }
 
-.modalCard--billSplit {
+.modalCard.modalCard--billSplit {
   width: min(920px, 96vw);
-  max-height: min(92dvh, 820px);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
   min-height: 0;
   overflow: hidden;
+}
+
+.modalCard--billSplit > .modalCard__header,
+.modalCard--billSplit > .billTipBlock,
+.modalCard--billSplit > .modalCard__footer,
+.modalCard--billSplit > .orderPosErrorRow,
+.modalCard--billSplit > .btnAddToOrder {
+  flex-shrink: 0;
 }
 
 .billSplitBoard {
   display: grid;
   grid-template-columns: 1fr 1fr;
+  grid-template-rows: minmax(0, 1fr);
   gap: 12px;
   min-height: 0;
-  flex: 1;
+  flex: 1 1 auto;
+  overflow: hidden;
 }
 
 .billSplitPane {
   display: flex;
   flex-direction: column;
-  min-height: 240px;
-  max-height: min(48vh, 420px);
+  min-height: 0;
+  max-height: none;
+  height: 100%;
   border: 1px solid var(--border);
   border-radius: 14px;
   background: rgba(0, 0, 0, 0.22);
@@ -1755,9 +1774,7 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
 @media (max-width: 640px) {
   .billSplitBoard {
     grid-template-columns: 1fr;
-  }
-  .billSplitPane {
-    max-height: min(28vh, 240px);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
   }
 }
 
@@ -1811,9 +1828,48 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
   letter-spacing: 0.02em;
 }
 
-.modalCard--bill {
-  max-height: min(92dvh, 760px);
+.modalCard.modalCard--bill {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - 32px);
   min-height: 0;
+  overflow: hidden;
+}
+
+.billPayBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.billPayDock {
+  flex-shrink: 0;
+  display: grid;
+  gap: 10px;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  background: #0a0a0c;
+  padding-top: 8px;
+}
+
+.modalCard--bill > .modalCard__header {
+  flex-shrink: 0;
+}
+
+.modalCard--bill .billItemsSection {
+  min-height: auto;
+}
+
+.modalCard--bill .billItemsScroll {
+  max-height: none;
+  overflow: visible;
 }
 
 .billItemsSection {
@@ -1955,8 +2011,6 @@ html:has(.welcomePage:not(.welcomePage--preview):not(:has(.welcomeKioskPairingDo
 
 .modalCard.modalCard--billSplit {
   width: min(920px, 96vw);
-  max-height: min(92dvh, 820px);
-  overflow: hidden;
 }
 
 .modalCard__header {
