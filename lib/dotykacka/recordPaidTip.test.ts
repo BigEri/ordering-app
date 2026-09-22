@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { orderIdFromPosPayData, pickMoneyLogForTip, pickRecentPaidOrderId } from "./recordPaidTip";
+import { orderIdFromPosPayData, pickMoneyLogForTip, pickRecentPaidOrderId, recentPaidOrdersPath } from "./recordPaidTip";
 
 describe("pickMoneyLogForTip", () => {
   it("picks the sale payment for the order", () => {
@@ -47,6 +47,16 @@ describe("orderIdFromPosPayData", () => {
         orders: [{ order: { id: 10, paid: false } }, { order: { id: 81, paid: true } }],
       }),
     ).toBe(81);
+  });
+});
+
+describe("recentPaidOrdersPath", () => {
+  it("lists paid bills by versionDate, because sorting by id is rejected", () => {
+    const path = recentPaidOrdersPath(234210637266778);
+    expect(path).toContain("page=1");
+    expect(path).toContain("sort=-versionDate");
+    expect(path).not.toContain("sort=-id");
+    expect(path).toContain("_tableId%7Ceq%7C234210637266778");
   });
 });
 

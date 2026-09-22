@@ -240,16 +240,19 @@ export async function writeDotykackaPaidTip(input: {
   return lastErr;
 }
 
+/** `id` u účtů nejde řadit (API vrátí 400). Bereme nejnovější podle versionDate. */
+export function recentPaidOrdersPath(tableId: number): string {
+  return `/orders?page=1&limit=20&sort=-versionDate&filter=${encodeURIComponent(`_tableId|eq|${tableId}`)}`;
+}
+
 export async function findRecentPaidOrderId(input: {
   cfg: Pick<DotykackaConfig, "apiBase" | "cloudId">;
   accessToken: string;
   tableId: number;
-}): Promise<number | null> {
-  const listed = await cloudFetch(
-    input.cfg,
-    input.accessToken,
-    `/orders?limit=15&sort=-id&filter=${encodeURIComponent(`_tableId|eq|${input.tableId}`)}`,
-  );
-  if (!listed.ok) return null;
-  return pickRecentPaidOrderId(rowsFromList(listed.json), input.tableId);
+}): Promise<{ orderId: number | null; error?: string }> {
+  const listed = await cloudFetch(input.cfg, input.accessToken, recentPaidOrdersPath(input.tableId));
+  if (!listed.ok) return { orderId: null, error: apiDetail(listed.status, listed.json) };
+  const orderId = pickRecentPaidOrderId(rowsFromList(listed.json), input.tableId);
+  if (orderId == null) return { orderId: null, error: "na stole není zaplacený účet" };
+  return { orderId };
 }

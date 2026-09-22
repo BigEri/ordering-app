@@ -1011,19 +1011,19 @@ export async function syncXpayPaidToDotykacka(input: {
 
   if (listed.orders.length === 0) {
     if (tip > 0) {
-      const orderId = await findRecentPaidOrderId({
+      const found = await findRecentPaidOrderId({
         cfg: input.cfg,
         accessToken,
         tableId: input.tableId,
       });
-      if (!orderId) {
+      if (found.orderId == null) {
         return {
           ok: false,
-          error: "Účet v Dotykačce je už zavřený, ale spropitné se nepodařilo dohledat k zápisu.",
+          error: `Účet v Dotykačce je už zavřený, ale spropitné se nepodařilo dohledat k zápisu${found.error ? `: ${found.error}` : "."}`,
           meta: { tableId: input.tableId, action: "xpay_tip" },
         };
       }
-      const tipErr = await persistTip(orderId, tip);
+      const tipErr = await persistTip(found.orderId, tip);
       if (tipErr) {
         return {
           ok: false,
