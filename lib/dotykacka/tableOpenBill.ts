@@ -278,8 +278,25 @@ export type FetchTableOpenBillResult =
   | { ok: true; configured: false; bill: TableOpenBillSnapshot }
   | { ok: false; error: string; httpStatus?: number };
 
+const billFetchCache = new Map<string, { at: number; result: FetchTableOpenBillResult }>();
+const BILL_FETCH_COOLDOWN_MS = 8_000;
+
 /** Načte otevřený účet u stolu přes pos-actions `order/list`. */
 export async function fetchTableOpenBillFromDotykacka(
+  cfg: Pick<DotykackaConfig, "apiBase" | "cloudId" | "branchId">,
+  accessToken: string,
+  tableId: number,
+): Promise<FetchTableOpenBillResult> {
+  const cacheKey = `${cfg.cloudId}:${cfg.branchId}:${tableId}`;
+  const cached = billFetchCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < BILL_FETCH_COOLDOWN_MS) return cached.result;
+
+  const result = await fetchTableOpenBillFromDotykackaUncached(cfg, accessToken, tableId);
+  if (result.ok) billFetchCache.set(cacheKey, { at: Date.now(), result });
+  return result;
+}
+
+async function fetchTableOpenBillFromDotykackaUncached(
   cfg: Pick<DotykackaConfig, "apiBase" | "cloudId" | "branchId">,
   accessToken: string,
   tableId: number,

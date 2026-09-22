@@ -7,6 +7,7 @@ import {
   parseDotykackaPosActionCode,
   parseDotykackaPosActionCodeFromText,
   pickTargetOpenOrdersForMerge,
+  posActionConfirmed,
   shouldCreateOrderWhenListUnreadable,
   shouldRelistOrdersAfterCreateFailure,
   shouldTryNextOpenOrder,
@@ -176,8 +177,10 @@ async function postDotykackaPosAction(
   cfg: DotykackaConfig,
   accessToken: string,
   body: Record<string, unknown>,
+  webhookWaitMs?: number,
 ): Promise<{ ok: true; data: unknown } | { ok: false; status: number; text: string }> {
   const webhookBase = getDotykackaPosWebhookPublicBaseUrl();
+  const waitMs = webhookWaitMs ?? dotykackaPosWebhookMaxWaitMs();
 
   const attemptOnce = async (): Promise<{ ok: true; data: unknown } | { ok: false; status: number; text: string }> => {
     let callbackId: string | null = null;
@@ -185,7 +188,7 @@ async function postDotykackaPosAction(
     const outgoing: Record<string, unknown> = { ...body };
     if (webhookBase) {
       callbackId = randomUUID();
-      waitWebhook = waitForPosActionWebhook(callbackId, dotykackaPosWebhookMaxWaitMs());
+      waitWebhook = waitForPosActionWebhook(callbackId, waitMs);
       outgoing.webhook = `${webhookBase}/api/integrations/dotykacka/pos-webhook?cb=${encodeURIComponent(callbackId)}`;
     }
 
@@ -368,10 +371,15 @@ async function listOpenDotykackaOrdersForTable(
   accessToken: string,
   tableId: number | null,
 ): Promise<ListOpenOrdersResult> {
-  const posted = await postDotykackaPosAction(cfg, accessToken, {
-    action: "order/list",
-    "table-id": tableId,
-  });
+  const posted = await postDotykackaPosAction(
+    cfg,
+    accessToken,
+    {
+      action: "order/list",
+      "table-id": tableId,
+    },
+    12_000,
+  );
   if (!posted.ok) {
     return {
       ok: false,
@@ -672,6 +680,13 @@ function interpretPosActionPost(
       meta: { ...meta, action, httpStatus: posted.status, posActionCode: code },
     };
   }
+  if (!posActionConfirmed(posted.data)) {
+    return {
+      ok: false,
+      error: `Dotykačka ${action}: pokladna nevrátila výsledek. Zkuste objednávku znovu.`,
+      meta: { ...meta, action },
+    };
+  }
   const code = parseDotykackaPosActionCode(posted.data);
   if (code !== undefined && code !== 0) {
     return {
@@ -821,7 +836,10 @@ async function submitOrderItemsToDotykackaTable(
   );
   if (createResult.ok) return createResult;
 
-  if (shouldRelistOrdersAfterCreateFailure(createResult.meta.posActionCode)) {
+  if (
+    typeof createResult.meta.posActionCode === "number" &&
+    shouldRelistOrdersAfterCreateFailure(createResult.meta.posActionCode)
+  ) {
     const addAfter = await tryAddItemsToOpenOrders(cfg, accessToken, tableId, sessionExternalId, items);
     if (addAfter?.ok) return addAfter;
     if (addAfter && !addAfter.ok) return addAfter;

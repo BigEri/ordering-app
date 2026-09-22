@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   pickTargetOpenOrdersForMerge,
+  posActionConfirmed,
   shouldCreateOrderWhenListUnreadable,
   shouldRelistOrdersAfterCreateFailure,
   shouldTryNextOpenOrder,
@@ -49,6 +50,19 @@ describe("pickTargetOpenOrdersForMerge", () => {
       { orderId: 2, externalId: "b" },
     ];
     expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual(orders);
+  });
+});
+
+describe("posActionConfirmed", () => {
+  it("accepts code 0 and an order body", () => {
+    expect(posActionConfirmed({ code: 0, order: { id: 1 } })).toBe(true);
+    expect(posActionConfirmed({ order: { id: 4, paid: true } })).toBe(true);
+  });
+
+  it("rejects an empty till response", () => {
+    expect(posActionConfirmed(null)).toBe(false);
+    expect(posActionConfirmed({})).toBe(false);
+    expect(posActionConfirmed({ code: 2001 })).toBe(false);
   });
 });
 

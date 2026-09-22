@@ -29,6 +29,14 @@ export function pickTargetOpenOrdersForMerge(
   return out;
 }
 
+/** Pokladna musí vrátit code 0 nebo tělo účtu. Prázdné {} není úspěch. */
+export function posActionConfirmed(data: unknown): boolean {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const row = data as Record<string, unknown>;
+  if (typeof row.code === "number") return row.code === 0;
+  return row.order != null || Array.isArray(row.orders);
+}
+
 export function parseDotykackaPosActionCode(data: unknown): number | undefined {
   if (!data || typeof data !== "object" || Array.isArray(data)) return undefined;
   const code = (data as { code?: unknown }).code;
