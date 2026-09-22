@@ -7,6 +7,7 @@ import {
   parseDotykackaPosActionCode,
   parseDotykackaPosActionCodeFromText,
   pickTargetOpenOrdersForMerge,
+  shouldCreateOrderWhenListUnreadable,
   shouldRelistOrdersAfterCreateFailure,
   shouldTryNextOpenOrder,
 } from "./syncOrderMerge";
@@ -776,7 +777,6 @@ async function submitOrderItemsToDotykackaTable(
   tableNote?: string,
 ): Promise<DotykackaSyncResult> {
   let lastAdd: TryAddItemsResult = null;
-  let lastListError: DotykackaSyncResult | null = null;
 
   for (let i = 0; i < ADD_ITEM_LOCK_RETRY_MS.length; i++) {
     const delay = ADD_ITEM_LOCK_RETRY_MS[i]!;
@@ -791,8 +791,8 @@ async function submitOrderItemsToDotykackaTable(
     if (addResult === null) break;
 
     if (addResult.meta.action === "order/list") {
-      lastListError = addResult;
-      break;
+      if (shouldCreateOrderWhenListUnreadable(addResult.error)) break;
+      return addResult;
     }
 
     if ((addResult.meta.openOrderCount ?? 0) > 0) {
@@ -804,9 +804,12 @@ async function submitOrderItemsToDotykackaTable(
     break;
   }
 
-  if (lastListError) return lastListError;
-
-  if (lastAdd && !lastAdd.ok) return lastAdd;
+  const listUnreadable =
+    lastAdd != null &&
+    lastAdd.ok === false &&
+    lastAdd.meta.action === "order/list" &&
+    shouldCreateOrderWhenListUnreadable(lastAdd.error);
+  if (lastAdd && !lastAdd.ok && !listUnreadable) return lastAdd;
 
   const createResult = await tryCreateOrderOnTable(
     cfg,

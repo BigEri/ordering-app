@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   pickTargetOpenOrdersForMerge,
+  shouldCreateOrderWhenListUnreadable,
   shouldRelistOrdersAfterCreateFailure,
   shouldTryNextOpenOrder,
 } from "./syncOrderMerge";
@@ -48,6 +49,20 @@ describe("pickTargetOpenOrdersForMerge", () => {
       { orderId: 2, externalId: "b" },
     ];
     expect(pickTargetOpenOrdersForMerge(orders, session)).toEqual(orders);
+  });
+});
+
+describe("shouldCreateOrderWhenListUnreadable", () => {
+  it("continues to create when the till returns an empty list body", () => {
+    expect(shouldCreateOrderWhenListUnreadable("Dotykačka order/list: prázdná nebo neplatná odpověď.")).toBe(true);
+    expect(shouldCreateOrderWhenListUnreadable("Dotykačka order/list: v odpovědi chybí seznam účtů (orders).")).toBe(
+      true,
+    );
+  });
+
+  it("stops on a real till error", () => {
+    expect(shouldCreateOrderWhenListUnreadable("Dotykačka order/list selhal (code 1008).")).toBe(false);
+    expect(shouldCreateOrderWhenListUnreadable("Dotykačka pos-actions 404: ")).toBe(false);
   });
 });
 

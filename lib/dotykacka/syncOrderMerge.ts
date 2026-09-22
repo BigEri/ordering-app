@@ -45,6 +45,14 @@ export function parseDotykackaPosActionCodeFromText(text: string): number | unde
   }
 }
 
+/**
+ * Pokladna vrátila prázdné tělo místo seznamu účtů (často souběh s dotazem na účet).
+ * Objednávku stejně založíme přes order/create; když účet už je, create vrátí 2009 a přidáme položky.
+ */
+export function shouldCreateOrderWhenListUnreadable(error: string): boolean {
+  return error.includes("prázdná nebo neplatná odpověď") || error.includes("chybí seznam účtů");
+}
+
 /** Po selhání create zkusit znovu add-item (účet mezitím mohl vzniknout / odemknout se). */
 export function shouldRelistOrdersAfterCreateFailure(code: number | undefined): boolean {
   if (code === undefined) return true;
