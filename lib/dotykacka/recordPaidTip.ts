@@ -54,8 +54,14 @@ export function pickTipProductId(rows: unknown[]): number | null {
 }
 
 /** Skrytá položka, kterou pokladna umí prodat. `order/pay` kolonku spropitného nemá. */
+function asCloudId(value: unknown): number | null {
+  const n = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  if (!Number.isFinite(n) || n === 0) return null;
+  return n;
+}
+
 export function tipProductCreateBody(sample: Record<string, unknown>): Record<string, unknown> | null {
-  const categoryId = asId(sample._categoryId);
+  const categoryId = asCloudId(sample._categoryId);
   const vat = asAmount(sample.vat);
   const unit = typeof sample.unit === "string" ? sample.unit.trim() : "";
   if (categoryId == null || vat < 1 || !unit) return null;
@@ -65,7 +71,7 @@ export function tipProductCreateBody(sample: Record<string, unknown>): Record<st
     externalId: TIP_PRODUCT_EXTERNAL_ID,
     externalIds: [TIP_PRODUCT_EXTERNAL_ID],
     deleted: false,
-    display: false,
+    display: true,
     discountPercent: 0,
     discountPermitted: false,
     flags: 4,
@@ -318,9 +324,14 @@ async function createDotykackaTipProduct(
   cfg: Pick<DotykackaConfig, "apiBase" | "cloudId">,
   accessToken: string,
 ): Promise<number | null> {
-  const sampleList = await cloudFetch(cfg, accessToken, "/products?page=1&limit=1");
+  const sampleList = await cloudFetch(cfg, accessToken, "/products?page=1&limit=30");
   if (!sampleList.ok) return null;
-  const sample = rowsFromList(sampleList.json)[0];
+  const samples = rowsFromList(sampleList.json);
+  const sample =
+    samples.find((row) => {
+      const categoryId = Number(row._categoryId);
+      return Number.isFinite(categoryId) && categoryId > 0 && tipProductCreateBody(row) != null;
+    }) ?? samples.find((row) => tipProductCreateBody(row) != null);
   if (!sample) return null;
   const body = tipProductCreateBody(sample);
   if (!body) return null;

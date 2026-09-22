@@ -72,10 +72,15 @@ describe("tip line", () => {
       _categoryId: 3,
       name: "Spropitné",
       externalId: "tableflow-tip",
-      display: false,
+      display: true,
       vat: 1.12,
       unit: "Pieces",
       priceWithVat: 0,
+    });
+    expect(tipProductCreateBody({ _categoryId: "-201", vat: "1", unit: "Piece" })).toMatchObject({
+      _categoryId: -201,
+      vat: 1,
+      unit: "Piece",
     });
     expect(tipProductCreateBody({ _categoryId: 3, vat: 0, unit: "Pieces" })).toBeNull();
   });
