@@ -454,7 +454,8 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
   if (!pre.ok) return { ok: false, error: pre.error, meta: { tableId, sessionExternalId, action: "order/hello" } };
 
   const listResult = await listOpenDotykackaOrdersForTable(cfg, accessToken, tableId);
-  if (!listResult.ok) {
+  const listUnreadable = !listResult.ok && shouldCreateOrderWhenListUnreadable(listResult.message);
+  if (!listResult.ok && !listUnreadable) {
     return {
       ok: false,
       error: buildBillRequestNoOpenAccountError(o, tableId, listResult),
@@ -466,7 +467,7 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
       },
     };
   }
-  if (listResult.orders.length === 0) {
+  if (listResult.ok && listResult.orders.length === 0) {
     return {
       ok: false,
       error: buildBillRequestNoOpenAccountError(o, tableId, null),
