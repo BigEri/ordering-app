@@ -5,9 +5,11 @@ import {
   orderIdFromPosPayData,
   pickMoneyLogForTip,
   pickRecentPaidOrderId,
+  pickTipProductId,
   posOrderTipBody,
   posPayWithTip,
   recentPaidOrdersPath,
+  tipLineItem,
 } from "./recordPaidTip";
 
 describe("pickMoneyLogForTip", () => {
@@ -55,6 +57,13 @@ describe("orderIdFromPosPayData", () => {
         orders: [{ order: { id: 10, paid: false } }, { order: { id: 81, paid: true } }],
       }),
     ).toBe(81);
+  });
+});
+
+describe("tip line", () => {
+  it("uses a Spropitné product so the closed bill matches the card", () => {
+    expect(pickTipProductId([{ id: 9, name: "Pivo" }, { id: 4, name: "Spropitné" }])).toBe(4);
+    expect(tipLineItem(4, 42)).toMatchObject({ id: 4, "manual-price": 42, note: "Spropitné" });
   });
 });
 

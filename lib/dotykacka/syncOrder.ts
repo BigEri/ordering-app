@@ -27,6 +27,8 @@ import {
   posOrderTipBody,
   posPayWithTip,
   primeDotykackaOrderTip,
+  resolveDotykackaTipProductId,
+  tipLineItem,
   writeDotykackaPaidTip,
 } from "./recordPaidTip";
 import {
@@ -1027,6 +1029,19 @@ export async function syncXpayPaidToDotykacka(input: {
     });
   };
 
+  /** Dokud účet není vystavený, přičte spropitné do součtu. Uzavřená platba už dýško nepřijme. */
+  const addTipToOpenBill = async (orderId: number, tipAmount: number): Promise<boolean> => {
+    if (tipAmount < 1) return false;
+    const productId = await resolveDotykackaTipProductId(input.cfg, accessToken);
+    if (productId == null) return false;
+    const posted = await postDotykackaPosAction(input.cfg, accessToken, {
+      action: "order/add-item",
+      "order-id": orderId,
+      items: [tipLineItem(productId, tipAmount)],
+    });
+    return posted.ok && posActionSucceeded(posted.data);
+  };
+
   if (listed.orders.length === 0) {
     if (tip > 0) {
       const found = await findRecentPaidOrderId({
@@ -1061,7 +1076,8 @@ export async function syncXpayPaidToDotykacka(input: {
     for (const [orderId, splitItems] of grouped) {
       const tipForThis = groupIndex === 0 ? tip : 0;
       groupIndex += 1;
-      await rememberManualTip(orderId, tipForThis);
+      const tipOnBill = await addTipToOpenBill(orderId, tipForThis);
+      if (!tipOnBill) await rememberManualTip(orderId, tipForThis);
       const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
       let paid = false;
       let paidData: unknown = null;
@@ -1078,7 +1094,7 @@ export async function syncXpayPaidToDotykacka(input: {
               "split-items": splitItems,
               "payment-method-id": methodId,
             },
-            tipForThis,
+            tipOnBill ? 0 : tipForThis,
           ),
         );
         if (!posted.ok) {
@@ -1095,7 +1111,7 @@ export async function syncXpayPaidToDotykacka(input: {
         break;
       }
       if (!paid) errors.push(`účet ${orderId}: ${lastErr || "split-pay selhal"}`);
-      else {
+      else if (!tipOnBill) {
         const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
         const tipErr = await persistTip(tipOrderId, tipForThis);
         if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);
@@ -1119,7 +1135,8 @@ export async function syncXpayPaidToDotykacka(input: {
   for (let i = 0; i < listed.orders.length; i++) {
     const orderId = listed.orders[i]!.orderId;
     const tipForThis = i === 0 ? tip : 0;
-    await rememberManualTip(orderId, tipForThis);
+    const tipOnBill = await addTipToOpenBill(orderId, tipForThis);
+    if (!tipOnBill) await rememberManualTip(orderId, tipForThis);
     const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
     const variants: Record<string, unknown>[] = [];
     for (const methodId of methods) {
@@ -1130,7 +1147,7 @@ export async function syncXpayPaidToDotykacka(input: {
             "order-id": orderId,
             "payment-method-id": methodId,
           },
-          tipForThis,
+          tipOnBill ? 0 : tipForThis,
         ),
       );
       variants.push(
@@ -1140,7 +1157,7 @@ export async function syncXpayPaidToDotykacka(input: {
             "order-id": orderId,
             "payment-method-id": methodId,
           },
-          tipForThis,
+          tipOnBill ? 0 : tipForThis,
         ),
       );
     }
@@ -1164,7 +1181,7 @@ export async function syncXpayPaidToDotykacka(input: {
       break;
     }
     if (!paid) errors.push(`účet ${orderId}: ${lastErr || "pay selhal"}`);
-    else {
+    else if (!tipOnBill) {
       const tipOrderId = orderIdFromPosPayData(paidData) ?? orderId;
       const tipErr = await persistTip(tipOrderId, tipForThis);
       if (tipErr) errors.push(`účet ${orderId}: spropitné: ${tipErr}`);

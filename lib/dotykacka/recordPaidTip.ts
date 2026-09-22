@@ -26,6 +26,24 @@ function orderIdOf(row: Record<string, unknown>): number | null {
   return asId(row._orderId) ?? asId(row.orderId);
 }
 
+const TIP_PRODUCT_NAMES = new Set(["spropitné", "spropitne", "dýško", "dysko"]);
+
+export function pickTipProductId(rows: unknown[]): number | null {
+  for (const row of rows) {
+    if (!isRecord(row)) continue;
+    const name = typeof row.name === "string" ? row.name.trim().toLowerCase() : "";
+    if (!TIP_PRODUCT_NAMES.has(name)) continue;
+    const id = asId(row.id);
+    if (id != null) return id;
+  }
+  return null;
+}
+
+/** Řádek, který zvedne součet účtu o spropitné dřív, než ho pokladna zavře. */
+export function tipLineItem(productId: number, tipCzk: number): Record<string, unknown> {
+  return { id: productId, qty: 1, "manual-price": tipCzk, note: "Spropitné", tags: ["oa-tip"] };
+}
+
 /** Ruční spropitné v Dotykačce (`tipAmount`), ne položka na účtu. */
 export function posOrderTipBody(orderId: number, tipCzk: number): Record<string, unknown> {
   return {
@@ -199,6 +217,33 @@ async function writeEntityTip(
   }
   if (!written.ok) return { ok: false, detail: apiDetail(written.status, written.json) };
   return { ok: false, detail: "tip se po zápisu nepropsal" };
+}
+
+const tipProductByCloud = new Map<number, number | null>();
+
+export async function resolveDotykackaTipProductId(
+  cfg: Pick<DotykackaConfig, "apiBase" | "cloudId"> & { productMap?: Record<string, number> },
+  accessToken: string,
+): Promise<number | null> {
+  const mapped = cfg.productMap?.["oa-tip"];
+  if (typeof mapped === "number" && Number.isFinite(mapped) && mapped !== 0) return mapped;
+  const envRaw = process.env.DOTYKACKA_TIP_PRODUCT_ID?.trim();
+  if (envRaw) {
+    const envId = Number(envRaw);
+    if (Number.isFinite(envId) && envId !== 0) return envId;
+  }
+  const cached = tipProductByCloud.get(cfg.cloudId);
+  if (cached !== undefined) return cached;
+  let found: number | null = null;
+  for (let page = 1; page <= 6; page += 1) {
+    const listed = await cloudFetch(cfg, accessToken, `/products?page=${page}&limit=100`);
+    if (!listed.ok) break;
+    const rows = rowsFromList(listed.json);
+    found = pickTipProductId(rows);
+    if (found != null || rows.length < 100) break;
+  }
+  tipProductByCloud.set(cfg.cloudId, found);
+  return found;
 }
 
 /** Očekávané spropitné na ještě otevřeném účtu, než ho pokladna uzavře. */

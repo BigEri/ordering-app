@@ -10,7 +10,7 @@ import {
   loadTableBillSession,
   saveTableBillSession,
 } from "../lib/client/tableBillSession";
-import { clearKioskBillPaidByXpay, peekKioskBillPaidByXpay } from "../lib/client/kioskBillClose";
+import { clearKioskBillPaidByXpay, peekKioskXpayClose } from "../lib/client/kioskBillClose";
 import { peekKioskSplitPayContinue } from "../lib/client/kioskSplitPay";
 import {
   clearStoryousKioskSession,
@@ -63,6 +63,8 @@ export function TableBillSyncWatcher() {
   const [issuedOpen, setIssuedOpen] = React.useState(false);
   const [issuedPaid, setIssuedPaid] = React.useState(false);
   const [issuedTotal, setIssuedTotal] = React.useState<number | null>(null);
+  const [issuedTip, setIssuedTip] = React.useState(0);
+  const [issuedTipMissing, setIssuedTipMissing] = React.useState(false);
   const handledIssuedRef = React.useRef(false);
   const hadOpenBillRef = React.useRef(false);
   const lastTotalRef = React.useRef<number | null>(null);
@@ -92,7 +94,6 @@ export function TableBillSyncWatcher() {
       }
 
       if (billOpen && lines.length === 0) {
-        // Otevřený účet bez naparsovaných řádků — nemazat lokální stav.
         return;
       }
 
@@ -105,10 +106,12 @@ export function TableBillSyncWatcher() {
 
       if (!handledIssuedRef.current && hadOpenBillRef.current) {
         handledIssuedRef.current = true;
-        const paidByXpay = peekKioskBillPaidByXpay();
-        if (paidByXpay) clearKioskBillPaidByXpay();
-        setIssuedPaid(paidByXpay);
-        setIssuedTotal(lastTotalRef.current);
+        const xpay = peekKioskXpayClose();
+        if (xpay) clearKioskBillPaidByXpay();
+        setIssuedPaid(xpay != null);
+        setIssuedTotal(xpay?.amountCzk ?? lastTotalRef.current);
+        setIssuedTip(xpay?.tipAmountCzk ?? 0);
+        setIssuedTipMissing(xpay?.tipMissing === true);
         setIssuedOpen(true);
         hadOpenBillRef.current = false;
         lastTotalRef.current = null;
@@ -257,13 +260,22 @@ export function TableBillSyncWatcher() {
         <strong className="modalTitle">{issuedPaid ? t("paid.modal.title") : t("issued.modal.title")}</strong>
         <p className="textMuted" style={{ margin: 0 }}>
           {issuedPaid
-            ? issuedTotal != null
-              ? t("paid.modal.bodyWithTotal").replace("{{total}}", formatCzk(issuedTotal))
-              : t("paid.modal.body")
+            ? issuedTip > 0 && issuedTotal != null
+              ? t("paid.modal.bodyWithTip")
+                  .replace("{{total}}", formatCzk(issuedTotal))
+                  .replace("{{tip}}", formatCzk(issuedTip))
+              : issuedTotal != null
+                ? t("paid.modal.bodyWithTotal").replace("{{total}}", formatCzk(issuedTotal))
+                : t("paid.modal.body")
             : issuedTotal != null
               ? t("issued.modal.bodyWithTotal").replace("{{total}}", formatCzk(issuedTotal))
               : t("issued.modal.body")}
         </p>
+        {issuedPaid && issuedTipMissing ? (
+          <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
+            {t("bill.xpay.tipMissing")}
+          </p>
+        ) : null}
         <div style={{ display: "flex", justifyContent: "flex-end" }}>
           <button type="button" className="chip" onClick={() => setIssuedOpen(false)} style={{ cursor: "pointer" }}>
             {issuedPaid ? t("paid.modal.close") : t("issued.modal.close")}

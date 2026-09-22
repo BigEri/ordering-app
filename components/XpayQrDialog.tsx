@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { markKioskBillPaidByXpay } from "../lib/client/kioskBillClose";
+import { markKioskBillPaidByXpay, markKioskXpayTipMissing } from "../lib/client/kioskBillClose";
 import {
   clearKioskSplitPayContinue,
   markKioskSplitPayContinue,
@@ -20,6 +20,7 @@ export type XpayKioskPayment = {
   payUrl: string;
   qrDataUrl: string | null;
   amountCzk: number;
+  tipAmountCzk?: number;
   status?: string;
   tillError?: string | null;
   tillSettled?: boolean;
@@ -137,9 +138,12 @@ export function XpayQrDialog({
 
   React.useEffect(() => {
     if (phase !== "paid") return;
+    markKioskBillPaidByXpay({
+      amountCzk: current.amountCzk,
+      tipAmountCzk: current.tipAmountCzk ?? 0,
+    });
     const isSplit = splitRef.current;
     if (!isSplit) {
-      markKioskBillPaidByXpay();
       clearOrdersRef.current();
       let cancelled = false;
       let welcomeTimer = 0;
@@ -152,8 +156,10 @@ export function XpayQrDialog({
           if (cancelled) return;
           if (r.ok && r.data.tillSettled) {
             setTillError(null);
+            markKioskXpayTipMissing(false);
             break;
           }
+          if (r.ok && r.data.tillError?.includes("spropitné")) markKioskXpayTipMissing(true);
           if (r.ok && r.data.tillError && i >= 4) setTillError(r.data.tillError);
           await waitMs(700);
         }
@@ -180,9 +186,11 @@ export function XpayQrDialog({
           setCurrent((prev) => ({ ...prev, ...r.data, split: true }));
           if (r.data.tillSettled) {
             setTillError(null);
+            markKioskXpayTipMissing(false);
             break;
           }
           const tipStillOpen = Boolean(r.data.tillError?.includes("spropitné"));
+          if (tipStillOpen) markKioskXpayTipMissing(true);
           if (r.data.tillError && (!tipStillOpen || i >= 5)) {
             setTillError(r.data.tillError);
             break;
@@ -246,11 +254,15 @@ export function XpayQrDialog({
             <p className="textMuted" style={{ margin: 0 }}>
               {current.split
                 ? t("bill.split.nextGuestBody")
-                : t("paid.modal.bodyWithTotal").replace("{{total}}", formatCzk(current.amountCzk))}
+                : (current.tipAmountCzk ?? 0) > 0
+                  ? t("paid.modal.bodyWithTip")
+                      .replace("{{total}}", formatCzk(current.amountCzk))
+                      .replace("{{tip}}", formatCzk(current.tipAmountCzk ?? 0))
+                  : t("paid.modal.bodyWithTotal").replace("{{total}}", formatCzk(current.amountCzk))}
             </p>
             {tillError ? (
               <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
-                {t("bill.xpay.tillPending")}
+                {tillError.includes("spropitné") ? t("bill.xpay.tipMissing") : t("bill.xpay.tillPending")}
               </p>
             ) : null}
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
