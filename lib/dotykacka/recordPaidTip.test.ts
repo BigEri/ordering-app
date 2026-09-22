@@ -2,13 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
   moneyLogsForOrderPath,
-  orderAlreadyHasTipLine,
   orderIdFromPosPayData,
   pickMoneyLogForTip,
   pickRecentPaidOrderId,
-  pickTipProductId,
+  posOrderTipBody,
+  posPayWithTip,
   recentPaidOrdersPath,
-  tipLineItem,
 } from "./recordPaidTip";
 
 describe("pickMoneyLogForTip", () => {
@@ -59,15 +58,18 @@ describe("orderIdFromPosPayData", () => {
   });
 });
 
-describe("tip line", () => {
-  it("finds a Spropitné product and builds a line for the missing amount", () => {
-    expect(pickTipProductId([{ id: 9, name: "Pivo" }, { id: 4, name: "Spropitné" }])).toBe(4);
-    expect(tipLineItem(4, 42)).toMatchObject({ id: 4, qty: 1, "manual-price": 42, note: "Spropitné" });
-  });
-
-  it("does not add the tip line twice", () => {
-    expect(orderAlreadyHasTipLine([{ name: "Spropitné", "manual-price": 42 }], 42)).toBe(true);
-    expect(orderAlreadyHasTipLine([{ name: "Burger", "price-with-vat": 189 }], 42)).toBe(false);
+describe("manual tip", () => {
+  it("sends the tablet tip into Dotykačka's tip field", () => {
+    expect(posOrderTipBody(10, 42)).toEqual({
+      action: "order/update",
+      "order-id": 10,
+      "tip-amount": 42,
+    });
+    expect(posPayWithTip({ action: "order/pay", "order-id": 10 }, 42)).toMatchObject({
+      "tip-amount": 42,
+      tips: 42,
+    });
+    expect(posPayWithTip({ action: "order/pay" }, 0)).toEqual({ action: "order/pay" });
   });
 });
 
