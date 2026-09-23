@@ -33,6 +33,22 @@ export function parseXpaySplitItems(raw: unknown): XpaySplitItem[] | null {
   return out;
 }
 
+/** Řádek Spropitné / Dýško nepatří do výběru jídla. Na účet ho přidá platba sama. */
+export function isTipBillLine(name: string, detail?: string | null): boolean {
+  const label = `${name} ${detail ?? ""}`.toLowerCase();
+  return label.includes("spropitn") || label.includes("dýško") || label.includes("dysko") || label.includes("dýsko");
+}
+
+/** Spropitné tohoto hosta odchází s jeho položkami, nezůstane na účtu dalšímu. */
+export function appendTipToSplitItems(
+  items: Array<{ id: number; qty: number }>,
+  tipItemId: number | null,
+): Array<{ id: number; qty: number }> {
+  if (tipItemId == null || tipItemId <= 0) return items;
+  if (items.some((item) => item.id === tipItemId)) return items;
+  return [...items, { id: tipItemId, qty: 1 }];
+}
+
 export function groupSplitItemsByOrder(items: XpaySplitItem[]): Map<number, Array<{ id: number; qty: number }>> {
   const map = new Map<number, Array<{ id: number; qty: number }>>();
   for (const it of items) {
@@ -70,6 +86,7 @@ export function resolveSplitAgainstBill(
     if (!line) {
       return { ok: false, error: "Vybrané položky už na účtu nejsou. Vyberte znovu." };
     }
+    if (isTipBillLine(line.name)) continue;
     if (row.qty > line.qty) {
       return { ok: false, error: "Vybrané množství je větší než na účtu. Vyberte znovu." };
     }

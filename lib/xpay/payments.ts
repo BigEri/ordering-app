@@ -112,13 +112,13 @@ export async function createTableXpayPayment(input: {
   | { ok: false; notConfigured: true }
   | { ok: false; error: string; status?: number }
 > {
-  const creds = await getXpayCredentials(input.restaurantId);
-  if (!creds) return { ok: false, notConfigured: true };
-
   const source = await getRestaurantMenuSource(input.restaurantId);
   if (source !== "dotykacka") {
-    return { ok: false, error: "Platba kartou na kiosku je zatím jen s Dotykačkou." };
+    return { ok: false, notConfigured: true };
   }
+
+  const creds = await getXpayCredentials(input.restaurantId);
+  if (!creds) return { ok: false, notConfigured: true };
 
   const tableIdNum = Number.parseInt(input.tableId, 10);
   if (!Number.isFinite(tableIdNum)) {
@@ -300,9 +300,17 @@ export async function markXpayPaymentPaid(input: {
     });
   }
 
-  await settleXpayPayment(input.paymentId);
   const fresh = await prisma.xpayPayment.findUnique({ where: { id: input.paymentId } });
   return fresh ? toView(fresh, null) : null;
+}
+
+/** Dokud telefon nedojde na návratovou stránku, účet v Dotykačce nechat otevřený. */
+const TILL_SETTLE_FALLBACK_MS = 75_000;
+
+function paidLongEnoughToSettle(paidAtIso: string | null | undefined, now = Date.now()): boolean {
+  const paidAt = Date.parse(paidAtIso ?? "");
+  if (!Number.isFinite(paidAt)) return false;
+  return now - paidAt >= TILL_SETTLE_FALLBACK_MS;
 }
 
 export async function applyXpayNotification(payload: unknown): Promise<{ ok: true; paymentId?: string } | { ok: false }> {
@@ -352,7 +360,7 @@ export async function refreshXpayPaymentStatus(input: {
         });
       }
     }
-  } else if (row.status === "paid" && !row.tillSettledAtIso) {
+  } else if (row.status === "paid" && !row.tillSettledAtIso && paidLongEnoughToSettle(row.paidAtIso)) {
     await settleXpayPayment(row.id);
   }
 
@@ -377,8 +385,11 @@ export async function confirmXpayReturn(paymentId: string): Promise<XpayPaymentV
         await markXpayPaymentPaid({ paymentId: row.id, notification: remote.raw });
       }
     }
-  } else if (row.status === "paid" && !row.tillSettledAtIso) {
-    await settleXpayPayment(row.id);
+  }
+
+  const after = await prisma.xpayPayment.findUnique({ where: { id: row.id } });
+  if (after && after.status === "paid" && !after.tillSettledAtIso) {
+    await settleXpayPayment(after.id);
   }
 
   const fresh = await prisma.xpayPayment.findUnique({ where: { id: row.id } });
@@ -445,6 +456,7 @@ export async function completeSandboxDemoPayment(input: {
   const row = checked.row;
   if (input.action === "pay") {
     await markXpayPaymentPaid({ paymentId: row.id, notification: { demo: "czk", action: "pay" } });
+    await settleXpayPayment(row.id);
     return { ok: true as const, status: "paid" as const, amountCzk: Math.round(row.amountHalere / 100) };
   }
   if (row.status === "pending") {

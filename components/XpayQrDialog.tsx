@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { markKioskBillPaidByXpay, markKioskXpayTipMissing } from "../lib/client/kioskBillClose";
+import { markKioskBillPaidByXpay, markKioskXpayFlow, clearKioskXpayFlow, markKioskXpayTipMissing } from "../lib/client/kioskBillClose";
 import {
   clearKioskSplitPayContinue,
   markKioskSplitPayContinue,
@@ -37,6 +37,19 @@ function waitMs(ms: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
   });
+}
+
+/** Tablet počká, než telefon dojde na návratovou stránku a účet se v pokladně zavře. */
+const TILL_WAIT_MS = 90_000;
+
+function mergePayment(prev: XpayKioskPayment, data: XpayKioskPayment): XpayKioskPayment {
+  return {
+    ...prev,
+    ...data,
+    split: prev.split || data.split,
+    amountCzk: prev.amountCzk > 0 ? prev.amountCzk : data.amountCzk,
+    tipAmountCzk: (prev.tipAmountCzk ?? 0) > 0 ? prev.tipAmountCzk : data.tipAmountCzk,
+  };
 }
 
 type RemainingBill = {
@@ -87,6 +100,9 @@ export function XpayQrDialog({
   const splitRef = React.useRef(Boolean(payment.split));
   splitRef.current = Boolean(current.split);
 
+  const currentRef = React.useRef(current);
+  currentRef.current = current;
+
   const resumeSplit = React.useCallback(() => {
     if (closedRef.current) return;
     closedRef.current = true;
@@ -99,9 +115,18 @@ export function XpayQrDialog({
     if (closedRef.current) return;
     closedRef.current = true;
     clearKioskSplitPayContinue();
-    markKioskBillPaidByXpay();
+    const snap = currentRef.current;
+    markKioskBillPaidByXpay({
+      amountCzk: snap.amountCzk,
+      tipAmountCzk: snap.tipAmountCzk ?? 0,
+    });
     clearOrdersRef.current();
     window.location.href = buildKioskWelcomeUrl();
+  }, []);
+
+  React.useEffect(() => {
+    markKioskXpayFlow();
+    return () => clearKioskXpayFlow();
   }, []);
 
   React.useEffect(() => {
@@ -118,7 +143,7 @@ export function XpayQrDialog({
         paymentId: current.paymentId,
       });
       if (cancelled || !r.ok) return;
-      setCurrent((prev) => ({ ...prev, ...r.data, split: prev.split || r.data.split }));
+      setCurrent((prev) => mergePayment(prev, r.data));
       if (r.data.tillError) setTillError(r.data.tillError);
       if (r.data.status === "paid") {
         setPhase("paid");
@@ -148,20 +173,24 @@ export function XpayQrDialog({
       let cancelled = false;
       let welcomeTimer = 0;
       const run = async () => {
-        for (let i = 0; i < 6 && !cancelled; i += 1) {
+        const started = Date.now();
+        while (!cancelled && Date.now() - started < TILL_WAIT_MS) {
           const r = await postPosJsonData<XpayKioskPayment>("/api/pos/xpay/status", {
             ...tableFieldsRef.current,
             paymentId: current.paymentId,
           });
           if (cancelled) return;
-          if (r.ok && r.data.tillSettled) {
-            setTillError(null);
-            markKioskXpayTipMissing(false);
-            break;
+          if (r.ok) {
+            setCurrent((prev) => mergePayment(prev, r.data));
+            if (r.data.tillError?.includes("spropitné")) markKioskXpayTipMissing(true);
+            if (r.data.tillSettled) {
+              setTillError(null);
+              markKioskXpayTipMissing(false);
+              break;
+            }
+            if (r.data.tillError) setTillError(r.data.tillError);
           }
-          if (r.ok && r.data.tillError?.includes("spropitné")) markKioskXpayTipMissing(true);
-          if (r.ok && r.data.tillError && i >= 4) setTillError(r.data.tillError);
-          await waitMs(700);
+          await waitMs(1000);
         }
         if (!cancelled) welcomeTimer = window.setTimeout(() => goWelcome(), 1200);
       };
@@ -176,28 +205,26 @@ export function XpayQrDialog({
     markKioskSplitPayContinue();
 
     const run = async () => {
-      for (let i = 0; i < 10 && !cancelled; i += 1) {
+      const started = Date.now();
+      while (!cancelled && Date.now() - started < TILL_WAIT_MS) {
         const r = await postPosJsonData<XpayKioskPayment>("/api/pos/xpay/status", {
           ...tableFieldsRef.current,
           paymentId: current.paymentId,
         });
         if (cancelled) return;
         if (r.ok) {
-          setCurrent((prev) => ({ ...prev, ...r.data, split: true }));
+          setCurrent((prev) => mergePayment({ ...prev, split: true }, r.data));
+          if (r.data.tillError?.includes("spropitné")) markKioskXpayTipMissing(true);
           if (r.data.tillSettled) {
             setTillError(null);
             markKioskXpayTipMissing(false);
             break;
           }
-          const tipStillOpen = Boolean(r.data.tillError?.includes("spropitné"));
-          if (tipStillOpen) markKioskXpayTipMissing(true);
-          if (r.data.tillError && (!tipStillOpen || i >= 5)) {
-            setTillError(r.data.tillError);
-            break;
-          }
+          if (r.data.tillError) setTillError(r.data.tillError);
         }
-        await waitMs(800);
+        await waitMs(1000);
       }
+      if (cancelled) return;
 
       let remaining: boolean | null = null;
       for (let i = 0; i < 8 && !cancelled; i += 1) {
@@ -227,6 +254,7 @@ export function XpayQrDialog({
   }, [phase, current.paymentId, goWelcome, resumeSplit]);
 
   const dismiss = React.useCallback(() => {
+    if (phase === "paid" && !current.tillSettled) return;
     if (phase === "paid" && current.split) {
       resumeSplit();
       return;
@@ -238,7 +266,7 @@ export function XpayQrDialog({
     if (closedRef.current) return;
     closedRef.current = true;
     onCloseRef.current();
-  }, [phase, current.split, resumeSplit, goWelcome]);
+  }, [phase, current.split, current.tillSettled, resumeSplit, goWelcome]);
 
   return (
     <div
@@ -252,21 +280,34 @@ export function XpayQrDialog({
           <>
             <strong className="modalTitle">{t("paid.modal.title")}</strong>
             <p className="textMuted" style={{ margin: 0 }}>
-              {current.split
-                ? t("bill.split.nextGuestBody")
-                : (current.tipAmountCzk ?? 0) > 0
-                  ? t("paid.modal.bodyWithTip")
-                      .replace("{{total}}", formatCzk(current.amountCzk))
-                      .replace("{{tip}}", formatCzk(current.tipAmountCzk ?? 0))
-                  : t("paid.modal.bodyWithTotal").replace("{{total}}", formatCzk(current.amountCzk))}
+              {(current.tipAmountCzk ?? 0) > 0
+                ? t("paid.modal.bodyWithTip")
+                    .replace("{{total}}", formatCzk(current.amountCzk))
+                    .replace("{{tip}}", formatCzk(current.tipAmountCzk ?? 0))
+                : t("paid.modal.bodyWithTotal").replace("{{total}}", formatCzk(current.amountCzk))}
             </p>
+            {current.split ? (
+              <p className="textMuted" style={{ margin: 0 }}>
+                {t("bill.split.nextGuestBody")}
+              </p>
+            ) : null}
             {tillError ? (
               <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
                 {tillError.includes("spropitné") ? t("bill.xpay.tipMissing") : t("bill.xpay.tillPending")}
               </p>
+            ) : !current.tillSettled ? (
+              <p className="textMuted2" style={{ margin: 0, fontSize: 13 }}>
+                {t("bill.xpay.tillPending")}
+              </p>
             ) : null}
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button type="button" className="chip" onClick={() => void dismiss()} style={{ cursor: "pointer" }}>
+              <button
+                type="button"
+                className="chip"
+                onClick={() => void dismiss()}
+                disabled={!current.tillSettled}
+                style={{ cursor: current.tillSettled ? "pointer" : "default", opacity: current.tillSettled ? 1 : 0.55 }}
+              >
                 {current.split ? t("bill.split.nextGuestContinue") : t("paid.modal.close")}
               </button>
             </div>

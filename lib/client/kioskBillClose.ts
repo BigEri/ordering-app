@@ -87,3 +87,34 @@ export function clearKioskBillPaidByXpay(): void {
     /* ignore */
   }
 }
+
+const FLOW_KEY = "tableflow.xpayFlow";
+
+/** Platba na tabletu běží. Účet se nesmí sám přepnout na „Zaplaceno“ bez dýška. */
+export function markKioskXpayFlow(): void {
+  try {
+    sessionStorage.setItem(FLOW_KEY, String(Date.now()));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function peekKioskXpayFlow(maxAgeMs = 15 * 60 * 1000): boolean {
+  try {
+    const raw = sessionStorage.getItem(FLOW_KEY);
+    if (!raw) return false;
+    const at = Number(raw);
+    if (!Number.isFinite(at) || Date.now() - at >= maxAgeMs) return false;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function clearKioskXpayFlow(): void {
+  try {
+    sessionStorage.removeItem(FLOW_KEY);
+  } catch {
+    /* ignore */
+  }
+}

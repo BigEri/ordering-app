@@ -10,7 +10,7 @@ import {
   loadTableBillSession,
   saveTableBillSession,
 } from "../lib/client/tableBillSession";
-import { clearKioskBillPaidByXpay, peekKioskXpayClose } from "../lib/client/kioskBillClose";
+import { clearKioskBillPaidByXpay, peekKioskXpayClose, peekKioskXpayFlow } from "../lib/client/kioskBillClose";
 import { peekKioskSplitPayContinue } from "../lib/client/kioskSplitPay";
 import {
   clearStoryousKioskSession,
@@ -101,6 +101,10 @@ export function TableBillSyncWatcher() {
         return;
       }
 
+      if (peekKioskXpayFlow()) {
+        return;
+      }
+
       syncTableBillFromDotykacka({ lines: [], totalCzk: 0 });
       clearTableBillSession();
 
@@ -108,9 +112,16 @@ export function TableBillSyncWatcher() {
         handledIssuedRef.current = true;
         const xpay = peekKioskXpayClose();
         if (xpay) clearKioskBillPaidByXpay();
+        const tip = xpay?.tipAmountCzk ?? 0;
+        const charged =
+          xpay?.amountCzk != null
+            ? xpay.amountCzk
+            : tip > 0 && lastTotalRef.current != null
+              ? lastTotalRef.current + tip
+              : lastTotalRef.current;
         setIssuedPaid(xpay != null);
-        setIssuedTotal(xpay?.amountCzk ?? lastTotalRef.current);
-        setIssuedTip(xpay?.tipAmountCzk ?? 0);
+        setIssuedTotal(charged);
+        setIssuedTip(tip);
         setIssuedTipMissing(xpay?.tipMissing === true);
         setIssuedOpen(true);
         hadOpenBillRef.current = false;

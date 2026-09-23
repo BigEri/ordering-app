@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   clearKioskBillPaidByXpay,
+  clearKioskXpayFlow,
   markKioskBillPaidByXpay,
+  markKioskXpayFlow,
   markKioskXpayTipMissing,
   peekKioskBillPaidByXpay,
   peekKioskXpayClose,
+  peekKioskXpayFlow,
 } from "./kioskBillClose";
 
 function installSessionStorageMock() {
@@ -43,5 +46,13 @@ describe("kioskBillClose", () => {
     expect(peekKioskXpayClose()).toMatchObject({ amountCzk: 465, tipAmountCzk: 42, tipMissing: false });
     markKioskXpayTipMissing(true);
     expect(peekKioskXpayClose()).toMatchObject({ amountCzk: 465, tipAmountCzk: 42, tipMissing: true });
+  });
+
+  it("tracks an open card flow without marking the bill paid", () => {
+    markKioskXpayFlow();
+    expect(peekKioskXpayFlow()).toBe(true);
+    expect(peekKioskBillPaidByXpay()).toBe(false);
+    clearKioskXpayFlow();
+    expect(peekKioskXpayFlow()).toBe(false);
   });
 });

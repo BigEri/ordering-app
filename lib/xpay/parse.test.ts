@@ -63,6 +63,24 @@ describe("classifyXpayOperation", () => {
     expect(classifyXpayOperation({ orderStatus: "EXECUTED" })).toBe("paid");
   });
 
+  it("does not close the bill while the guest is still in the phone flow", () => {
+    expect(
+      classifyXpayOperation({
+        orderStatus: { lastOperationType: "AUTHORIZATION", authorizedAmount: "0", capturedAmount: "0" },
+        operations: [],
+        paymentLinks: [{ status: "VALID" }],
+      }),
+    ).toBe("pending");
+    expect(classifyXpayOperation({ status: "OK", orderStatus: { lastOperationType: "AUTHORIZATION" } })).toBe("pending");
+    expect(
+      classifyXpayOperation({
+        operations: [{ operationResult: "PENDING", operationType: "AUTHORIZATION" }],
+        orderStatus: { lastOperationType: "AUTHORIZATION" },
+      }),
+    ).toBe("pending");
+    expect(classifyXpayOperation({ orderStatus: { lastOperationType: "CAPTURE" } })).toBe("pending");
+  });
+
   it("treats DECLINED as failed", () => {
     expect(classifyXpayOperation({ operationResult: "DECLINED" })).toBe("failed");
   });

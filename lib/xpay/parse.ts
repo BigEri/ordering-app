@@ -1,14 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-const PAID_RESULTS = new Set([
-  "AUTHORIZED",
-  "EXECUTED",
-  "CAPTURED",
-  "PAID",
-  "OK",
-  "SUCCESS",
-  "APPROVED",
-]);
+const PAID_RESULTS = new Set(["AUTHORIZED", "EXECUTED", "CAPTURED", "PAID", "APPROVED"]);
 
 const FAILED_RESULTS = new Set(["DECLINED", "DENIED", "FAILED", "KO", "ERROR", "CANCELED", "CANCELLED", "VOIDED"]);
 
@@ -122,20 +114,20 @@ export function extractXpaySecurityToken(payload: unknown): string | null {
   return rec ? readString(rec.securityToken) : null;
 }
 
+/**
+ * Zaplaceno jen podle výsledku operace. Samotný `lastOperationType: AUTHORIZATION`
+ * znamená, že host ještě kliká v telefonu — účet se kvůli tomu nezavírá.
+ * Obecné `status: OK` je obálka API, ne úspěšná platba.
+ */
 export function classifyXpayOperation(payload: unknown): "paid" | "failed" | "pending" {
   const values = collectStrings(payload, [
     "operationResult",
     "operationStatus",
     "orderStatus",
     "orderState",
-    "status",
-    "state",
-    "result",
-    "lastOperationType",
   ]).map((s) => s.toUpperCase());
   if (values.some((v) => PAID_RESULTS.has(v))) return "paid";
   if (values.some((v) => FAILED_RESULTS.has(v))) return "failed";
-  if (values.some((v) => v === "CAPTURE" || v === "AUTHORIZATION")) return "paid";
   return "pending";
 }
 

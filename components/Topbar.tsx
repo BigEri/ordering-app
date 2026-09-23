@@ -11,6 +11,7 @@ import { postPosJsonResilient } from "../lib/pos/postPosJsonResilient";
 import { postPosJsonData } from "../lib/pos/postPosJson";
 import { XpayQrDialog, type XpayKioskPayment } from "./XpayQrDialog";
 import { BillSplitDialog } from "./BillSplitDialog";
+import { isTipBillLine } from "../lib/dotykacka/splitBill";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
 import { LanguageMenu } from "./LanguageMenu";
@@ -67,7 +68,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     }> = [];
     for (const o of orders) {
       for (const line of o.lines) {
-        if (line.itemId && line.orderId) {
+        if (line.itemId && line.orderId && !isTipBillLine(line.name, line.detail)) {
           out.push({
             key: `${line.orderId}:${line.itemId}`,
             orderId: line.orderId,

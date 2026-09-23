@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseXpaySplitItems, resolveSplitAgainstBill } from "./splitBill";
+import { appendTipToSplitItems, isTipBillLine, parseXpaySplitItems, resolveSplitAgainstBill } from "./splitBill";
 
 const lines = [
   { name: "Rajská", qty: 1, unitPriceCzk: 55, itemId: 1, orderId: 10 },
@@ -54,5 +54,30 @@ describe("resolveSplitAgainstBill", () => {
   it("rejects qty above the till line", () => {
     const r = resolveSplitAgainstBill(lines, [{ orderId: 10, itemId: 3, qty: 3 }]);
     expect(r.ok).toBe(false);
+  });
+
+  it("does not price a leftover tip as this guest's food", () => {
+    const r = resolveSplitAgainstBill(
+      [...lines, { name: "Spropitné", qty: 1, unitPriceCzk: 19, itemId: 9, orderId: 10 }],
+      [
+        { orderId: 10, itemId: 2, qty: 1 },
+        { orderId: 10, itemId: 9, qty: 1 },
+      ],
+    );
+    expect(r.ok && r.totalCzk).toBe(189);
+    expect(r.ok && r.items).toEqual([{ orderId: 10, itemId: 2, qty: 1 }]);
+  });
+});
+
+describe("split tip line", () => {
+  it("moves the paying guest's tip with their items", () => {
+    expect(isTipBillLine("Spropitné")).toBe(true);
+    expect(isTipBillLine("Burger")).toBe(false);
+    expect(appendTipToSplitItems([{ id: 2, qty: 1 }], 99)).toEqual([
+      { id: 2, qty: 1 },
+      { id: 99, qty: 1 },
+    ]);
+    expect(appendTipToSplitItems([{ id: 99, qty: 1 }], 99)).toEqual([{ id: 99, qty: 1 }]);
+    expect(appendTipToSplitItems([{ id: 2, qty: 1 }], null)).toEqual([{ id: 2, qty: 1 }]);
   });
 });
