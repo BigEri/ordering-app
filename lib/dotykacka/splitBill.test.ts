@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { appendTipToSplitItems, isTipBillLine, listOpenTipOrderItems, parseXpaySplitItems, pickTipOrderItemId, resolveSplitAgainstBill } from "./splitBill";
+import { appendTipToSplitItems, findGuestSplitOrder, guestSplitNote, isTipBillLine, listOpenTableOrders, listOpenTipOrderItems, orderIdFromPosActionData, parseXpaySplitItems, pickTipOrderItemId, resolveSplitAgainstBill } from "./splitBill";
 
 const lines = [
   { name: "Rajská", qty: 1, unitPriceCzk: 55, itemId: 1, orderId: 10 },
@@ -100,5 +100,22 @@ describe("split tip line", () => {
     expect(pickTipOrderItemId(before, after, 10, 8)).toBe(9);
     expect(pickTipOrderItemId(before, before, 10, 8)).toBeNull();
     expect(pickTipOrderItemId(before, before, 10, 19)).toBe(5);
+    expect(pickTipOrderItemId([{ itemId: 7, orderId: 10, unitPriceCzk: null }], [{ itemId: 7, orderId: 10, unitPriceCzk: null }], 10, 8)).toBe(7);
+  });
+
+  it("puts the paying guest on their own order", () => {
+    expect(guestSplitNote(10, [2, 2, 4])).toBe("tf-split-10-2-4");
+    const list = {
+      code: 0,
+      orders: [
+        { order: { id: 10, paid: false, note: "" }, items: [{ id: 3, name: "Pivo", qty: 1 }] },
+        { order: { id: 11, paid: false, note: "tf-split-10-2" }, items: [{ id: 2, name: "Burger", qty: 1 }] },
+      ],
+    };
+    const orders = listOpenTableOrders(list);
+    expect(findGuestSplitOrder(orders, 10, "tf-split-10-2", [10, 11])).toBe(11);
+    expect(findGuestSplitOrder(orders, 10, "other", [10])).toBe(11);
+    expect(orderIdFromPosActionData({ order: { id: 11 }, code: 0 })).toBe(11);
+    expect(findGuestSplitOrder(orders, 10, "", [10, 11])).toBeNull();
   });
 });

@@ -22,8 +22,12 @@ import {
 } from "./billRequestProduct";
 import {
   appendTipToSplitItems,
+  findGuestSplitOrder,
   groupSplitItemsByOrder,
+  guestSplitNote,
+  listOpenTableOrders,
   listOpenTipOrderItems,
+  orderIdFromPosActionData,
   pickTipOrderItemId,
   type OpenTipOrderItem,
   type XpaySplitItem,
@@ -1037,6 +1041,17 @@ export async function syncXpayPaidToDotykacka(input: {
     });
   };
 
+  const listTableOrders = async () => {
+    const listedAgain = await postDotykackaPosAction(
+      input.cfg,
+      accessToken,
+      { action: "order/list", "table-id": input.tableId },
+      12_000,
+    );
+    if (!listedAgain.ok) return null;
+    return listOpenTableOrders(listedAgain.data);
+  };
+
   const listOpenTips = async (): Promise<OpenTipOrderItem[] | null> => {
     const listedAgain = await postDotykackaPosAction(
       input.cfg,
@@ -1122,60 +1137,99 @@ export async function syncXpayPaidToDotykacka(input: {
     for (const [orderId, splitItems] of grouped) {
       const tipForThis = groupIndex === 0 ? tip : 0;
       groupIndex += 1;
-      const tipLine = await addTipToOpenBill(orderId, tipForThis);
-      if (tipForThis > 0 && tipLine.itemId == null) {
-        errors.push(`účet ${orderId}: spropitné: ${tipLine.error ?? "řádek se na účet nezapsal"}`);
-        continue;
-      }
-      const splitItemsToPay = appendTipToSplitItems(splitItems, tipLine.itemId);
       const methods = [DOTYKACKA_PAYMENT_METHOD_ONLINE, DOTYKACKA_PAYMENT_METHOD_CARD];
-      const paySplitItems = async (
-        items: Array<{ id: number; qty: number }>,
-      ): Promise<{ ok: boolean; error: string }> => {
+      const payAction = async (
+        action: string,
+        body: Record<string, unknown>,
+      ): Promise<{ ok: boolean; error: string; data: unknown }> => {
         let lastErr = "";
+        let lastData: unknown = null;
         for (const methodId of methods) {
-          const posted = await postDotykackaPosAction(
-            input.cfg,
-            accessToken,
-            posPayWithTip(
-              {
-                action: "order/split-issue-pay",
-                "order-id": orderId,
-                "table-id": input.tableId,
-                "split-items": items,
-                "payment-method-id": methodId,
-              },
-              0,
-            ),
-          );
+          const posted = await postDotykackaPosAction(input.cfg, accessToken, {
+            ...body,
+            action,
+            "payment-method-id": methodId,
+          });
           if (!posted.ok) {
             lastErr = formatPosActionsHttpError(input.cfg, posted.status, posted.text);
             continue;
           }
           if (!posActionSucceeded(posted.data)) {
             const code = parseDotykackaPosActionCode(posted.data);
-            lastErr = `Dotykačka order/split-issue-pay code ${code ?? "?"}`;
+            lastErr = `Dotykačka ${action} code ${code ?? "?"}`;
             continue;
           }
-          return { ok: true, error: "" };
+          return { ok: true, error: "", data: posted.data };
         }
-        return { ok: false, error: lastErr || "split-pay selhal" };
+        return { ok: false, error: lastErr || "split-pay selhal", data: lastData };
       };
-      const paid = await paySplitItems(splitItemsToPay);
-      if (!paid.ok) {
-        errors.push(`účet ${orderId}: ${paid.error}`);
+
+      if (tipForThis < 1) {
+        const paid = await payAction("order/split-issue-pay", {
+          "order-id": orderId,
+          "table-id": input.tableId,
+          "split-items": splitItems,
+        });
+        if (!paid.ok) errors.push(`účet ${orderId}: ${paid.error}`);
         continue;
       }
-      if (tipLine.itemId != null) {
-        const openTips = await listOpenTips();
-        const stillThere = openTips?.some((row) => row.orderId === orderId && row.itemId === tipLine.itemId) === true;
-        if (stillThere) {
-          const moved = await paySplitItems([{ id: tipLine.itemId, qty: 1 }]);
-          if (!moved.ok) {
-            errors.push(`účet ${orderId}: spropitné zůstalo na účtu pro dalšího hosta`);
-          }
+
+      const note = guestSplitNote(orderId, splitItems.map((item) => item.id));
+      const openNow = (await listTableOrders()) ?? [];
+      const source = openNow.find((order) => order.orderId === orderId);
+      const foodIds = new Set(splitItems.map((item) => item.id));
+      const foodStillOnSource = source ? source.itemIds.some((id) => foodIds.has(id)) : true;
+      const noted = openNow.find((order) => order.note === note && order.orderId !== orderId);
+      let guestOrderId = noted?.orderId ?? null;
+      if (guestOrderId == null && !foodStillOnSource) {
+        guestOrderId = findGuestSplitOrder(openNow, orderId, note, []);
+        if (guestOrderId == null) {
+          const others = openNow.filter((order) => order.orderId !== orderId);
+          if (others.length === 1) guestOrderId = others[0]!.orderId;
         }
       }
+
+      if (guestOrderId == null) {
+        const tips = (await listOpenTips()) ?? [];
+        const ownTip = tips.find(
+          (row) => row.orderId === orderId && row.unitPriceCzk != null && Math.round(row.unitPriceCzk) === tipForThis,
+        );
+        const moveItems = appendTipToSplitItems(splitItems, ownTip?.itemId ?? null);
+        const beforeIds = openNow.map((order) => order.orderId);
+        const splitPosted = await postDotykackaPosAction(input.cfg, accessToken, {
+          action: "order/split",
+          "order-id": orderId,
+          "table-id": input.tableId,
+          note,
+          "split-items": moveItems,
+        });
+        if (!splitPosted.ok || !posActionSucceeded(splitPosted.data)) {
+          const code = splitPosted.ok ? parseDotykackaPosActionCode(splitPosted.data) : undefined;
+          const detail = splitPosted.ok
+            ? `Dotykačka order/split code ${code ?? "?"}`
+            : formatPosActionsHttpError(input.cfg, splitPosted.status, splitPosted.text);
+          errors.push(`účet ${orderId}: ${detail}`);
+          continue;
+        }
+        guestOrderId = orderIdFromPosActionData(splitPosted.data);
+        if (guestOrderId == null || guestOrderId === orderId) {
+          const after = (await listTableOrders()) ?? [];
+          guestOrderId = findGuestSplitOrder(after, orderId, note, beforeIds);
+        }
+        if (guestOrderId == null) {
+          errors.push(`účet ${orderId}: jídlo se nepodařilo oddělit na účet hosta`);
+          continue;
+        }
+      }
+
+      const tipLine = await addTipToOpenBill(guestOrderId, tipForThis);
+      if (tipLine.itemId == null) {
+        errors.push(`účet ${orderId}: spropitné: ${tipLine.error ?? "řádek se na účet hosta nezapsal"}`);
+        continue;
+      }
+      let paid = await payAction("order/issue-and-pay", { "order-id": guestOrderId });
+      if (!paid.ok) paid = await payAction("order/pay", { "order-id": guestOrderId });
+      if (!paid.ok) errors.push(`účet ${orderId}: ${paid.error}`);
     }
     if (errors.length > 0) {
       const onlyTip = errors.every((e) => e.includes("spropitné"));

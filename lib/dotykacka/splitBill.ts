@@ -138,7 +138,78 @@ export function pickTipOrderItemId(
   if (pricedFresh) return pricedFresh.itemId;
   if (fresh.length > 0) return newest(fresh).itemId;
   const pricedExisting = priced(after.filter(onOrder));
-  return pricedExisting ? pricedExisting.itemId : null;
+  if (pricedExisting) return pricedExisting.itemId;
+  const onThisOrder = after.filter(onOrder);
+  if (onThisOrder.length === 1 && onThisOrder[0]?.unitPriceCzk == null) return onThisOrder[0].itemId;
+  return null;
+}
+
+export type OpenTableOrder = {
+  orderId: number;
+  note: string;
+  itemIds: number[];
+};
+
+/** Otevřené účty stolu z order/list, včetně poznámky a id položek. */
+export function listOpenTableOrders(data: unknown): OpenTableOrder[] {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return [];
+  const root = data as Record<string, unknown>;
+  if (root.code != null && root.code !== 0 && root.code !== "0") return [];
+  const orders = root.orders;
+  if (!Array.isArray(orders)) return [];
+  const out: OpenTableOrder[] = [];
+  for (const row of orders) {
+    if (!row || typeof row !== "object") continue;
+    const wrap = row as { order?: unknown; items?: unknown };
+    const order = wrap.order;
+    if (!order || typeof order !== "object") continue;
+    const orderRec = order as Record<string, unknown>;
+    if (orderRec.paid === true) continue;
+    const orderId = asRawId(orderRec.id);
+    if (orderId == null) continue;
+    const note = typeof orderRec.note === "string" ? orderRec.note : "";
+    const itemIds: number[] = [];
+    if (Array.isArray(wrap.items)) {
+      for (const item of wrap.items) {
+        if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+        const rec = item as Record<string, unknown>;
+        const canceled = rec["canceled-date"] ?? rec.canceledDate;
+        if (canceled != null && canceled !== "") continue;
+        const itemId = asRawId(rec.id ?? rec["item-id"] ?? rec.itemId ?? rec._orderItemId);
+        if (itemId != null) itemIds.push(itemId);
+      }
+    }
+    out.push({ orderId, note, itemIds });
+  }
+  return out;
+}
+
+/** Stejná poznámka při opakování platby, aby se spropitné nepřipsalo znovu na společný účet. */
+export function guestSplitNote(sourceOrderId: number, itemIds: number[]): string {
+  const ids = [...new Set(itemIds.filter((id) => id > 0))].sort((a, b) => a - b);
+  return `tf-split-${sourceOrderId}-${ids.join("-")}`.slice(0, 160);
+}
+
+export function orderIdFromPosActionData(data: unknown): number | null {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return null;
+  const order = (data as { order?: unknown }).order;
+  if (!order || typeof order !== "object" || Array.isArray(order)) return null;
+  return asRawId((order as Record<string, unknown>).id);
+}
+
+/** Účet, na který se přesunulo jídlo platícího hosta. */
+export function findGuestSplitOrder(
+  orders: OpenTableOrder[],
+  sourceOrderId: number,
+  note: string,
+  orderIdsBefore: number[],
+): number | null {
+  const marked = orders.find((order) => order.note === note && order.orderId !== sourceOrderId);
+  if (marked) return marked.orderId;
+  const before = new Set(orderIdsBefore);
+  const created = orders.filter((order) => order.orderId !== sourceOrderId && !before.has(order.orderId));
+  if (created.length === 1) return created[0]!.orderId;
+  return null;
 }
 
 export function groupSplitItemsByOrder(items: XpaySplitItem[]): Map<number, Array<{ id: number; qty: number }>> {
