@@ -10,7 +10,12 @@ import {
   loadTableBillSession,
   saveTableBillSession,
 } from "../lib/client/tableBillSession";
-import { clearKioskBillPaidByXpay, peekKioskXpayClose, peekKioskXpayFlow } from "../lib/client/kioskBillClose";
+import {
+  clearKioskBillPaidByXpay,
+  peekKioskBillPaidByXpay,
+  peekKioskXpayClose,
+  peekKioskXpayFlow,
+} from "../lib/client/kioskBillClose";
 import { peekKioskSplitPayContinue } from "../lib/client/kioskSplitPay";
 import {
   clearStoryousKioskSession,
@@ -81,6 +86,9 @@ export function TableBillSyncWatcher() {
       const billOpen = j.open === true;
 
       if (billOpen && lines.length > 0) {
+        if (peekKioskBillPaidByXpay() && !peekKioskSplitPayContinue()) {
+          return;
+        }
         hadOpenBillRef.current = true;
         lastTotalRef.current = totalCzk;
         const fields = posTableFieldsRef.current();
@@ -101,12 +109,12 @@ export function TableBillSyncWatcher() {
         return;
       }
 
+      syncTableBillFromDotykacka({ lines: [], totalCzk: 0 });
+      clearTableBillSession();
+
       if (peekKioskXpayFlow()) {
         return;
       }
-
-      syncTableBillFromDotykacka({ lines: [], totalCzk: 0 });
-      clearTableBillSession();
 
       if (!handledIssuedRef.current && hadOpenBillRef.current) {
         handledIssuedRef.current = true;
