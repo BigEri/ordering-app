@@ -1,3 +1,5 @@
+import { unitPriceCzkFromPosOrderItem } from "./posItemPrice";
+
 export type XpaySplitItem = {
   orderId: number;
   itemId: number;
@@ -47,6 +49,96 @@ export function appendTipToSplitItems(
   if (tipItemId == null || tipItemId <= 0) return items;
   if (items.some((item) => item.id === tipItemId)) return items;
   return [...items, { id: tipItemId, qty: 1 }];
+}
+
+export type OpenTipOrderItem = {
+  itemId: number;
+  orderId: number;
+  unitPriceCzk: number | null;
+};
+
+function asRawId(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) return value;
+  if (typeof value === "string" && /^\d+$/.test(value.trim())) {
+    const n = Number.parseInt(value.trim(), 10);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  }
+  return null;
+}
+
+function itemText(item: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const value = item[key];
+    if (typeof value === "string" && value.trim()) return value.trim();
+  }
+  return "";
+}
+
+function itemTagList(item: Record<string, unknown>): string[] {
+  const raw = item.tags;
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((tag): tag is string => typeof tag === "string").map((tag) => tag.toLowerCase());
+}
+
+function isRawTipItem(item: Record<string, unknown>): boolean {
+  if (itemTagList(item).includes("oa-tip")) return true;
+  return isTipBillLine(itemText(item, "name", "alternativeName", "alternative-name"), itemText(item, "note"));
+}
+
+/** Řádky Spropitné z odpovědi order/list, i když pokladna ještě nevrátí cenu. */
+export function listOpenTipOrderItems(data: unknown): OpenTipOrderItem[] {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return [];
+  const root = data as Record<string, unknown>;
+  if (root.code != null && root.code !== 0 && root.code !== "0") return [];
+  const orders = root.orders;
+  if (!Array.isArray(orders)) return [];
+  const out: OpenTipOrderItem[] = [];
+  for (const row of orders) {
+    if (!row || typeof row !== "object") continue;
+    const wrap = row as { order?: unknown; items?: unknown };
+    const order = wrap.order;
+    if (!order || typeof order !== "object") continue;
+    const orderRec = order as Record<string, unknown>;
+    if (orderRec.paid === true) continue;
+    const orderId = asRawId(orderRec.id);
+    if (orderId == null || !Array.isArray(wrap.items)) continue;
+    for (const item of wrap.items) {
+      if (!item || typeof item !== "object" || Array.isArray(item)) continue;
+      const rec = item as Record<string, unknown>;
+      const canceled = rec["canceled-date"] ?? rec.canceledDate;
+      if (canceled != null && canceled !== "") continue;
+      if (!isRawTipItem(rec)) continue;
+      const itemId = asRawId(rec.id ?? rec["item-id"] ?? rec.itemId ?? rec._orderItemId);
+      if (itemId == null) continue;
+      const price = unitPriceCzkFromPosOrderItem(rec);
+      out.push({ itemId, orderId, unitPriceCzk: price ?? null });
+    }
+  }
+  return out;
+}
+
+/**
+ * Id řádku, který patří k tomuto spropitnému.
+ * Nový řádek má přednost. Starší řádek se použije jen když sedí částka (opakovaný zápis).
+ */
+export function pickTipOrderItemId(
+  before: OpenTipOrderItem[],
+  after: OpenTipOrderItem[],
+  orderId: number,
+  tipAmount: number,
+): number | null {
+  const onOrder = (row: OpenTipOrderItem) => row.orderId === orderId;
+  const beforeIds = new Set(before.filter(onOrder).map((row) => row.itemId));
+  const fresh = after.filter((row) => onOrder(row) && !beforeIds.has(row.itemId));
+  const priced = (rows: OpenTipOrderItem[]) =>
+    rows.find((row) => row.unitPriceCzk != null && Math.round(row.unitPriceCzk) === tipAmount);
+  const newest = (rows: OpenTipOrderItem[]) =>
+    rows.reduce((best, row) => (row.itemId > best.itemId ? row : best));
+  const pricedFresh = priced(fresh);
+  if (pricedFresh) return pricedFresh.itemId;
+  if (fresh.length > 0) return newest(fresh).itemId;
+  const pricedExisting = priced(after.filter(onOrder));
+  return pricedExisting ? pricedExisting.itemId : null;
 }
 
 export function groupSplitItemsByOrder(items: XpaySplitItem[]): Map<number, Array<{ id: number; qty: number }>> {

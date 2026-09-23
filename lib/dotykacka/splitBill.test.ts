@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { appendTipToSplitItems, isTipBillLine, parseXpaySplitItems, resolveSplitAgainstBill } from "./splitBill";
+import { appendTipToSplitItems, isTipBillLine, listOpenTipOrderItems, parseXpaySplitItems, pickTipOrderItemId, resolveSplitAgainstBill } from "./splitBill";
 
 const lines = [
   { name: "Rajská", qty: 1, unitPriceCzk: 55, itemId: 1, orderId: 10 },
@@ -79,5 +79,26 @@ describe("split tip line", () => {
     ]);
     expect(appendTipToSplitItems([{ id: 99, qty: 1 }], 99)).toEqual([{ id: 99, qty: 1 }]);
     expect(appendTipToSplitItems([{ id: 2, qty: 1 }], null)).toEqual([{ id: 2, qty: 1 }]);
+  });
+
+  it("keeps a new tip row with the guest who paid it", () => {
+    const list = {
+      code: 0,
+      orders: [
+        {
+          order: { id: 10, paid: false },
+          items: [
+            { id: 2, name: "Burger", qty: 1, "price-with-vat": { unit: 189 } },
+            { id: 9, name: "Spropitné", note: "Spropitné", qty: 1, tags: ["oa-tip"] },
+          ],
+        },
+      ],
+    };
+    expect(listOpenTipOrderItems(list)).toEqual([{ itemId: 9, orderId: 10, unitPriceCzk: null }]);
+    const before = [{ itemId: 5, orderId: 10, unitPriceCzk: 19 }];
+    const after = [...before, { itemId: 9, orderId: 10, unitPriceCzk: 8 }];
+    expect(pickTipOrderItemId(before, after, 10, 8)).toBe(9);
+    expect(pickTipOrderItemId(before, before, 10, 8)).toBeNull();
+    expect(pickTipOrderItemId(before, before, 10, 19)).toBe(5);
   });
 });
