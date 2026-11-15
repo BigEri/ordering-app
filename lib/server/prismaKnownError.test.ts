@@ -23,5 +23,12 @@ describe("prismaKnownError", () => {
     ).toBe(true);
     expect(isPrismaTransientConnectionError({ code: "P2024" })).toBe(true);
     expect(isPrismaTransientConnectionError({ code: "P2022" })).toBe(false);
+    expect(
+      isPrismaTransientConnectionError({
+        name: "PrismaClientInitializationError",
+        message:
+          "Invalid `prisma.restaurant.findUnique()` invocation:\n\n\nCan't reach database server at `example.neon.tech:5432`",
+      }),
+    ).toBe(true);
   });
 });
