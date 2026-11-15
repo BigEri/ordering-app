@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="cs">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Propojení s pokladnou — Tableflow</title>
+    <meta
+      name="description"
+      content="Propojení Tableflow s pokladnou: objednávky od stolu jdou do Dotykačky (Storyous za podmínek). Menu a ceny z pokladny, jeden provozní tok."
+    />
+    <meta property="og:title" content="Propojení s pokladnou — Tableflow" />
+    <meta
+      property="og:description"
+      content="Objednávky z tabletů u stolu se předají do propojené pokladny. Podpora Dotykačky, Storyous individuálně."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content="cs_CZ" />
+    <meta property="og:url" content="https://www.tableflow.cz/propojeni-s-pokladnou/" />
+    <meta property="og:image" content="https://www.tableflow.cz/assets/tablet-at-table-hero.jpg" />
+    <link rel="canonical" href="https://www.tableflow.cz/propojeni-s-pokladnou/" />
+    <meta name="theme-color" content="#f3f0e8" />
+    <link rel="icon" href="../assets/tableflow-icon.png" type="image/png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,620;1,9..144,500&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="../styles.css?v=stage54" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "S jakou pokladnou Tableflow funguje?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Aktuálně funguje propojení s Dotykačkou. Storyous lze propojit za příslušných podmínek a s potřebným API tokenem. U jiných systémů ověříme možnosti individuálně."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Musíme zakládat menu znovu?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "U podporované integrace se dostupné položky a ceny načítají z pokladny. Rozsah synchronizace a další úpravy závisí na konkrétním systému."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Jak funguje platba s Dotykačkou?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Pokud má restaurace aktivní podporované platební řešení Dotykačky, host může po objednávce zaplatit na svém telefonu prostřednictvím QR kódu. Platba probíhá přes platební bránu napojenou na pokladní systém. Tableflow platby samo nepřijímá ani nezpracovává."
+            }
+          }
+        ]
+      }
+    </script>
+    <script>document.documentElement.classList.add("js");</script>
+  </head>
+  <body data-source="propojeni-s-pokladnou">
+    <a class="skip" href="#top">Přeskočit na obsah</a>
+
+    <header class="top">
+      <a class="top__brand" href="../" aria-label="Tableflow, úvod">
+        <img src="../assets/tableflow-icon.png" alt="" width="36" height="36" />
+        <span>Tableflow</span>
+      </a>
+      <button class="top__toggle" type="button" aria-expanded="false" aria-controls="site-nav" aria-label="Otevřít menu">
+        <span></span>
+        <span></span>
+      </button>
+      <nav class="top__nav" id="site-nav" aria-label="Hlavní">
+        <a href="#jak">Jak to funguje</a>
+        <a href="#systemy">Pokladny</a>
+        <a href="#faq">FAQ</a>
+        <a class="top__cta" href="#kontakt">Domluvit prezentaci</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="land-hero" aria-labelledby="hero-title">
+        <p class="land-hero__kicker">Integrace do provozu</p>
+        <h1 id="hero-title">Propojení s pokladnou</h1>
+        <p class="land-hero__lead">
+          Objednávky z tabletů u stolu se předají do vaší pokladny. Menu a ceny držíte tam,
+          kde je máte dnes — Tableflow je napojí na stoly, ne na oddělený paralelní systém.
+        </p>
+        <div class="land-hero__actions">
+          <a class="btn" href="#kontakt">Domluvit prezentaci</a>
+          <a class="btn btn--ghost" href="../">Zpět na Tableflow</a>
+        </div>
+        <figure class="land-hero__media">
+          <img
+            src="../assets/menu-xpay-qr.png"
+            alt="Platba přes QR v Tableflow napojená na pokladní řešení"
+            width="1280"
+            height="720"
+          />
+        </figure>
+      </section>
+
+      <section class="land-intro" id="jak" aria-labelledby="flow-title">
+        <h2 id="flow-title">Jak propojení funguje</h2>
+        <ol class="land-steps">
+          <li>
+            <h3>Pokladna zůstává zdrojem</h3>
+            <p>U podporované integrace se dostupné položky a ceny načítají z pokladny.</p>
+          </li>
+          <li>
+            <h3>Objednávka od stolu</h3>
+            <p>Host odešle objednávku z tabletu. Ta míří ke konkrétnímu stolu v pokladním toku.</p>
+          </li>
+          <li>
+            <h3>Provoz bez dvojí práce</h3>
+            <p>Nemusíte přepisovat objednávky z tabletu do pokladny ručně.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="voices" id="systemy" aria-labelledby="pos-title">
+        <h2 id="pos-title">Podporované pokladny</h2>
+        <div class="voices__grid">
+          <article>
+            <p>Dotykačka</p>
+            <h3>Propojení je dostupné</h3>
+            <span>Objednávky a synchronizace menu podle nastavení integrace. Platba přes podporované řešení Dotykačky na telefonu hosta.</span>
+          </article>
+          <article>
+            <p>Storyous</p>
+            <h3>Individuální podmínky</h3>
+            <span>Propojení je možné za příslušných podmínek a s potřebným API tokenem. Platba kartou přes tablet Tableflow u Storyous není dostupná.</span>
+          </article>
+          <article>
+            <p>Jiný systém</p>
+            <h3>Ověříme individuálně</h3>
+            <span>Napište nám, jakou pokladnu používáte — zjistíme možnosti napojení.</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="land-compare" aria-labelledby="compare-title">
+        <div class="land-compare__inner">
+          <h2 id="compare-title">Proč na propojení záleží</h2>
+          <p>
+            Samostatné QR menu bez vazby na pokladnu často končí tím, že obsluha stejně vše
+            přepisuje. Tableflow cílí na jeden provozní tok: stůl → objednávka → pokladna.
+          </p>
+          <ul>
+            <li>Méně chyb z ručního zápisu</li>
+            <li>Aktuální nabídka z pokladny (u podporované integrace)</li>
+            <li>Tablety a software formou pronájmu</li>
+          </ul>
+          <a class="btn btn--ghost" href="../tablety-do-restaurace/">Tablety do restaurace</a>
+        </div>
+        <figure class="land-compare__photo">
+          <img
+            src="../assets/device-front.jpg"
+            alt="Tablet Tableflow napojený na provoz restaurace"
+            width="1024"
+            height="576"
+          />
+        </figure>
+      </section>
+
+      <section class="land-related" aria-labelledby="related-title">
+        <h2 id="related-title">Související témata</h2>
+        <ul>
+          <li><a href="../objednavkovy-system-pro-restaurace/">Objednávkový systém pro restaurace</a></li>
+          <li><a href="../objednavani-od-stolu/">Objednávání od stolu</a></li>
+          <li><a href="../tablety-do-restaurace/">Tablety do restaurace</a></li>
+        </ul>
+      </section>
+
+      <section class="faq" id="faq" aria-labelledby="faq-title">
+        <h2 id="faq-title">Časté otázky k pokladně</h2>
+        <div class="faq__list">
+          <details class="faq__item">
+            <summary>S jakou pokladnou Tableflow funguje?</summary>
+            <p>Aktuálně funguje propojení s Dotykačkou. Storyous lze propojit za příslušných podmínek a s potřebným API tokenem. U jiných systémů ověříme možnosti individuálně.</p>
+          </details>
+          <details class="faq__item">
+            <summary>Musíme zakládat menu znovu?</summary>
+            <p>U podporované integrace se dostupné položky a ceny načítají z pokladny. Rozsah synchronizace závisí na konkrétním systému.</p>
+          </details>
+          <details class="faq__item">
+            <summary>Jak funguje platba s Dotykačkou?</summary>
+            <p>Pokud má restaurace aktivní podporované platební řešení Dotykačky, host může zaplatit na telefonu přes QR kód. Tableflow platby samo nepřijímá ani nezpracovává.</p>
+          </details>
+        </div>
+      </section>
+
+      <section class="close" id="kontakt" aria-labelledby="contact-title">
+        <figure class="close__photo">
+          <img src="../assets/hero-studio-lineup.jpg" alt="Sada Tableflow připravená k instalaci v restauraci" width="900" height="1120" />
+        </figure>
+        <div class="close__sheet">
+          <h2 id="contact-title">Chcete ověřit propojení s vaší pokladnou?</h2>
+          <p>
+            Napište na <a href="mailto:info@tableflow.cz">info@tableflow.cz</a> nebo vyplňte formulář
+            a uveďte, jaký pokladní systém používáte. Domluvíme prezentaci.
+          </p>
+          <div class="close__actions">
+            <a class="btn" href="#contact-form">Domluvit prezentaci</a>
+            <a class="btn btn--ghost" href="mailto:info@tableflow.cz">Napsat nám</a>
+          </div>
+          <form class="contact__form" id="contact-form" novalidate>
+            <input class="contact__honey" type="checkbox" name="botcheck" tabindex="-1" autocomplete="off" aria-hidden="true" />
+            <label>
+              <span class="contact__label">Název provozovny<span class="req" aria-hidden="true">*</span></span>
+              <input type="text" name="venue" required autocomplete="organization" placeholder="Např. Restaurace U Stolu" />
+            </label>
+            <label>
+              <span class="contact__label">E-mail<span class="req" aria-hidden="true">*</span></span>
+              <input type="email" name="email" required autocomplete="email" placeholder="vas@email.cz" />
+            </label>
+            <div class="contact__pair">
+              <label>
+                Telefon
+                <input type="tel" name="phone" autocomplete="tel" placeholder="+420 …" />
+              </label>
+              <label>
+                Počet stolů
+                <input type="number" name="tables" min="1" inputmode="numeric" placeholder="např. 12" />
+              </label>
+            </div>
+            <label>
+              Zpráva
+              <textarea name="message" rows="3" placeholder="Jakou pokladnu používáte?"></textarea>
+            </label>
+            <button class="btn" type="submit" id="contact-submit">Domluvit prezentaci</button>
+            <p class="contact__status" id="contact-status" role="status" aria-live="polite" hidden></p>
+          </form>
+        </div>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <div class="foot__brand">
+        <img src="../assets/tableflow-icon.png" alt="" width="28" height="28" />
+        <span>Tableflow</span>
+      </div>
+      <p>Propojení s pokladnou — objednávky od stolu v jednom toku.</p>
+      <nav class="foot__links" aria-label="Další stránky">
+        <a href="../">Úvod</a>
+        <a href="../objednavkovy-system-pro-restaurace/">Objednávkový systém</a>
+        <a href="../objednavani-od-stolu/">Objednávání od stolu</a>
+        <a href="../tablety-do-restaurace/">Tablety do restaurace</a>
+        <a href="mailto:info@tableflow.cz">info@tableflow.cz</a>
+      </nav>
+    </footer>
+
+    <script src="../site-common.js" defer></script>
+  </body>
+</html>

@@ -26,7 +26,7 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,620;1,9..144,500&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../styles.css?v=stage53" />
+    <link rel="stylesheet" href="../styles.css?v=stage54" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
@@ -92,7 +92,7 @@
     </script>
     <script>document.documentElement.classList.add("js");</script>
   </head>
-  <body>
+  <body data-source="objednavkovy-system-pro-restaurace">
     <a class="skip" href="#top">Přeskočit na obsah</a>
 
     <header class="top">
@@ -198,6 +198,15 @@
         </figure>
       </section>
 
+      <section class="land-related" aria-labelledby="related-title">
+        <h2 id="related-title">Související témata</h2>
+        <ul>
+          <li><a href="../tablety-do-restaurace/">Tablety do restaurace</a></li>
+          <li><a href="../objednavani-od-stolu/">Objednávání od stolu</a></li>
+          <li><a href="../propojeni-s-pokladnou/">Propojení s pokladnou</a></li>
+        </ul>
+      </section>
+
       <section class="faq" id="faq" aria-labelledby="faq-title">
         <h2 id="faq-title">Časté otázky k objednávkovému systému</h2>
         <div class="faq__list">
@@ -273,101 +282,13 @@
       <p>Objednávkový systém pro restaurace — objednávky přímo od stolu.</p>
       <nav class="foot__links" aria-label="Další stránky">
         <a href="../">Úvod</a>
+        <a href="../tablety-do-restaurace/">Tablety do restaurace</a>
+        <a href="../objednavani-od-stolu/">Objednávání od stolu</a>
+        <a href="../propojeni-s-pokladnou/">Propojení s pokladnou</a>
         <a href="mailto:info@tableflow.cz">info@tableflow.cz</a>
       </nav>
     </footer>
 
-    <script>
-      const toggle = document.querySelector(".top__toggle");
-      const nav = document.getElementById("site-nav");
-
-      function setNav(open) {
-        if (!toggle || !nav) return;
-        toggle.setAttribute("aria-expanded", String(open));
-        toggle.setAttribute("aria-label", open ? "Zavřít menu" : "Otevřít menu");
-        nav.classList.toggle("is-open", open);
-        document.body.classList.toggle("is-nav", open);
-      }
-
-      toggle?.addEventListener("click", () => {
-        setNav(toggle.getAttribute("aria-expanded") !== "true");
-      });
-      nav?.querySelectorAll("a").forEach((link) => {
-        link.addEventListener("click", () => setNav(false));
-      });
-
-      const contactForm = document.getElementById("contact-form");
-      const contactStatus = document.getElementById("contact-status");
-      const contactSubmit = document.getElementById("contact-submit");
-      const WEB3FORMS_ACCESS_KEY = "cd183827-deda-4fbd-92ea-af2e4de3eace";
-
-      function setContactStatus(type, text) {
-        if (!contactStatus) return;
-        contactStatus.hidden = !text;
-        contactStatus.className = `contact__status${type ? ` contact__status--${type}` : ""}`;
-        contactStatus.textContent = text || "";
-      }
-
-      contactForm?.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const form = event.currentTarget;
-        if (form.botcheck?.checked) return;
-
-        const venue = form.venue.value.trim();
-        const email = form.email.value.trim();
-        const phone = form.phone.value.trim();
-        const tables = form.tables.value.trim();
-        const message = form.message.value.trim();
-
-        if (!venue) {
-          setContactStatus("error", "Zadejte název provozovny.");
-          form.venue.focus();
-          return;
-        }
-
-        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          setContactStatus("error", "Zadejte platný e-mail, ať vám můžeme odepsat.");
-          form.email.focus();
-          return;
-        }
-
-        if (!WEB3FORMS_ACCESS_KEY || WEB3FORMS_ACCESS_KEY.startsWith("REPLACE_")) {
-          setContactStatus("error", "Formulář ještě není napojený. Napište nám prosím na info@tableflow.cz.");
-          return;
-        }
-
-        contactSubmit.disabled = true;
-        contactSubmit.textContent = "Odesílám…";
-        setContactStatus("pending", "Odesílám poptávku…");
-
-        try {
-          const res = await fetch("https://api.web3forms.com/submit", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({
-              access_key: WEB3FORMS_ACCESS_KEY,
-              subject: "Poptávka Tableflow — objednávkový systém",
-              from_name: "Tableflow web",
-              email,
-              name: venue,
-              Provozovna: venue,
-              Telefon: phone || "—",
-              "Počet stolů": tables || "—",
-              Zpráva: message || "—",
-              Zdroj: "objednavkovy-system-pro-restaurace",
-            }),
-          });
-          const data = await res.json().catch(() => ({}));
-          if (!res.ok || data.success === false) throw new Error(data.message || "Odeslání se nepovedlo.");
-          form.reset();
-          setContactStatus("ok", "Poptávka je odeslaná. Ozveme se na váš e-mail.");
-        } catch (err) {
-          setContactStatus("error", "Odeslání se nepovedlo. Napište nám prosím na info@tableflow.cz.");
-        } finally {
-          contactSubmit.disabled = false;
-          contactSubmit.textContent = "Domluvit prezentaci";
-        }
-      });
-    </script>
+    <script src="../site-common.js" defer></script>
   </body>
 </html>
