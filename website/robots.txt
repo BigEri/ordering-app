@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+
+Disallow: /nahled-ceny.html
+Disallow: /prodejni-list.html
+
+Sitemap: https://www.tableflow.cz/sitemap.xml
