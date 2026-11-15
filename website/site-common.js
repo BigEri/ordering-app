@@ -81,9 +81,15 @@
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data.success === false) throw new Error(data.message || "Odeslání se nepovedlo.");
-      form.reset();
-      setContactStatus("ok", "Poptávka je odeslaná. Ozveme se na váš e-mail.");
-    } catch (err) {
+          form.reset();
+          setContactStatus("ok", "Poptávka je odeslaná. Ozveme se na váš e-mail.");
+          if (typeof window.gtag === "function") {
+            window.gtag("event", "generate_lead", {
+              method: "contact_form",
+              page_source: pageSource,
+            });
+          }
+        } catch (err) {
       setContactStatus("error", "Odeslání se nepovedlo. Napište nám prosím na info@tableflow.cz.");
     } finally {
       contactSubmit.disabled = false;
