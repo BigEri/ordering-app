@@ -26,22 +26,23 @@
       href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,620;1,9..144,500&family=PT+Serif:ital,wght@0,400;0,700;1,400;1,700&family=Source+Sans+3:ital,wght@0,400;0,600;0,700;1,400&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="../styles.css?v=stage54" />
+    <link rel="stylesheet" href="../styles.css?v=stage57" />
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
-        "@type": "Product",
+        "@type": "Service",
         "name": "Tableflow tablety do restaurace",
+        "serviceType": "Pronájem tabletů do restaurace",
         "description": "Specializované tablety do restaurace s pevným uchycením, výměnnou baterií a nabíjecí stanicí. Součást objednávkového systému Tableflow.",
-        "brand": { "@type": "Brand", "name": "Tableflow" },
         "url": "https://www.tableflow.cz/tablety-do-restaurace/",
         "image": "https://www.tableflow.cz/assets/tablet-at-table-hero.jpg",
-        "offers": {
-          "@type": "Offer",
-          "availability": "https://schema.org/InStock",
-          "priceCurrency": "CZK",
-          "description": "Pronájem podle počtu stolů včetně instalace"
-        }
+        "provider": {
+          "@type": "Organization",
+          "name": "Tableflow",
+          "url": "https://www.tableflow.cz/",
+          "email": "info@tableflow.cz"
+        },
+        "areaServed": "CZ"
       }
     </script>
     <script type="application/ld+json">
@@ -77,6 +78,7 @@
       }
     </script>
     <script src="../analytics.js" defer></script>
+    <script src="../consent.js" defer></script>
     <script>document.documentElement.classList.add("js");</script>
   </head>
   <body data-source="tablety-do-restaurace">
@@ -269,6 +271,11 @@
         <a href="../objednavkovy-system-pro-restaurace/">Objednávkový systém</a>
         <a href="../objednavani-od-stolu/">Objednávání od stolu</a>
         <a href="../propojeni-s-pokladnou/">Propojení s pokladnou</a>
+        <a href="/#hero-title">O projektu</a>
+        <a href="/ochrana-osobnich-udaju/">Ochrana osobních údajů</a>
+        <a href="/zasady-cookies/">Zásady používání cookies</a>
+        <button type="button" class="foot__cookies" data-cookie-settings>Nastavení cookies</button>
+        <a href="#kontakt">Kontakt</a>
         <a href="mailto:info@tableflow.cz">info@tableflow.cz</a>
       </nav>
     </footer>
