@@ -15,7 +15,9 @@ export function loadConfirmedOrdersSession(): ConfirmedOrder[] {
       const o = row as Record<string, unknown>;
       if (typeof o.id !== "string" || typeof o.createdAtIso !== "string") continue;
       if (!Array.isArray(o.lines) || typeof o.totalCzk !== "number") continue;
-      out.push(o as unknown as ConfirmedOrder);
+      const storyousOrderId =
+        typeof o.storyousOrderId === "string" && o.storyousOrderId.trim() ? o.storyousOrderId.trim() : undefined;
+      out.push({ ...(o as unknown as ConfirmedOrder), ...(storyousOrderId ? { storyousOrderId } : {}) });
     }
     return out;
   } catch {

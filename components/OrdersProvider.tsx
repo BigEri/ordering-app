@@ -4,6 +4,7 @@ import * as React from "react";
 
 import type { OrderLineSnapshotInput } from "../lib/menu/orderLineLabel";
 import { loadConfirmedOrdersSession, saveConfirmedOrdersSession } from "../lib/client/confirmedOrdersSession";
+import { dropDeclinedStoryousOrders, TILL_BILL_ORDER_ID } from "../lib/client/storyousKioskSession";
 
 export type ConfirmedOrderLine = {
   name: string;
@@ -21,6 +22,8 @@ export type ConfirmedOrder = {
   createdAtIso: string;
   lines: ConfirmedOrderLine[];
   totalCzk: number;
+  /** Storyous delivery orderId — ať odmítnutí v kase smaže jen tohle kolo. */
+  storyousOrderId?: string;
 };
 
 type OrdersContextValue = {
@@ -29,12 +32,20 @@ type OrdersContextValue = {
   hasOpenTableBill: boolean;
   /** Náhled z adminu — lokální objednávka bez Dotykačky. */
   addOrder: (order: Omit<ConfirmedOrder, "id" | "createdAtIso">) => void;
-  /** Přepíše seznam podle otevřeného účtu u stolu v Dotyce. */
-  syncTableBillFromDotykacka: (bill: {
-    lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
-    totalCzk: number;
-  }) => void;
+  /**
+   * Přepíše seznam podle otevřeného účtu u stolu v pokladně.
+   * `keepStoryousOrderIds` — kola ze Storyous, která obsluha ještě nepotvrdila (v účtu z pokladny zatím nejsou).
+   */
+  syncTableBillFromDotykacka: (
+    bill: {
+      lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+      totalCzk: number;
+    },
+    opts?: { keepStoryousOrderIds?: string[] },
+  ) => void;
   clearOrders: () => void;
+  /** Storyous: kasa objednávku odmítla — pryč z Účtu / Objednávek. */
+  removeDeclinedStoryousOrder: (storyousOrderId: string) => void;
 };
 
 const OrdersContext = React.createContext<OrdersContextValue | null>(null);
@@ -58,10 +69,13 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const syncTableBillFromDotykacka = React.useCallback(
-    (bill: {
-      lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
-      totalCzk: number;
-    }) => {
+    (
+      bill: {
+        lines: Array<{ name: string; detail?: string; qty: number; unitPriceCzk: number; itemId?: number; orderId?: number }>;
+        totalCzk: number;
+      },
+      opts?: { keepStoryousOrderIds?: string[] },
+    ) => {
       if (bill.lines.length === 0) {
         setOrders([]);
         setHasOpenTableBill(false);
@@ -69,9 +83,9 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       setHasOpenTableBill(true);
-      const next: ConfirmedOrder[] = [
+      const tillBill: ConfirmedOrder[] = [
         {
-          id: "dotykacka-table-bill",
+          id: TILL_BILL_ORDER_ID,
           createdAtIso: new Date().toISOString(),
           lines: bill.lines.map((l) => ({
             name: l.name,
@@ -84,8 +98,13 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
           totalCzk: bill.totalCzk,
         },
       ];
-      setOrders(next);
-      saveConfirmedOrdersSession(next);
+      const keep = new Set(opts?.keepStoryousOrderIds ?? []);
+      setOrders((prev) => {
+        const pending = keep.size ? prev.filter((o) => o.storyousOrderId && keep.has(o.storyousOrderId)) : [];
+        const next = [...pending, ...tillBill];
+        saveConfirmedOrdersSession(next);
+        return next;
+      });
     },
     [],
   );
@@ -96,9 +115,24 @@ export function OrdersProvider({ children }: { children: React.ReactNode }) {
     saveConfirmedOrdersSession([]);
   }, []);
 
+  const removeDeclinedStoryousOrder = React.useCallback((storyousOrderId: string) => {
+    setOrders((prev) => {
+      const next = dropDeclinedStoryousOrders(prev, storyousOrderId);
+      saveConfirmedOrdersSession(next);
+      return next;
+    });
+  }, []);
+
   const value = React.useMemo<OrdersContextValue>(
-    () => ({ orders, hasOpenTableBill, addOrder, syncTableBillFromDotykacka, clearOrders }),
-    [orders, hasOpenTableBill, addOrder, syncTableBillFromDotykacka, clearOrders],
+    () => ({
+      orders,
+      hasOpenTableBill,
+      addOrder,
+      syncTableBillFromDotykacka,
+      clearOrders,
+      removeDeclinedStoryousOrder,
+    }),
+    [orders, hasOpenTableBill, addOrder, syncTableBillFromDotykacka, clearOrders, removeDeclinedStoryousOrder],
   );
 
   return <OrdersContext.Provider value={value}>{children}</OrdersContext.Provider>;

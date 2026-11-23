@@ -17,6 +17,7 @@ import { verifyDeviceSecret } from "../server/deviceSecret";
 import { getKioskDeviceBinding } from "../server/kioskDeviceBindings";
 import { isSuccessfulDuplicateAsync, markPosRequestSuccessfulAsync } from "../server/posRequestDedupe";
 import { resolvePosTrustFromPayload } from "./resolvePosTrustFromPayload";
+import { BILL_EMPTY_CODE, type TillErrorCode } from "./tillErrorCodes";
 import { appendVirtualPosEvent } from "./virtualPosLog";
 import { recordIntegrationAuditEvent } from "../server/integrationAudit";
 import { checkRateLimit } from "../server/rateLimit";
@@ -65,7 +66,7 @@ function orderIdFromTillMeta(meta: unknown): string | undefined {
 
 type TillSyncResult =
   | { ok: true; meta?: unknown; orderId?: string }
-  | { ok: false; error: string; meta?: unknown };
+  | { ok: false; error: string; meta?: unknown; code?: TillErrorCode };
 
 async function maybeSyncTill(
   eventType: string,
@@ -106,7 +107,9 @@ async function runTillSyncWithAudit(input: {
   eventType: string;
   sanitized: unknown;
   clientRequestId: string | undefined;
-}): Promise<{ ok: boolean; error?: string; source?: "storyous" | "dotykacka"; orderId?: string } | undefined> {
+}): Promise<
+  { ok: boolean; error?: string; source?: "storyous" | "dotykacka"; orderId?: string; code?: TillErrorCode } | undefined
+> {
   const { eventType, sanitized, clientRequestId } = input;
   const rid = payloadRestaurantId(sanitized);
   const deviceId = payloadDeviceId(sanitized);
@@ -136,13 +139,17 @@ async function runTillSyncWithAudit(input: {
             },
           });
         }
-        if (source === "storyous") {
-          if (result.ok) await markRestaurantStoryousOk(rid);
-          else await markRestaurantStoryousError(rid, result.error);
-        } else if (result.ok) {
-          await markRestaurantDotykackaSyncOk({ restaurantId: rid, details });
-        } else {
-          await markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: result.error, details });
+        // Prázdný účet je stav stolu, ne výpadek napojení — Stav API v adminu nemá zčervenat.
+        const tableStateOnly = !result.ok && result.code === BILL_EMPTY_CODE;
+        if (!tableStateOnly) {
+          if (source === "storyous") {
+            if (result.ok) await markRestaurantStoryousOk(rid);
+            else await markRestaurantStoryousError(rid, result.error);
+          } else if (result.ok) {
+            await markRestaurantDotykackaSyncOk({ restaurantId: rid, details });
+          } else {
+            await markRestaurantDotykackaSyncFailed({ restaurantId: rid, error: result.error, details });
+          }
         }
       } catch {
         /* Objednávka už je v pokladně — zápis lastOk/auditu nesmí vrátit 502. */
@@ -152,7 +159,7 @@ async function runTillSyncWithAudit(input: {
     const orderId = result.ok ? orderIdFromTillMeta(result.meta) : undefined;
     return result.ok
       ? { ok: true, source, ...(orderId ? { orderId } : {}) }
-      : { ok: false, error: result.error, source };
+      : { ok: false, error: result.error, source, ...(result.code ? { code: result.code } : {}) };
   } catch (e) {
     const error = e instanceof Error ? e.message : "Sync do pokladny selhal";
     const source = rid ? await getRestaurantMenuSource(rid) : null;
@@ -277,7 +284,7 @@ async function forwardToPosInner({ eventType, payload, userAgent, deviceSecretHe
         till,
         ...tillPayload,
       },
-      { status: 502 },
+      { status: till.code === BILL_EMPTY_CODE ? 409 : 502 },
     );
   }
 

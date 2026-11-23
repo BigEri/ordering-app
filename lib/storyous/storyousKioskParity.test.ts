@@ -4,7 +4,7 @@ import { badgesFromStoryousLabels } from "./labels";
 import { mapStoryousMenuTree } from "./mapMenu";
 import { parseStoryousPaidBills, latestPaidBillForDesk } from "./paidBill";
 import { applyStoryousRemainingAmounts, isStoryousTimeWindowActive, mapStoryousTimeBasedSections } from "./timeBasedMenu";
-import { buildStoryousDeliveryItems, orderIdFromStoryousDeliveryResponse } from "./syncOrder";
+import { buildStoryousDeliveryItems, buildStoryousBillRequestNote, orderIdFromStoryousDeliveryResponse } from "./syncOrder";
 import { storyousCategoryNumber } from "./mapMenu";
 
 const priced = {
@@ -187,5 +187,23 @@ describe("orderIdFromStoryousDeliveryResponse", () => {
   it("reads orderId from create and 409 bodies", () => {
     expect(orderIdFromStoryousDeliveryResponse({ orderId: "ord-1", state: "NEW" })).toBe("ord-1");
     expect(orderIdFromStoryousDeliveryResponse({ code: 409, order: { orderId: "ord-2" } })).toBe("ord-2");
+  });
+});
+
+describe("buildStoryousBillRequestNote", () => {
+  it("includes payment method, tip and totals", () => {
+    expect(
+      buildStoryousBillRequestNote(
+        {
+          paymentMethod: "CARD",
+          ordersTotal: 250,
+          tipPct: 10,
+          tipAmount: 25,
+          billTotal: 275,
+        },
+        "Stůl 12",
+        new Date("2026-09-20T16:30:00.000Z"),
+      ),
+    ).toBe("CHCE ZAPLATIT: 18:30 · STŮL - 12 · platba Karta · subtotal 250 Kč · tip 10% (25 Kč) · total 275 Kč");
   });
 });

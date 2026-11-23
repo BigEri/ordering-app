@@ -4,6 +4,7 @@
  */
 
 import { postPosJson } from "./postPosJson";
+import { BILL_EMPTY_CODE, tillErrorCodeFromBody } from "./tillErrorCodes";
 
 const DB_NAME = "pos_pending_queue";
 const STORE = "pending";
@@ -95,6 +96,19 @@ export const POS_QUEUE_FLUSH_DETAIL = "pos-queue-flush-detail";
 /** Fronta order-confirmed byla vyčištěna — UI může zrušit guard „Neodeslaná objednávka“. */
 export const POS_PENDING_ORDER_RESET = "pos-pending-order-reset";
 
+function orderIdFromOkBody(body: unknown): string | undefined {
+  if (!body || typeof body !== "object" || Array.isArray(body)) return undefined;
+  const rec = body as Record<string, unknown>;
+  if (typeof rec.orderId === "string" && rec.orderId.trim()) return rec.orderId.trim();
+  for (const key of ["storyous", "till"] as const) {
+    const nested = rec[key];
+    if (!nested || typeof nested !== "object" || Array.isArray(nested)) continue;
+    const id = (nested as Record<string, unknown>).orderId;
+    if (typeof id === "string" && id.trim()) return id.trim();
+  }
+  return undefined;
+}
+
 /**
  * Vymaže frontu order-confirmed a synchronně upozorní UI.
  * Volat po úspěšném odeslání, zaplacení účtu v Dotyce, nebo ručním zrušení fronty.
@@ -126,22 +140,64 @@ export async function removePending(id: string): Promise<void> {
   }
 }
 
-/** Odešle všechny položky ve frontě; při úspěchu maže a dispatchuje události pro UI. */
-export async function flushPendingPosQueue(): Promise<void> {
-  if (typeof window === "undefined") return;
+/** Starší požadavek už neposílat — objednávka po půl hodině do kuchyně jen nadělá zmatek. */
+export const PENDING_MAX_AGE_MS = 30 * 60_000;
+
+/** Zahodit po HTTP chybě? 4xx = server požadavek odmítl a opakování nepomůže (kromě 408/429). */
+export function isPermanentPendingFailure(r: { kind: "network" | "http"; status?: number; body?: unknown }): boolean {
+  if (r.kind !== "http") return false;
+  if (tillErrorCodeFromBody(r.body) === BILL_EMPTY_CODE) return true;
+  const s = r.status ?? 0;
+  return s >= 400 && s < 500 && s !== 408 && s !== 429;
+}
+
+let flushInFlight: Promise<void> | null = null;
+
+/** Odešle všechny položky ve frontě; při úspěchu maže a dispatchuje události pro UI. Souběžná volání sdílí jeden běh. */
+export function flushPendingPosQueue(): Promise<void> {
+  if (typeof window === "undefined") return Promise.resolve();
+  if (!flushInFlight) {
+    flushInFlight = flushOnce().finally(() => {
+      flushInFlight = null;
+    });
+  }
+  return flushInFlight;
+}
+
+async function flushOnce(): Promise<void> {
   const items = await listPending();
+  let droppedOrder = false;
   for (const item of items) {
     try {
+      if (Date.now() - item.createdAt > PENDING_MAX_AGE_MS) {
+        await removePending(item.id);
+        if (item.url.includes("/order-confirmed")) droppedOrder = true;
+        continue;
+      }
       const body = JSON.parse(item.bodyJson) as unknown;
       const r = await postPosJson(item.url, body);
-      if (!r.ok) continue;
+      if (!r.ok) {
+        if (isPermanentPendingFailure(r)) {
+          await removePending(item.id);
+          if (item.url.includes("/order-confirmed")) droppedOrder = true;
+        }
+        continue;
+      }
 
       await removePending(item.id);
 
       if (item.url.includes("/order-confirmed") && item.clientOrderSnapshotJson) {
         try {
-          const snap = JSON.parse(item.clientOrderSnapshotJson) as { lines: unknown; totalCzk: number };
-          window.dispatchEvent(new CustomEvent(POS_QUEUE_ORDER_SENT, { detail: snap }));
+          const snap = JSON.parse(item.clientOrderSnapshotJson) as {
+            lines: unknown;
+            totalCzk: number;
+          };
+          const storyousOrderId = orderIdFromOkBody(r.body);
+          window.dispatchEvent(
+            new CustomEvent(POS_QUEUE_ORDER_SENT, {
+              detail: { ...snap, ...(storyousOrderId ? { storyousOrderId } : {}) },
+            }),
+          );
         } catch {
           /* ignore */
         }
@@ -155,5 +211,9 @@ export async function flushPendingPosQueue(): Promise<void> {
     } catch {
       /* další pokus později */
     }
+  }
+  // Zahozená objednávka — košík už nehlídá „neodeslanou objednávku“, host ji může poslat znovu.
+  if (droppedOrder && !(await hasPendingOrderConfirmed())) {
+    window.dispatchEvent(new Event(POS_PENDING_ORDER_RESET));
   }
 }

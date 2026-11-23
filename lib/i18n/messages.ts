@@ -49,6 +49,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "bill.sent.body": "Personál byl informován. Děkujeme",
     "bill.sent.close": "Zavřít",
     "bill.sent.autoclose": "Okno se zavře automaticky za 5 vteřin.",
+    "bill.empty": "Na účtu zatím nic nemáte. Až si objednáte, můžete požádat o účet.",
     "bill.xpay.title": "Zaplatit kartou",
     "bill.xpay.subtitle": "Naskenujte QR kód telefonem.",
     "bill.xpay.hint": "Visa, Mastercard, Apple Pay nebo Google Pay na vašem telefonu. Číslo karty do tabletu nezadávejte.",
@@ -83,6 +84,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "Požadavek se nepodařilo dokončit. Zkuste to prosím znovu, nebo přivolejte obsluhu.",
     "pos.error.order":
       "Objednávku se nepodařilo odeslat. Zkuste to prosím znovu tlačítkem Potvrdit objednávku. Když to nepomůže, přivolejte obsluhu.",
+    "pos.error.orderQueued":
+      "Tablet je teď bez internetu. Objednávka je uložená a odešle se sama, jakmile se spojení vrátí — nemusíte objednávat znovu. Když to trvá dlouho, řekněte obsluze.",
     "pos.error.staff":
       "Přivolání obsluhy se nepodařilo odeslat. Zkuste to prosím znovu tlačítkem Přivolat personál.",
     "pos.error.staffLocked":
@@ -350,6 +353,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "bill.sent.body": "Staff has been notified. Thank you",
     "bill.sent.close": "Close",
     "bill.sent.autoclose": "This window will close automatically in 5 seconds.",
+    "bill.empty": "There is nothing on your bill yet. Once you order, you can ask for the bill.",
     "bill.xpay.title": "Pay by card",
     "bill.xpay.subtitle": "Scan the QR code with your phone.",
     "bill.xpay.hint": "Visa, Mastercard, Apple Pay or Google Pay on your phone. Do not type a card number on the tablet.",
@@ -384,6 +388,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "We could not complete the request. Please try again, or call a staff member.",
     "pos.error.order":
       "We could not send your order. Tap Confirm order to try again. If it still fails, please call a staff member.",
+    "pos.error.orderQueued":
+      "The tablet is offline right now. Your order is saved and will be sent automatically once the connection is back — no need to order again. If it takes long, please tell a staff member.",
     "pos.error.staff":
       "We could not send the staff call. Tap Call staff to try again.",
     "pos.error.staffLocked":
@@ -651,6 +657,7 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
     "bill.sent.body": "직원에게 알림이 전달되었습니다. 감사합니다",
     "bill.sent.close": "닫기",
     "bill.sent.autoclose": "이 창은 5초 후 자동으로 닫힙니다.",
+    "bill.empty": "아직 계산서에 주문 내역이 없습니다. 주문 후 계산서를 요청할 수 있습니다.",
     "bill.xpay.title": "카드 결제",
     "bill.xpay.subtitle": "휴대폰으로 QR 코드를 스캔하세요.",
     "bill.xpay.hint": "Visa, Mastercard, Apple Pay 또는 Google Pay로 휴대폰에서 결제하세요. 태블릿에 카드 번호를 입력하지 마세요.",
@@ -685,6 +692,8 @@ export const MESSAGES: Record<Locale, Record<string, string>> = {
       "요청을 완료하지 못했습니다. 다시 시도하거나 직원을 호출해 주세요.",
     "pos.error.order":
       "주문을 보내지 못했습니다. 주문 확인 버튼으로 다시 시도해 주세요. 계속 안 되면 직원을 호출해 주세요.",
+    "pos.error.orderQueued":
+      "지금 태블릿이 인터넷에 연결되어 있지 않습니다. 주문은 저장되었으며 연결이 복구되면 자동으로 전송됩니다. 다시 주문하지 않으셔도 됩니다. 오래 걸리면 직원에게 알려 주세요.",
     "pos.error.staff":
       "직원 호출을 보내지 못했습니다. 직원 호출 버튼으로 다시 시도해 주세요.",
     "pos.error.staffLocked":

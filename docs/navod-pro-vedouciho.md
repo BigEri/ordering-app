@@ -1,7 +1,7 @@
 # Administrace Tableflow — návod pro vedoucího
 
 **Adresa:** https://app.tableflow.cz/admin  
-**Přihlášení:** e-mail a heslo (vpravo dole **Můj účet** = změna hesla).
+**Přihlášení:** e-mail a heslo. **Můj účet** (změna hesla) je vlevo dole v menu, pod e-mailem, nad **Odhlásit**.
 
 Po přihlášení jste rovnou v **Menu** své provozovny. Vlevo jsou záložky. Ceny a jídla se berou z **pokladny** (Dotykačka nebo Storyous — podle toho, co je u provozovny zvolené). V Tableflow je jen skrýváte, řadíte, fotíte a překládáte.
 
@@ -15,7 +15,7 @@ Hlavní stránka. Vidíte stejné menu jako host na tabletu, plus tlačítka úp
 - **Jazyk náhledu** — jak menu vypadá v daném jazyce (samotné překlady se píší jinde).
 - **Náhled pro zákazníka** — otevře menu tak, jak ho vidí host. Objednávky z náhledu do pokladny nejdou.
 - **Překlady jazyků** — názvy a popisy v EN / KO (viz níže).
-- **Obnovit z pokladny** — stáhne aktuální jídla a ceny a obnoví tablety. U Dotykačky je tlačítko **Obnovit z Dotykačky**, u Storyous **Obnovit ze Storyous**. Použijte po změně v pokladně.
+- **Obnovit z Dotykačky** nebo **Obnovit ze Storyous** — stáhne aktuální jídla a ceny a obnoví tablety. Použijte po změně v pokladně.
 
 **U kategorie**
 - **Skrýt kategorii / Zobrazit kategorii** — celá sekce zmizí nebo se vrátí hostům.
@@ -25,7 +25,7 @@ Hlavní stránka. Vidíte stejné menu jako host na tabletu, plus tlačítka úp
 - **↑ ↓** — pořadí v kategorii (jen v Tableflow, ne v pokladně).
 - **Foto** — nahrát soubor (JPEG/PNG/WebP, max. 5 MB) nebo vložit HTTPS odkaz. Lepší jsou fotky **na šířku** (16:9).
 
-Skrytí jen tady (bez změny v pokladně) se na tabletu projeví po obnovení stránky. Nové ceny z pokladny až po **Obnovit z pokladny**.
+Skrytí jen tady (bez změny v pokladně) se na tabletu projeví po obnovení stránky. Nové ceny z pokladny až po **Obnovit z Dotykačky** nebo **Obnovit ze Storyous**.
 
 ---
 
@@ -54,11 +54,11 @@ Ingredience: **Interní název** je klíč (stejný ve všech jazycích), **Zobr
 - **Personál** — párování tabletů, obnova menu, běžný provoz.
 - **Vedoucí (admin)** — totéž plus úpravy úvodní obrazovky a uživatelů.
 
-Stejný e-mail znovu s novým heslem účet obnoví.
+**Seznam:** u personálu **Odebrat** (ztratí přístup) nebo **Reset hesla** (nové heslo, min. 8 znaků, pak potvrdit). Jiného vedoucího odebrat nemůžete — to umí jen technik. Sebe taky ne.
 
-**Seznam:** u personálu **Odebrat** (ztratí přístup). Jiného vedoucího odebrat nemůžete — to umí jen technik. Sebe taky ne.
+Stejný e-mail znovu s novým heslem účet taky obnoví.
 
-Heslo sobě měňte v **Můj účet**, ne tady.
+Heslo sobě měňte v **Můj účet** (vlevo dole), ne tady.
 
 ---
 
@@ -129,6 +129,20 @@ Stav nahoře: **aktivní** = v pořádku. Červená chyba = znovu OAuth, nebo vo
 
 ---
 
+## XPay (Dotypay)
+
+Platba kartou na tabletu. Záložka je jen u provozovny s Dotykačkou (u Storyous chybí — tam se kartou na tabletu neplatí). Host naskenuje QR a zaplatí na svém telefonu (Visa, Mastercard, Apple Pay, Google Pay). Hotovost a mix dál volají obsluhu.
+
+1. Vložit **API klíč** z Dotypay back office.
+2. **Prostředí:** **Sandbox** je test (peníze se nestrhnou). **Produkce** je ostrá platba v korunách.
+3. **Uložit**.
+
+**Zapnout XPay / Vypnout XPay** — vypnutí schová platbu kartou na tabletu. Stav **aktivní** = host může platit. **nenapojeno** = chybí klíč. **Obnovit stav** jen znovu načte tuto stránku.
+
+Sandbox z veřejné dokumentace Nexi je v eurech: Tableflow otevře platební stránku v eurech (částka z účtu se přepočte) a účet v Dotykačce uzavře v Kč. Ostrý český klíč z Dotypay ukáže stejnou stránku v korunách. Klíč do produkce nedávejte, dokud nemáte jít naostro.
+
+---
+
 ## Storyous
 
 Propojení s pokladnou Storyous. Záložka je jen u provozovny se Storyous.
@@ -139,7 +153,11 @@ Propojení s pokladnou Storyous. Záložka je jen u provozovny se Storyous.
 
 Tablety se pářují ke stolům ze Storyous. Objednávky, přílohy a štítky jdou do pokladny.
 
-Přivolání obsluhy a žádost o účet se ve Storyous zaúčtují jako **položka 0 Kč s poznámkou** — účet se tím nezavře. Kartou na tabletu se u Storyous neplatí; obsluha účtuje v pokladně. Až je účet ve Storyous zaplacený, tablet ukáže **Zaplaceno**.
+**Jeden stůl = jeden účet.** Má-li stůl v pokladně otevřený účet, další objednávky z tabletu se přidají do něj (i když ho založila obsluha). Nový účet vznikne jen u prázdného stolu.
+
+**Účet na tabletu odpovídá pokladně** — včetně položek naťukaných obsluhou, storen a změn cen. Žádost o účet u prázdného stolu do pokladny nejde; host uvidí „Na účtu zatím nic nemáte“.
+
+Přivolání obsluhy a žádost o účet se ve Storyous zaúčtují jako **položka 0 Kč s poznámkou** — účet se tím nezavře a host je na tabletu nevidí. Kartou na tabletu se u Storyous neplatí; obsluha účtuje v pokladně. Jakmile obsluha účet uzavře, tablet se vynuluje a vrátí na úvod: po zaplacení ukáže **Zaplaceno**, jinak **Účet vystaven**.
 
 V pokladně musí existovat **variabilní položka za 0 Kč**, jinak přivolání obsluhy a žádost o účet z tabletu neodejdou.
 
@@ -164,7 +182,9 @@ Odkaz vlevo. Menu v prohlížeči, jak ho vidí host (bez tabletu). Hodí se na 
 | Co potřebujete | Kam | Co kliknout |
 |----------------|-----|-------------|
 | Nový tablet u stolu | Zařízení → Párování | **Spárovat tablet** |
-| Staré ceny z pokladny | Menu nebo Zařízení | **Obnovit z pokladny** |
+| Staré ceny z pokladny | Menu | **Obnovit z Dotykačky** nebo **Obnovit ze Storyous** |
+| Staré ceny na všech tabletech | Zařízení | **Obnovit menu z pokladny** |
+| Platba kartou (jen Dotykačka) | XPay (Dotypay) | API klíč, **Sandbox** nebo **Produkce**, **Uložit** |
 | Zaseklý tablet | Zařízení | u tabletu **Vynutit obnovení** |
 | Schovat jídlo jen na tabletu | Menu | u jídla **Skrýt** |
 | Fotka jídla | Menu | u jídla **Foto** |
@@ -172,4 +192,4 @@ Odkaz vlevo. Menu v prohlížeči, jak ho vidí host (bez tabletu). Hodí se na 
 | Účet pro obsluhu | Uživatelé | role Personál → **Uložit** |
 | Nová verze appky na tabletu | Zařízení | **Aktualizovat APK** |
 
-**Volat technika:** párování opakovaně selhává, pokladna hlásí chybu, nejde více tabletů najednou, nebo si nejste jistí u OAuth / Merchant ID.
+**Volat technika:** párování opakovaně selhává, pokladna hlásí chybu, nejde více tabletů najednou, nebo si nejste jistí u OAuth, Merchant ID nebo API klíče k platbě kartou.

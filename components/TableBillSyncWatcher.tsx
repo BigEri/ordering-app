@@ -19,10 +19,13 @@ import {
 import { peekKioskSplitPayContinue } from "../lib/client/kioskSplitPay";
 import {
   clearStoryousKioskSession,
+  isStoryousPaidBillForSession,
+  listStoryousPendingOrderIds,
   setStoryousLastPaidBillId,
   storyousLastPaidBillId,
   storyousSessionSinceMs,
 } from "../lib/client/storyousKioskSession";
+import { decideTableBillApply } from "../lib/client/tableBillApply";
 import { buildKioskWelcomeUrl } from "../lib/kiosk/nav";
 import { resetPendingOrderConfirmedState } from "../lib/pos/pendingPosQueue";
 import { useOrders } from "./OrdersProvider";
@@ -35,11 +38,13 @@ const POLL_UNKNOWN_BILL_MS = 2500;
 const POLL_OPEN_BILL_MS = 4000;
 /** Minimální odstup syncu po dotyku obrazovky. */
 const INTERACTION_SYNC_MIN_MS = 1500;
+/** Storyous: jak dlouho po zavření účtu čekat na zaplacený účet, než se ukáže „Účet vystaven“. */
+const STORYOUS_PAID_GRACE_MS = 10_000;
 
 type TableOpenBillResponse = {
   ok?: boolean;
   configured?: boolean;
-  /** false = pokladna nemá živý účet (Storyous) — nemazat lokální objednávky. */
+  /** Storyous: true = otevřené účty stolu šly přečíst (`open`/`lines` platí); false = jen detekce zaplacení. */
   liveTill?: boolean;
   source?: string;
   open?: boolean;
@@ -72,12 +77,37 @@ export function TableBillSyncWatcher() {
   const [issuedTipMissing, setIssuedTipMissing] = React.useState(false);
   const handledIssuedRef = React.useRef(false);
   const hadOpenBillRef = React.useRef(false);
+  /** Storyous: kdy tablet poprvé viděl otevřený účet — kotva pro párování zaplaceného účtu. */
+  const firstOpenSeenAtRef = React.useRef(0);
+  const closedSeenAtRef = React.useRef(0);
   const lastTotalRef = React.useRef<number | null>(null);
   const posTableFieldsRef = React.useRef(posTableFields);
   const readyRef = React.useRef(ready);
   const lastInteractionSyncAtRef = React.useRef(0);
   posTableFieldsRef.current = posTableFields;
   readyRef.current = ready;
+
+  /** Účet u stolu skončil — modal Zaplaceno / Účet vystaven, vyčistit tablet a zpět na úvod. */
+  const finishTableSession = React.useCallback(
+    (input: { paid: boolean; totalCzk: number | null; tipCzk: number; tipMissing: boolean }) => {
+      handledIssuedRef.current = true;
+      setIssuedPaid(input.paid);
+      setIssuedTotal(input.totalCzk);
+      setIssuedTip(input.tipCzk);
+      setIssuedTipMissing(input.tipMissing);
+      setIssuedOpen(true);
+      hadOpenBillRef.current = false;
+      firstOpenSeenAtRef.current = 0;
+      lastTotalRef.current = null;
+      void resetPendingOrderConfirmedState();
+      clearOrders();
+      clearStoryousKioskSession();
+      window.setTimeout(() => {
+        window.location.href = buildKioskWelcomeUrl();
+      }, 4500);
+    },
+    [clearOrders],
+  );
 
   const applyBillSnapshot = React.useCallback(
     (j: TableOpenBillResponse) => {
@@ -117,7 +147,6 @@ export function TableBillSyncWatcher() {
       }
 
       if (!handledIssuedRef.current && hadOpenBillRef.current) {
-        handledIssuedRef.current = true;
         const xpay = peekKioskXpayClose();
         if (xpay) clearKioskBillPaidByXpay();
         const tip = xpay?.tipAmountCzk ?? 0;
@@ -127,21 +156,73 @@ export function TableBillSyncWatcher() {
             : tip > 0 && lastTotalRef.current != null
               ? lastTotalRef.current + tip
               : lastTotalRef.current;
-        setIssuedPaid(xpay != null);
-        setIssuedTotal(charged);
-        setIssuedTip(tip);
-        setIssuedTipMissing(xpay?.tipMissing === true);
-        setIssuedOpen(true);
-        hadOpenBillRef.current = false;
-        lastTotalRef.current = null;
-        void resetPendingOrderConfirmedState();
-        clearOrders();
-        window.setTimeout(() => {
-          window.location.href = buildKioskWelcomeUrl();
-        }, 4500);
+        finishTableSession({ paid: xpay != null, totalCzk: charged, tipCzk: tip, tipMissing: xpay?.tipMissing === true });
       }
     },
-    [clearOrders, syncTableBillFromDotykacka],
+    [finishTableSession, syncTableBillFromDotykacka],
+  );
+
+  /**
+   * Storyous s čitelnými otevřenými účty — stejné chování jako Dotykačka:
+   * položky z pokladny (i naťukané obsluhou), konec relace po uzavření účtu.
+   * Vrací true, když je tím sync vyřízený; false = pokračovat detekcí zaplaceného účtu.
+   */
+  const applyStoryousLiveBill = React.useCallback(
+    (j: TableOpenBillResponse): boolean => {
+      const lines = Array.isArray(j.lines) ? j.lines : [];
+      const totalCzk = typeof j.totalCzk === "number" && Number.isFinite(j.totalCzk) ? j.totalCzk : 0;
+      const open = j.open === true;
+      if (open) {
+        hadOpenBillRef.current = true;
+        closedSeenAtRef.current = 0;
+        if (!firstOpenSeenAtRef.current) firstOpenSeenAtRef.current = Date.now();
+      }
+      const decision = decideTableBillApply({
+        open,
+        lines,
+        totalCzk,
+        hadOpenBillFromTill: hadOpenBillRef.current,
+        splitPayContinue: false,
+      });
+      if (decision.action === "apply") {
+        lastTotalRef.current = decision.totalCzk;
+        const fields = posTableFieldsRef.current();
+        const deviceId = fields.deviceId?.trim() ?? "";
+        const tableId = String(fields.tableId ?? "").trim();
+        if (deviceId && tableId) {
+          saveTableBillSession({ deviceId, tableId }, { lines: decision.lines, totalCzk: decision.totalCzk });
+        }
+        syncTableBillFromDotykacka(
+          { lines: decision.lines, totalCzk: decision.totalCzk },
+          { keepStoryousOrderIds: listStoryousPendingOrderIds() },
+        );
+        return true;
+      }
+      if (decision.action === "keep-local") return open;
+
+      const paid = isStoryousPaidBillForSession(j.paidBill, {
+        sessionSinceMs: storyousSessionSinceMs(),
+        firstOpenSeenAtMs: firstOpenSeenAtRef.current,
+        lastPaidBillId: storyousLastPaidBillId(),
+      })
+        ? j.paidBill
+        : null;
+      if (!paid) {
+        // Zaplacený účet se v Bills API objeví se zpožděním — chvíli počkat, ať host vidí „Zaplaceno“.
+        if (!closedSeenAtRef.current) closedSeenAtRef.current = Date.now();
+        if (Date.now() - closedSeenAtRef.current < STORYOUS_PAID_GRACE_MS) return true;
+      }
+      if (paid) setStoryousLastPaidBillId(paid.billId);
+      clearTableBillSession();
+      finishTableSession({
+        paid: paid != null,
+        totalCzk: paid ? paid.totalCzk : lastTotalRef.current,
+        tipCzk: 0,
+        tipMissing: false,
+      });
+      return true;
+    },
+    [finishTableSession, syncTableBillFromDotykacka],
   );
 
   const syncNow = React.useCallback(async () => {
@@ -152,39 +233,42 @@ export function TableBillSyncWatcher() {
     const fields = posTableFieldsRef.current();
     if (!fields.deviceId?.trim() || !String(fields.tableId ?? "").trim()) return;
 
+    const sessionSinceMs = storyousSessionSinceMs();
+    const anchors = [sessionSinceMs, firstOpenSeenAtRef.current].filter((n) => n > 0);
     try {
       const r = await fetch("/api/pos/table-open-bill", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify(fields),
+        body: JSON.stringify({
+          ...fields,
+          // Storyous: zaplacený účet dohledat jen když tablet má co uzavírat.
+          checkPaid: hadOpenBillRef.current || orders.length > 0,
+          ...(anchors.length > 0 ? { paidSinceMs: Math.min(...anchors) } : {}),
+        }),
         cache: "no-store",
       });
       const j = (await r.json()) as TableOpenBillResponse;
       if (!r.ok || !j.ok) return;
       if (j.configured === false) return;
       if (j.source === "storyous" || j.liveTill === false) {
-        const paid = j.paidBill;
-        const since = storyousSessionSinceMs();
+        if (j.liveTill === true && applyStoryousLiveBill(j)) return;
         if (
-          paid &&
           orders.length > 0 &&
-          since > 0 &&
-          paid.paidAtMs >= since - 30_000 &&
-          paid.billId !== storyousLastPaidBillId()
+          isStoryousPaidBillForSession(j.paidBill, {
+            sessionSinceMs,
+            firstOpenSeenAtMs: firstOpenSeenAtRef.current,
+            lastPaidBillId: storyousLastPaidBillId(),
+          }) &&
+          j.paidBill
         ) {
-          setStoryousLastPaidBillId(paid.billId);
-          handledIssuedRef.current = true;
-          setIssuedPaid(true);
-          setIssuedTotal(typeof paid.totalCzk === "number" ? paid.totalCzk : lastTotalRef.current);
-          setIssuedOpen(true);
-          hadOpenBillRef.current = false;
-          lastTotalRef.current = null;
-          void resetPendingOrderConfirmedState();
-          clearOrders();
-          clearStoryousKioskSession();
-          window.setTimeout(() => {
-            window.location.href = buildKioskWelcomeUrl();
-          }, 4500);
+          setStoryousLastPaidBillId(j.paidBill.billId);
+          clearTableBillSession();
+          finishTableSession({
+            paid: true,
+            totalCzk: typeof j.paidBill.totalCzk === "number" ? j.paidBill.totalCzk : lastTotalRef.current,
+            tipCzk: 0,
+            tipMissing: false,
+          });
         }
         return;
       }
@@ -192,7 +276,7 @@ export function TableBillSyncWatcher() {
     } catch {
       /* síť — další pokus z intervalu nebo po interakci */
     }
-  }, [applyBillSnapshot, pathname, orders.length]);
+  }, [applyBillSnapshot, applyStoryousLiveBill, finishTableSession, pathname, orders.length]);
 
   const syncNowRef = React.useRef(syncNow);
   syncNowRef.current = syncNow;

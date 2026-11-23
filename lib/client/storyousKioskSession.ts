@@ -59,3 +59,39 @@ export function clearStoryousKioskSession(): void {
   sessionStorage.removeItem(SESSION_SINCE_KEY);
   sessionStorage.removeItem(PENDING_ORDERS_KEY);
 }
+
+/** Id souhrnu „účet z pokladny“ v Objednávkách — nikdy to není jedno kolo z tabletu. */
+export const TILL_BILL_ORDER_ID = "dotykacka-table-bill";
+
+/** Odmítnutá Storyous objednávka — pryč z tabletu, dřívější přijaté kola nechat. */
+export function dropDeclinedStoryousOrders<T extends { id?: string; storyousOrderId?: string }>(
+  orders: T[],
+  declinedOrderId: string,
+): T[] {
+  const id = declinedOrderId.trim();
+  if (!id || orders.length === 0) return orders;
+  if (orders.some((o) => o.storyousOrderId === id)) {
+    return orders.filter((o) => o.storyousOrderId !== id);
+  }
+  const untracked = orders.findIndex((o) => !o.storyousOrderId && o.id !== TILL_BILL_ORDER_ID);
+  if (untracked < 0) return orders;
+  return orders.filter((_, i) => i !== untracked);
+}
+
+/** Rezerva na rozdíl hodin tabletu a pokladny. */
+const PAID_CLOCK_SKEW_MS = 60_000;
+
+/**
+ * Patří zaplacený účet ze Storyous k této relaci tabletu?
+ * Kotva = začátek relace (první objednávka) nebo první chvíle, kdy tablet viděl otevřený účet.
+ */
+export function isStoryousPaidBillForSession(
+  paid: { billId: string; paidAtMs: number } | null | undefined,
+  input: { sessionSinceMs: number; firstOpenSeenAtMs: number; lastPaidBillId: string },
+): boolean {
+  if (!paid || !paid.billId.trim()) return false;
+  if (paid.billId === input.lastPaidBillId) return false;
+  const anchors = [input.sessionSinceMs, input.firstOpenSeenAtMs].filter((n) => Number.isFinite(n) && n > 0);
+  if (anchors.length === 0) return false;
+  return paid.paidAtMs >= Math.min(...anchors) - PAID_CLOCK_SKEW_MS;
+}

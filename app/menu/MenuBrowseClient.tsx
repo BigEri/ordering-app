@@ -43,6 +43,7 @@ import {
 import { buildStoryousPosAdditions } from "../../lib/storyous/orderAdditions";
 import { buildOrderLineName, menuCartLineToSnapshot, orderLineUnitPriceCzk } from "../../lib/menu/orderLineLabel";
 import {
+  flushPendingPosQueue,
   hasPendingOrderConfirmed,
   POS_PENDING_ORDER_RESET,
   POS_QUEUE_ORDER_SENT,
@@ -1015,6 +1016,22 @@ export function MenuBrowseClient({
       return;
     }
 
+    // Objednávka už čeká ve frontě — znovu poslat tu samou (stejné clientRequestId), ne druhou kopii.
+    if (await hasPendingOrderConfirmed()) {
+      setOrderConfirmLoading(true);
+      try {
+        await flushPendingPosQueue();
+      } finally {
+        setOrderConfirmLoading(false);
+      }
+      if (await hasPendingOrderConfirmed()) {
+        hasPendingOrderRef.current = true;
+        setOrderPosErrorKey("pos.error.orderQueued");
+        setOrderPosErrorDetail(null);
+      }
+      return;
+    }
+
     const linesPos = linesBase.map(({ l, unitPriceCzk }) => {
       const snap = menuCartLineToSnapshot(l);
       const dk = buildDotykackaPosCustomizations(l.item, l.dotykackaPicks);
@@ -1053,7 +1070,11 @@ export function MenuBrowseClient({
       if (r.ok) {
         markStoryousSessionOrder();
         if (r.storyousOrderId) rememberStoryousOrderId(r.storyousOrderId);
-        addOrder({ lines: linesStore, totalCzk: totalCzkPos });
+        addOrder({
+          lines: linesStore,
+          totalCzk: totalCzkPos,
+          ...(r.storyousOrderId ? { storyousOrderId: r.storyousOrderId } : {}),
+        });
         await resetPendingOrderConfirmedState();
         applyCart(() => ({}), { skipPendingGuard: true });
         setCartOpen(false);
@@ -1063,7 +1084,7 @@ export function MenuBrowseClient({
       }
       if (r.kind === "queued") {
         hasPendingOrderRef.current = true;
-        setOrderPosErrorKey("pos.error.order");
+        setOrderPosErrorKey("pos.error.orderQueued");
         setOrderPosErrorDetail(null);
         return;
       }
@@ -1081,11 +1102,19 @@ export function MenuBrowseClient({
 
   React.useEffect(() => {
     const onQueueSent = (e: Event) => {
-      const d = (e as CustomEvent<{ lines: { name: string; qty: number; unitPriceCzk: number }[]; totalCzk: number }>)
-        .detail;
+      const d = (e as CustomEvent<{
+        lines: { name: string; qty: number; unitPriceCzk: number }[];
+        totalCzk: number;
+        storyousOrderId?: string;
+      }>).detail;
       if (!d?.lines) return;
-      addOrder({ lines: d.lines, totalCzk: d.totalCzk });
+      addOrder({
+        lines: d.lines,
+        totalCzk: d.totalCzk,
+        ...(d.storyousOrderId ? { storyousOrderId: d.storyousOrderId } : {}),
+      });
       markStoryousSessionOrder();
+      if (d.storyousOrderId) rememberStoryousOrderId(d.storyousOrderId);
       applyPendingOrderReset();
       applyCart(() => ({}), { skipPendingGuard: true });
       setCartOpen(true);
@@ -1686,7 +1715,15 @@ export function MenuBrowseClient({
                 <strong className="tabular-nums">{formatCzk(cartTotal)}</strong>
               </div>
               {orderPosErrorKey ? (
-                <p role="alert" style={{ color: "#fecaca", fontSize: 14, marginBottom: 8, whiteSpace: "pre-wrap" }}>
+                <p
+                  role="alert"
+                  style={{
+                    color: orderPosErrorKey === "pos.error.orderQueued" ? "#fde68a" : "#fecaca",
+                    fontSize: 14,
+                    marginBottom: 8,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
                   {t(orderPosErrorKey)}
                   {adminPreview && orderPosErrorDetail ? (
                     <>

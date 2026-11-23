@@ -9,6 +9,7 @@ import { flushPendingPosQueue, POS_QUEUE_FLUSH_DETAIL } from "../lib/pos/pending
 import { isDotykackaAccountLockedError } from "../lib/pos/dotykackaGuestError";
 import { postPosJsonResilient } from "../lib/pos/postPosJsonResilient";
 import { postPosJsonData } from "../lib/pos/postPosJson";
+import { BILL_EMPTY_CODE } from "../lib/pos/tillErrorCodes";
 import { XpayQrDialog, type XpayKioskPayment } from "./XpayQrDialog";
 import { BillSplitDialog } from "./BillSplitDialog";
 import { isTipBillLine } from "../lib/dotykacka/splitBill";
@@ -328,6 +329,9 @@ export function Topbar({ previewMode = false }: TopbarProps) {
           if (r.kind === "network") {
             setBillPayErrorKey("pos.error.network");
             setBillPayErrorDetail(null);
+          } else if (r.kind === "http" && r.code === BILL_EMPTY_CODE) {
+            setBillPayErrorKey("bill.empty");
+            setBillPayErrorDetail(null);
           } else {
             const detail = r.kind === "http" && r.detail ? r.detail : null;
             const isBillDotykackaHelp = Boolean(detail?.includes("Co tablet poslal:"));
@@ -363,7 +367,7 @@ export function Topbar({ previewMode = false }: TopbarProps) {
     <>
       {previewMode ? (
         <p className="topbarPreviewHint textMuted2" role="note">
-          Náhled — tlačítka personál a účet neodesílají požadavky do Dotykačky.
+          Náhled — tlačítka personál a účet neodesílají požadavky do pokladního systému.
         </p>
       ) : null}
       <header className="topbar">
@@ -619,22 +623,24 @@ export function Topbar({ previewMode = false }: TopbarProps) {
                 ) : null}
                 <div style={{ marginTop: billPayErrorDetail ? 10 : 8 }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      className="chip"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (billPayErrorKey === "pos.error.queued") {
-                          void flushPendingPosQueue();
-                          return;
-                        }
-                        void confirmBillPay();
-                      }}
-                      disabled={billPayLoading}
-                      style={{ cursor: "pointer" }}
-                    >
-                      {t("pos.retry")}
-                    </button>
+                    {billPayErrorKey !== "bill.empty" ? (
+                      <button
+                        type="button"
+                        className="chip"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (billPayErrorKey === "pos.error.queued") {
+                            void flushPendingPosQueue();
+                            return;
+                          }
+                          void confirmBillPay();
+                        }}
+                        disabled={billPayLoading}
+                        style={{ cursor: "pointer" }}
+                      >
+                        {t("pos.retry")}
+                      </button>
+                    ) : null}
                     <button
                       type="button"
                       className="chip"

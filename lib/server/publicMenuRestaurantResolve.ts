@@ -67,6 +67,21 @@ export async function resolveAdminActiveRestaurantForPublicMenuAsync(
   return rid;
 }
 
+/**
+ * Náhled z adminu (`?from=admin&rid=`) — provozovna z odkazu, pokud k ní má přihlášený přístup.
+ * Cookie `oa_rid` může ukazovat na jinou provozovnu (superadmin přepíná přes seznam restaurací).
+ */
+async function resolveAdminPreviewRidAsync(url: URL, cookieHeader: string | null | undefined): Promise<string | null> {
+  if (!isMenuOpenedFromAdmin({ from: url.searchParams.get("from") ?? undefined })) return null;
+  const rid = url.searchParams.get("rid")?.trim() ?? "";
+  if (!rid) return null;
+  const session = getSessionFromCookieHeader(cookieHeader);
+  if (!session) return null;
+  if (!(await restaurantExistsInDb(rid))) return null;
+  if (session.globalRole === "SUPER_ADMIN") return rid;
+  return (await userHasRestaurantAccess(session.userId, rid)).ok ? rid : null;
+}
+
 /** Vazba tabletu podle `deviceId` v URL nebo cookie `kiosk_device_id`. */
 export async function resolveRestaurantIdFromKioskDeviceRequest(req: Request): Promise<string | null> {
   const url = new URL(req.url);
@@ -151,11 +166,14 @@ export async function resolvePublicMenuRestaurantIdFromRequestUrl(req: Request):
  * po vazbě zařízení nebo cookie `oa_menu_rid` nevolá membership / staff větve.
  */
 export async function resolvePublicMenuRestaurantIdSlimFromRequestUrl(req: Request): Promise<string | null> {
+  const url = new URL(req.url);
+  const cookieHeader = req.headers.get("cookie");
+  const adminPreviewRid = await resolveAdminPreviewRidAsync(url, cookieHeader);
+  if (adminPreviewRid) return adminPreviewRid;
+
   const deviceBound = await resolveRestaurantIdFromKioskDeviceRequest(req);
   if (deviceBound) return deviceBound;
 
-  const url = new URL(req.url);
-  const cookieHeader = req.headers.get("cookie");
   const session = getSessionFromCookieHeader(cookieHeader);
   const fromAdmin = isMenuOpenedFromAdmin({ from: url.searchParams.get("from") ?? undefined });
 
@@ -201,6 +219,8 @@ async function resolvePublicMenuRestaurantIdFullFromRequestUrl(
   const url = new URL(req.url);
   const cookieHeader = req.headers.get("cookie");
   const fromAdmin = isMenuOpenedFromAdmin({ from: url.searchParams.get("from") ?? undefined });
+  const adminPreviewRid = await resolveAdminPreviewRidAsync(url, cookieHeader);
+  if (adminPreviewRid) return adminPreviewRid;
 
   const deviceBound = knownDeviceBound ?? (await resolveRestaurantIdFromKioskDeviceRequest(req));
   const session = getSessionFromCookieHeader(cookieHeader);

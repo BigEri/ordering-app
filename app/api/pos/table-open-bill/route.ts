@@ -7,7 +7,13 @@ import { getRestaurantMenuSource } from "../../../../lib/menu/restaurantMenuSour
 import { resolvePosTrustFromPayload } from "../../../../lib/pos/resolvePosTrustFromPayload";
 import { fetchStoryousBills } from "../../../../lib/storyous/client";
 import { getStoryousConfig } from "../../../../lib/storyous/config";
-import { latestPaidBillForDesk, parseStoryousPaidBills } from "../../../../lib/storyous/paidBill";
+import { loadStoryousDeskChecks } from "../../../../lib/storyous/deskChecks";
+import { storyousDeskBillFromChecks } from "../../../../lib/storyous/openChecks";
+import {
+  latestPaidBillForDesk,
+  parseStoryousPaidBills,
+  storyousPaidLookupSinceMs,
+} from "../../../../lib/storyous/paidBill";
 
 export const dynamic = "force-dynamic";
 
@@ -58,18 +64,26 @@ export async function POST(req: Request) {
           orderIds: [],
         });
       }
-      const fromIso = new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString();
-      const billsJson = await fetchStoryousBills(cfg, cfg.merchantId, cfg.placeId, fromIso);
-      const paid = latestPaidBillForDesk(parseStoryousPaidBills(billsJson), tableId, Date.now() - 8 * 60 * 60 * 1000);
+      const checks = await loadStoryousDeskChecks(cfg, tableId);
+      const bill = checks.ok ? storyousDeskBillFromChecks(checks.checks) : null;
+
+      // Zaplacený účet hledáme jen když na stole nic otevřeného není a tablet má co uzavírat.
+      let paid: ReturnType<typeof latestPaidBillForDesk> = null;
+      if (!bill?.open && o.checkPaid === true) {
+        const sinceMs = storyousPaidLookupSinceMs(o.paidSinceMs, Date.now());
+        const billsJson = await fetchStoryousBills(cfg, cfg.merchantId, cfg.placeId, new Date(sinceMs).toISOString());
+        paid = latestPaidBillForDesk(parseStoryousPaidBills(billsJson), tableId, sinceMs);
+      }
       return NextResponse.json({
         ok: true,
         configured: true,
-        liveTill: false,
+        liveTill: checks.ok,
         source: "storyous",
-        open: false,
-        lines: [],
-        totalCzk: paid?.totalCzk ?? 0,
+        open: bill?.open ?? false,
+        lines: bill?.lines ?? [],
+        totalCzk: bill?.totalCzk ?? paid?.totalCzk ?? 0,
         orderIds: [],
+        checkIds: bill?.checkIds ?? [],
         paidBill: paid
           ? { billId: paid.billId, totalCzk: paid.totalCzk, paidAtMs: paid.paidAtMs }
           : null,

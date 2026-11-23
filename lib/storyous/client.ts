@@ -141,6 +141,14 @@ export async function fetchStoryousDeliveryOrderStatus(
   };
 }
 
+const BILLS_PAGE_LIMIT = 100;
+const BILLS_MAX_PAGES = 5;
+
+/**
+ * Zaplacené účty od `fromIso`. Storyous řadí vzestupně podle billId, takže nejnovější
+ * účty jsou na konci — bez stránkování by se v rušném provozu nenašly.
+ * Vrací `{ data: [...] }` se všemi načtenými řádky, nebo null při chybě.
+ */
 export async function fetchStoryousBills(
   creds: StoryousAppCredentials,
   merchantId: string,
@@ -148,8 +156,44 @@ export async function fetchStoryousBills(
   fromIso: string,
 ): Promise<unknown | null> {
   const sourceId = storyousSourceId(merchantId, placeId);
-  const q = new URLSearchParams({ from: fromIso, limit: "50" });
-  return storyousGetOptional(creds, `/bills/${encodeURIComponent(sourceId)}?${q.toString()}`);
+  const rows: unknown[] = [];
+  let lastBillId = "";
+  for (let page = 0; page < BILLS_MAX_PAGES; page += 1) {
+    const q = new URLSearchParams({ from: fromIso, limit: String(BILLS_PAGE_LIMIT) });
+    if (lastBillId) q.set("lastBillId", lastBillId);
+    const json = await storyousGetOptional(creds, `/bills/${encodeURIComponent(sourceId)}?${q.toString()}`);
+    if (json == null) return page === 0 ? null : { data: rows };
+    const rec = json && typeof json === "object" && !Array.isArray(json) ? (json as Record<string, unknown>) : null;
+    const data = Array.isArray(rec?.data) ? (rec.data as unknown[]) : [];
+    rows.push(...data);
+    const last = data[data.length - 1];
+    const nextId =
+      last && typeof last === "object" && typeof (last as Record<string, unknown>).billId === "string"
+        ? ((last as Record<string, unknown>).billId as string)
+        : "";
+    if (!rec?.nextPage || data.length < BILLS_PAGE_LIMIT || !nextId || nextId === lastBillId) break;
+    lastBillId = nextId;
+  }
+  return { data: rows };
+}
+
+/**
+ * Otevřené účty (payment sessions) na stole. Endpoint není ve veřejné dokumentaci Storyous;
+ * chyba se vrací explicitně, aby volající poznal „nečitelné“ od „žádný otevřený účet“.
+ */
+export async function fetchStoryousDeskChecks(
+  creds: StoryousAppCredentials,
+  merchantId: string,
+  placeId: string,
+  deskId: string,
+): Promise<{ ok: true; json: unknown } | { ok: false; error: string }> {
+  const sourceId = storyousSourceId(merchantId, placeId);
+  const q = new URLSearchParams({ deskId: deskId.trim() });
+  try {
+    return { ok: true, json: await storyousGet(creds, `/checks/${encodeURIComponent(sourceId)}?${q.toString()}`) };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Storyous /checks selhal" };
+  }
 }
 
 export async function storyousPostJson(

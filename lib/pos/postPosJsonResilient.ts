@@ -2,6 +2,7 @@ import type { OrderLineSnapshotInput } from "../menu/orderLineLabel";
 import { randomUuid } from "../randomUuid";
 import { postPosJson, type PostPosJsonResult } from "./postPosJson";
 import { enqueuePending, type PendingPosRow } from "./pendingPosQueue";
+import { tillErrorCodeFromBody, type TillErrorCode } from "./tillErrorCodes";
 
 const RETRY_DELAYS_MS = [400, 1200];
 
@@ -11,7 +12,7 @@ function sleep(ms: number) {
 
 export type PostPosResilientResult =
   | { ok: true; storyousOrderId?: string }
-  | { ok: false; kind: "http"; status?: number; detail?: string }
+  | { ok: false; kind: "http"; status?: number; detail?: string; code?: TillErrorCode }
   | { ok: false; kind: "queued"; pendingId: string }
   | { ok: false; kind: "network" };
 
@@ -60,16 +61,21 @@ export async function postPosJsonResilient(
 
   let last: PostPosJsonResult = await tryOnce();
   if (last.ok) return { ok: true, storyousOrderId: storyousOrderIdFromBody(last.body) };
-  if (last.kind === "http") return { ok: false, kind: "http", status: last.status, detail: last.detail };
+  if (last.kind === "http") return httpFailure(last);
 
   for (const delay of RETRY_DELAYS_MS) {
     await sleep(delay);
     last = await tryOnce();
     if (last.ok) return { ok: true, storyousOrderId: storyousOrderIdFromBody(last.body) };
-    if (last.kind === "http") return { ok: false, kind: "http", status: last.status, detail: last.detail };
+    if (last.kind === "http") return httpFailure(last);
   }
 
   return enqueueAndReturn(url, fullBody, options?.clientOrderSnapshot);
+}
+
+function httpFailure(r: Extract<PostPosJsonResult, { ok: false }>): PostPosResilientResult {
+  const code = tillErrorCodeFromBody(r.body);
+  return { ok: false, kind: "http", status: r.status, detail: r.detail, ...(code ? { code } : {}) };
 }
 
 async function enqueueAndReturn(

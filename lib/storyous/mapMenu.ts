@@ -169,16 +169,26 @@ function allergenCodes(node: Record<string, unknown>): number[] | undefined {
   return out.length ? out : undefined;
 }
 
+/** Položka 0 Kč z pokladny pro přivolání / účet — ne vyprodané jídlo. */
+export function isStoryousSignalProduct(node: Record<string, unknown>, priceCzk: number): boolean {
+  if (priceCzk !== 0) return false;
+  if (node.isPriceVariable === true) return true;
+  return /^variabilní položka/i.test(str(node.name));
+}
+
+function isSoldOut(placeRec: Record<string, unknown> | null): boolean {
+  const qty = num(placeRec?.quantity);
+  return qty != null && qty <= 0;
+}
+
 function shouldSkipProduct(
   node: Record<string, unknown>,
   priceCzk: number,
   placeRec: Record<string, unknown> | null,
 ): boolean {
-  if (node.isPriceVariable === true && priceCzk === 0) return true;
-  const name = str(node.name);
-  if (/^variabilní položka/i.test(name)) return true;
-  const qty = num(placeRec?.quantity);
-  if (qty != null && qty <= 0) return true;
+  if (isStoryousSignalProduct(node, priceCzk)) return true;
+  if (/^variabilní položka/i.test(str(node.name))) return true;
+  if (isSoldOut(placeRec)) return true;
   return false;
 }
 
@@ -233,7 +243,7 @@ export function findStoryousSignalProductId(json: unknown): string | null {
     if (found) return;
     const priced = priceFromPlaceValues(rec);
     if (!priced) return;
-    if (shouldSkipProduct(rec, priced.priceCzk, priced.placeRec)) {
+    if (isStoryousSignalProduct(rec, priced.priceCzk)) {
       const id = str(rec.productId);
       if (id) found = id;
     }

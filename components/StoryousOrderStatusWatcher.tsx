@@ -10,6 +10,7 @@ import {
 } from "../lib/client/storyousKioskSession";
 import { usePosTableFields } from "./DeviceTableProvider";
 import { useLanguage } from "./LanguageProvider";
+import { useOrders } from "./OrdersProvider";
 
 function isWatcherPath(pathname: string): boolean {
   if (pathname === "/" || pathname.startsWith("/admin") || pathname.startsWith("/pay")) return false;
@@ -21,6 +22,7 @@ export function StoryousOrderStatusWatcher() {
   const pathname = usePathname() ?? "";
   const { t } = useLanguage();
   const { posTableFields, ready } = usePosTableFields();
+  const { removeDeclinedStoryousOrder } = useOrders();
   const [declined, setDeclined] = React.useState(false);
 
   React.useEffect(() => {
@@ -46,6 +48,7 @@ export function StoryousOrderStatusWatcher() {
           const state = (j.state ?? "").toUpperCase();
           if (state === "DECLINED") {
             dropStoryousPendingOrderId(orderId);
+            removeDeclinedStoryousOrder(orderId);
             setDeclined(true);
             return;
           }
@@ -64,7 +67,7 @@ export function StoryousOrderStatusWatcher() {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [declined, pathname, posTableFields, ready]);
+  }, [declined, pathname, posTableFields, ready, removeDeclinedStoryousOrder]);
 
   if (!declined) return null;
 

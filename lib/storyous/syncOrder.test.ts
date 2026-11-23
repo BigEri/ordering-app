@@ -40,4 +40,71 @@ describe("findStoryousSignalProductId", () => {
       }),
     ).toBe("p:dummy");
   });
+
+  it("does not pick a sold-out dish instead of the 0 Kč dummy", () => {
+    expect(
+      findStoryousSignalProductId({
+        items: [
+          {
+            categoryId: "c:x",
+            name: "X",
+            items: [
+              {
+                productId: "p:gone",
+                name: "Vyprodané",
+                placeValues: { priceLevels: { default: { price: 80 } }, showInPos: true, quantity: 0 },
+              },
+              {
+                productId: "p:dummy",
+                name: "Variabilní položka 0%",
+                isPriceVariable: true,
+                placeValues: { priceLevels: { default: { price: 0 } }, showInPos: true },
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe("p:dummy");
+  });
+
+  it("returns null when the menu has no 0 Kč dummy", () => {
+    expect(
+      findStoryousSignalProductId({
+        items: [
+          {
+            categoryId: "c:x",
+            name: "X",
+            items: [
+              {
+                productId: "p:gone",
+                name: "Vyprodané",
+                placeValues: { priceLevels: { default: { price: 80 } }, showInPos: true, quantity: 0 },
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBeNull();
+  });
+
+  it("still picks a 0 Kč dummy that has quantity 0", () => {
+    expect(
+      findStoryousSignalProductId({
+        items: [
+          {
+            categoryId: "c:x",
+            name: "X",
+            items: [
+              {
+                productId: "p:dummy",
+                name: "Variabilní položka 0%",
+                isPriceVariable: true,
+                placeValues: { priceLevels: { default: { price: 0 } }, showInPos: true, quantity: 0 },
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe("p:dummy");
+  });
 });

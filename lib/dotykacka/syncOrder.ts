@@ -13,6 +13,7 @@ import {
   shouldTryNextOpenOrder,
 } from "./syncOrderMerge";
 import { cancelPosActionWebhook, waitForPosActionWebhook } from "../server/posActionWebhookRegistry";
+import { BILL_EMPTY_CODE } from "../pos/tillErrorCodes";
 import { formatRestaurantLocalHhmm } from "../restaurantLocalTime";
 import {
   DOTYKACKA_BILL_REQUEST_PRINT_TAG,
@@ -65,7 +66,7 @@ export type DotykackaSyncMeta = {
 
 export type DotykackaSyncResult =
   | { ok: true; meta: DotykackaSyncMeta }
-  | { ok: false; error: string; meta: DotykackaSyncMeta };
+  | { ok: false; error: string; meta: DotykackaSyncMeta; code?: typeof BILL_EMPTY_CODE };
 
 /** Jednoznačné id relace „účet u stolu“ v Dotyce (stejné pro všechny objednávky z jednoho zařízení ke stejnému stolu). */
 export function buildDotykackaTableSessionExternalId(
@@ -491,6 +492,7 @@ export async function syncBillRequestToDotykacka(payload: unknown, cfg: Dotykack
   if (listResult.ok && listResult.orders.length === 0) {
     return {
       ok: false,
+      code: BILL_EMPTY_CODE,
       error: buildBillRequestNoOpenAccountError(o, tableId, null),
       meta: { tableId, sessionExternalId, action: "order/list" },
     };

@@ -11,6 +11,7 @@ import { parseKioskBatteryQuery } from "../../../../lib/server/kioskBatteryTelem
 import { getKioskAppRelease } from "../../../../lib/server/kioskAppRelease";
 import { ensureKioskDeviceSecret } from "../../../../lib/server/kioskDeviceBindings";
 import { resolveKioskMaintenanceRebootSchedule } from "../../../../lib/server/kioskMaintenanceReboot";
+import { parseRestaurantPos } from "../../../../lib/pos/restaurantPos";
 import { prisma } from "../../../../lib/server/prisma";
 
 /** Konfigurace stolu se mění; bez toho tablety agresivně cachují GET a nevidí změny z adminu. */
@@ -64,6 +65,7 @@ export async function GET(req: NextRequest) {
           where: { id: t.restaurantId },
           select: {
             name: true,
+            pos: true,
             kioskServicePinSalt: true,
             kioskServicePinHash: true,
             kioskMaintenanceRebootHour: true,
@@ -89,6 +91,7 @@ export async function GET(req: NextRequest) {
         tableLabel: t.tableLabel,
         restaurantId: t.restaurantId || null,
         restaurantName: restaurantRow?.name?.trim() || null,
+        pos: parseRestaurantPos(restaurantRow?.pos),
         deviceSecret: deviceSecret ?? null,
       },
       reloadNonce,

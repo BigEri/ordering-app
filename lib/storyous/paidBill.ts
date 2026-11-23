@@ -80,6 +80,17 @@ export function parseStoryousPaidBills(json: unknown): StoryousPaidBill[] {
   return out;
 }
 
+const PAID_LOOKUP_MAX_AGE_MS = 8 * 60 * 60 * 1000;
+const PAID_LOOKUP_MARGIN_MS = 5 * 60 * 1000;
+
+/** Od kdy hledat zaplacený účet stolu: začátek relace tabletu (s rezervou), nejvýš 8 h zpět. */
+export function storyousPaidLookupSinceMs(paidSinceMs: unknown, nowMs: number): number {
+  const floor = nowMs - PAID_LOOKUP_MAX_AGE_MS;
+  const raw = typeof paidSinceMs === "number" ? paidSinceMs : Number(paidSinceMs);
+  if (!Number.isFinite(raw) || raw <= 0) return floor;
+  return Math.min(nowMs, Math.max(floor, raw - PAID_LOOKUP_MARGIN_MS));
+}
+
 export function latestPaidBillForDesk(
   bills: StoryousPaidBill[],
   deskId: string,
