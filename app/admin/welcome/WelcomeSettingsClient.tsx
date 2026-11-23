@@ -8,6 +8,7 @@ import { useAdminLanguage } from "../../../components/admin/AdminLanguageProvide
 import { WelcomePage } from "../../../components/WelcomePage";
 
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../../../lib/menu/welcomeLayoutPreset";
+import { parseWelcomeMenuItemRef, welcomeMenuItemRef } from "../../../lib/menu/welcomeMenuItemRef";
 import { WELCOME_SHOWCASE_IMAGE_URLS } from "../../../lib/menu/welcomeShowcaseImages";
 import { uniqueWelcomeImageUrls, welcomeLayoutVisibleSlotCount } from "../../../lib/menu/welcomeShowcaseSlots";
 import {
@@ -26,11 +27,14 @@ type MeOk = {
   memberships: { restaurantId: string; role: string }[];
 };
 
+type MenuItemPhotoRef = { imageUrl: string; name: string };
+
 type WelcomePayload = {
   ok?: boolean;
   layoutPreset?: string;
   imageUrls?: string[];
   hasCustomRow?: boolean;
+  menuItemPhotos?: Record<string, MenuItemPhotoRef>;
   rejectedUrls?: string[];
   savedCount?: number;
   error?: string;
@@ -210,6 +214,7 @@ export function WelcomeSettingsClient({
   const [menuImages, setMenuImages] = React.useState<
     Array<{ menuItemId: string; imageUrl: string; name: string; fromPos: boolean }>
   >([]);
+  const [menuItemPhotos, setMenuItemPhotos] = React.useState<Record<string, MenuItemPhotoRef>>({});
   const [pickerTargetIdx, setPickerTargetIdx] = React.useState(0);
   const [fetchedRestaurantName, setFetchedRestaurantName] = React.useState<string | null>(null);
   const pickerTargetIdxRef = React.useRef(0);
@@ -233,6 +238,7 @@ export function WelcomeSettingsClient({
   }, []);
 
   const applyWelcomePayload = React.useCallback((j: WelcomePayload, force = false) => {
+    if (j.menuItemPhotos) setMenuItemPhotos((prev) => ({ ...prev, ...j.menuItemPhotos }));
     if (!force && dirtyRef.current) return;
     if (typeof j.layoutPreset === "string") setLayoutPreset(parseWelcomeLayoutPreset(j.layoutPreset));
     if (Array.isArray(j.imageUrls)) {
@@ -371,14 +377,22 @@ export function WelcomeSettingsClient({
 
   const uniqueSavedUrls = React.useMemo(() => uniqueWelcomeImageUrls(cleanedUrlsFromEditor(imageUrls)), [imageUrls]);
   const previewImageUrls = React.useMemo(() => {
-    if (uniqueSavedUrls.length > 0) return uniqueSavedUrls;
+    const resolved = uniqueWelcomeImageUrls(
+      uniqueSavedUrls
+        .map((u) => {
+          const itemId = parseWelcomeMenuItemRef(u);
+          return itemId == null ? u : (menuItemPhotos[itemId]?.imageUrl ?? "");
+        })
+        .filter(Boolean),
+    );
+    if (resolved.length > 0) return resolved;
     // Stejná výchozí sada jako veřejná welcome stránka (doplnění na 3 sloty).
     const u = [...WELCOME_SHOWCASE_IMAGE_URLS];
     while (u.length < 3 && WELCOME_SHOWCASE_IMAGE_URLS.length > 0) {
       u.push(WELCOME_SHOWCASE_IMAGE_URLS[u.length % WELCOME_SHOWCASE_IMAGE_URLS.length]!);
     }
     return u.slice(0, 6);
-  }, [uniqueSavedUrls]);
+  }, [uniqueSavedUrls, menuItemPhotos]);
   const duplicateRowMsgs = React.useMemo(() => findDuplicateUrlRows(imageUrls, t), [imageUrls, t]);
   const layoutNeeds = welcomeLayoutVisibleSlotCount(layoutPreset);
   const layoutInsufficient =
@@ -488,9 +502,11 @@ export function WelcomeSettingsClient({
   );
 
   const applyPickedMenuImage = React.useCallback(
-    (url: string, menuItemId: string) => {
-      const trimmed = url.trim();
-      if (!trimmed) return;
+    (img: { menuItemId: string; imageUrl: string; name: string }) => {
+      const menuItemId = img.menuItemId.trim();
+      if (!menuItemId || !img.imageUrl.trim()) return;
+      const trimmed = welcomeMenuItemRef(menuItemId);
+      setMenuItemPhotos((prev) => ({ ...prev, [menuItemId]: { imageUrl: img.imageUrl.trim(), name: img.name } }));
       const idx = pickerTargetIdxRef.current;
 
       setImageUrls((prev) => {
@@ -498,7 +514,7 @@ export function WelcomeSettingsClient({
         if (dupAt >= 0) {
           setSaveErr(
             t("admin.welcome.pickerDup", {
-              id: menuItemId || "menu",
+              id: img.name || menuItemId,
               row: dupAt + 1,
             }),
           );
@@ -744,7 +760,9 @@ export function WelcomeSettingsClient({
               </p>
             ) : null}
             <div style={{ display: "grid", gap: 10 }}>
-              {imageUrls.map((url, idx) => (
+              {imageUrls.map((url, idx) => {
+                const linkedItemId = parseWelcomeMenuItemRef(url);
+                return (
                 <div
                   key={`slot-${idx}`}
                   style={{
@@ -758,14 +776,25 @@ export function WelcomeSettingsClient({
                     background: "rgba(255,255,255,0.03)",
                   }}
                 >
-                  <input
-                    className="chip"
-                    style={{ padding: "8px 10px", flex: "1 1 200px", minWidth: 0, boxSizing: "border-box" }}
-                    value={url}
-                    disabled={!canEdit || formBusy}
-                    placeholder={t("admin.welcome.urlPlaceholder")}
-                    onChange={(e) => setUrlAt(idx, e.target.value)}
-                  />
+                  {linkedItemId != null ? (
+                    <div style={{ flex: "1 1 200px", minWidth: 0, fontSize: 14, lineHeight: 1.4 }}>
+                      <strong>{menuItemPhotos[linkedItemId]?.name || linkedItemId}</strong>
+                      <div className="textMuted2" style={{ fontSize: 12 }}>
+                        {menuItemPhotos[linkedItemId]
+                          ? t("admin.welcome.menuItemLinked")
+                          : t("admin.welcome.menuItemNoPhoto")}
+                      </div>
+                    </div>
+                  ) : (
+                    <input
+                      className="chip"
+                      style={{ padding: "8px 10px", flex: "1 1 200px", minWidth: 0, boxSizing: "border-box" }}
+                      value={url}
+                      disabled={!canEdit || formBusy}
+                      placeholder={t("admin.welcome.urlPlaceholder")}
+                      onChange={(e) => setUrlAt(idx, e.target.value)}
+                    />
+                  )}
                   <FilePickButton
                     className="chip"
                     accept="image/jpeg,image/png,image/webp"
@@ -786,7 +815,8 @@ export function WelcomeSettingsClient({
                     {t("admin.welcome.removeRow")}
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
             <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button type="button" className="chip" disabled={!canEdit || imageUrls.length >= 6 || formBusy} onClick={addSlot}>
@@ -894,7 +924,7 @@ export function WelcomeSettingsClient({
                 <button
                   key={`${img.menuItemId}-${img.imageUrl}`}
                   type="button"
-                  onClick={() => applyPickedMenuImage(img.imageUrl, img.menuItemId)}
+                  onClick={() => applyPickedMenuImage(img)}
                   className="chip"
                   style={{
                     padding: 0,

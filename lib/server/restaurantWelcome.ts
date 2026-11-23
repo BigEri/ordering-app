@@ -1,7 +1,9 @@
 import { parseWelcomeLayoutPreset, type WelcomeLayoutPreset } from "../menu/welcomeLayoutPreset";
 import { uniqueWelcomeImageUrls } from "../menu/welcomeShowcaseSlots";
 import { WELCOME_SHOWCASE_IMAGE_URLS } from "../menu/welcomeShowcaseImages";
+import { parseWelcomeMenuItemRef } from "../menu/welcomeMenuItemRef";
 import { isAllowedWelcomeImageUrl, tryDeleteStoredWelcomeImage } from "./welcomeImageStorage";
+import { resolveWelcomeMenuItemPhotos, type WelcomeMenuItemPhoto } from "./welcomeMenuItemPhotos";
 import { nowIso } from "./db";
 import { prisma } from "./prisma";
 
@@ -20,6 +22,10 @@ function defaultUrls(): string[] {
 
 function normalizePreset(raw: string | null | undefined): WelcomeLayoutPreset {
   return parseWelcomeLayoutPreset(raw);
+}
+
+function isAllowedWelcomeEntry(value: string, restaurantId: string): boolean {
+  return parseWelcomeMenuItemRef(value) != null || isAllowedWelcomeImageUrl(value, restaurantId);
 }
 
 export function getWelcomeShowcaseForPublic(restaurantId: string | null): {
@@ -50,11 +56,20 @@ export async function getWelcomeShowcaseForPublicAsync(
     if (Array.isArray(parsed)) {
       urls = parsed
         .map((x) => (typeof x === "string" ? x.trim() : ""))
-        .filter((x) => x && isAllowedWelcomeImageUrl(x, rid));
+        .filter((x) => x && isAllowedWelcomeEntry(x, rid));
     }
   } catch {
     urls = [];
   }
+  const photos = await resolveWelcomeMenuItemPhotos(rid, urls);
+  urls = uniqueWelcomeImageUrls(
+    urls
+      .map((u) => {
+        const itemId = parseWelcomeMenuItemRef(u);
+        return itemId == null ? u : (photos.get(itemId)?.imageUrl ?? "");
+      })
+      .filter(Boolean),
+  );
   if (urls.length === 0) urls = defaultUrls();
   return { imageUrls: urls.slice(0, MAX_URLS), layoutPreset: normalizePreset(row.layoutPreset) };
 }
@@ -93,21 +108,25 @@ export async function getRestaurantWelcomeForAdmin(restaurantId: string): Promis
   layoutPreset: WelcomeLayoutPreset;
   imageUrls: string[];
   hasCustomRow: boolean;
+  /** Aktuální fotky jídel pro řádky `menu-item:` (náhled v editoru). */
+  menuItemPhotos: Record<string, WelcomeMenuItemPhoto>;
 }> {
   const rid = restaurantId.trim();
   if (!rid) {
     const pub = await getWelcomeShowcaseForPublicAsync(null);
-    return { ...pub, hasCustomRow: false };
+    return { ...pub, hasCustomRow: false, menuItemPhotos: {} };
   }
   const raw = await getRestaurantWelcomeRow(rid);
   if (!raw) {
     const pub = await getWelcomeShowcaseForPublicAsync(rid);
-    return { ...pub, hasCustomRow: false };
+    return { ...pub, hasCustomRow: false, menuItemPhotos: {} };
   }
+  const photos = await resolveWelcomeMenuItemPhotos(rid, raw.imageUrls);
   return {
     layoutPreset: raw.layoutPreset,
     imageUrls: raw.imageUrls,
     hasCustomRow: true,
+    menuItemPhotos: Object.fromEntries(photos),
   };
 }
 
@@ -122,7 +141,7 @@ export async function upsertRestaurantWelcome(opts: {
   const rejectedUrls: string[] = [];
   const cleaned: string[] = [];
   for (const u of uniqueWelcomeImageUrls(opts.imageUrls)) {
-    if (!isAllowedWelcomeImageUrl(u, rid)) {
+    if (!isAllowedWelcomeEntry(u, rid)) {
       rejectedUrls.push(u);
       continue;
     }
@@ -130,7 +149,7 @@ export async function upsertRestaurantWelcome(opts: {
     if (cleaned.length >= MAX_URLS) break;
   }
   const prev = await getRestaurantWelcomeRow(rid);
-  const removed = (prev?.imageUrls ?? []).filter((u) => !cleaned.includes(u));
+  const removed = (prev?.imageUrls ?? []).filter((u) => !cleaned.includes(u) && parseWelcomeMenuItemRef(u) == null);
 
   const urlsJson = JSON.stringify(cleaned);
   const preset = parseWelcomeLayoutPreset(opts.layoutPreset);

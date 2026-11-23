@@ -7,6 +7,7 @@ import { canEditMenuForRestaurant } from "../../../../../../lib/server/menuEdito
 import { resolveImageMime } from "../../../../../../lib/server/imageMime";
 import { tryDeleteStoredMenuImage, writeMenuImageUpload } from "../../../../../../lib/server/menuImageStorage";
 import { invalidateMenuOverridesCache } from "../../../../../../lib/server/menuOverridesCached";
+import { invalidateWelcomeShowcaseCache } from "../../../../../../lib/server/welcomeShowcaseCached";
 import { objectStorageMode } from "../../../../../../lib/server/objectStorage";
 import { objectStorageErrorMessage } from "../../../../../../lib/server/objectStorageError";
 import { prisma } from "../../../../../../lib/server/prisma";
@@ -99,6 +100,7 @@ export async function POST(req: Request) {
     await tryDeleteStoredMenuImage(oldUrl);
 
     invalidateMenuOverridesCache(restaurantId);
+    invalidateWelcomeShowcaseCache(restaurantId);
     return NextResponse.json({ ok: true, imageUrl: publicPath, storage: objectStorageMode() });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "UNAUTHORIZED";
