@@ -25,10 +25,20 @@ function errorMessage(error: unknown): string {
 }
 
 /**
+ * Prisma engine ještě není připojený (studený start, nebo paralelní `$disconnect`).
+ * Dotaz se k databázi vůbec nedostal — pomůže `$connect` a zopakování.
+ */
+export function isEngineNotConnectedError(error: unknown): boolean {
+  return /engine is not yet connected/i.test(errorMessage(error));
+}
+
+/**
  * Neon / serverless: spojení v poolu umře (idle po HTTP k pokladně) — P1017
- * „Server has closed the connection“, timeout poolu, dočasně nedostupný host.
+ * „Server has closed the connection“, timeout poolu, dočasně nedostupný host,
+ * nebo engine, který ještě nestihl naběhnout.
  */
 export function isPrismaTransientConnectionError(error: unknown): boolean {
+  if (isEngineNotConnectedError(error)) return true;
   const code = prismaErrorCode(error);
   if (code === "P1017" || code === "P1001" || code === "P1002" || code === "P1011" || code === "P2024") {
     return true;

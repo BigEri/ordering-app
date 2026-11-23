@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { isPrismaMissingColumnError, isPrismaTransientConnectionError, prismaErrorCode } from "./prismaKnownError";
+import {
+  isEngineNotConnectedError,
+  isPrismaMissingColumnError,
+  isPrismaTransientConnectionError,
+  prismaErrorCode,
+} from "./prismaKnownError";
 
 describe("prismaKnownError", () => {
   it("reads Prisma error.code", () => {
@@ -30,5 +35,13 @@ describe("prismaKnownError", () => {
           "Invalid `prisma.restaurant.findUnique()` invocation:\n\n\nCan't reach database server at `example.neon.tech:5432`",
       }),
     ).toBe(true);
+    const engineDown = {
+      name: "PrismaClientUnknownRequestError",
+      message:
+        "Invalid `prisma.kioskDeviceBinding.findUnique()` invocation:\n\n\nEngine is not yet connected.\nBacktrace [{ fn: \"start_thread\" }, { fn: \"clone\" }]",
+    };
+    expect(isEngineNotConnectedError(engineDown)).toBe(true);
+    expect(isPrismaTransientConnectionError(engineDown)).toBe(true);
+    expect(isEngineNotConnectedError({ code: "P2022", message: "column does not exist" })).toBe(false);
   });
 });
