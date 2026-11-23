@@ -207,7 +207,9 @@ export function WelcomeSettingsClient({
   const [menuPickerOpen, setMenuPickerOpen] = React.useState(false);
   const [menuPickerLoading, setMenuPickerLoading] = React.useState(false);
   const [menuPickerErr, setMenuPickerErr] = React.useState<string | null>(null);
-  const [menuImages, setMenuImages] = React.useState<Array<{ menuItemId: string; imageUrl: string }>>([]);
+  const [menuImages, setMenuImages] = React.useState<
+    Array<{ menuItemId: string; imageUrl: string; name: string; fromPos: boolean }>
+  >([]);
   const [pickerTargetIdx, setPickerTargetIdx] = React.useState(0);
   const [fetchedRestaurantName, setFetchedRestaurantName] = React.useState<string | null>(null);
   const pickerTargetIdxRef = React.useRef(0);
@@ -458,7 +460,7 @@ export function WelcomeSettingsClient({
         });
         const j = (await r.json()) as {
           ok?: boolean;
-          images?: Array<{ menuItemId?: string; imageUrl?: string }>;
+          images?: Array<{ menuItemId?: string; imageUrl?: string; name?: string; source?: string }>;
           error?: string;
         };
         if (!r.ok || !j.ok || !Array.isArray(j.images)) {
@@ -470,6 +472,8 @@ export function WelcomeSettingsClient({
           .map((x) => ({
             menuItemId: String(x.menuItemId ?? "").trim(),
             imageUrl: String(x.imageUrl ?? "").trim(),
+            name: String(x.name ?? "").trim(),
+            fromPos: x.source === "pos",
           }))
           .filter((x) => x.menuItemId && x.imageUrl);
         setMenuImages(cleaned);
@@ -910,7 +914,10 @@ export function WelcomeSettingsClient({
                     className="menuItemMedia menuItemMedia--thumbPicker"
                   />
                   <div className="textMuted2" style={{ padding: "8px 10px", fontSize: 12 }}>
-                    {img.menuItemId}
+                    {img.name || img.menuItemId}
+                    {img.fromPos ? (
+                      <div style={{ marginTop: 2, fontSize: 11, color: "#fcd34d" }}>{t("admin.welcome.pickerFromPos")}</div>
+                    ) : null}
                   </div>
                 </button>
               ))}
